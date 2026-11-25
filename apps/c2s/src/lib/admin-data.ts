@@ -85,22 +85,41 @@ export interface RoleTemplate {
     workerCount: number;
 }
 
+// Shared privilege set for Ministry Head, Cluster Head, and Section Head (Admin)
+const MINISTRY_HEAD_PERMISSIONS = [
+    'c2s:admin_view',
+    'c2s:reports',
+    'c2s:manage_workers',
+    'c2s:manage_groups',
+    'c2s:manage_mentees',
+    'c2s:assign_roles',
+    'c2s:dashboard',
+];
+
 export const ROLE_TEMPLATES: RoleTemplate[] = [
     {
         id: 'rt1',
         name: 'Ministry Head',
         description: 'Full ministry-level access with reporting and worker management',
         color: '#0b9b8a',
-        permissions: ['c2s:admin_view', 'c2s:reports', 'c2s:manage_workers', 'c2s:manage_groups', 'c2s:manage_mentees', 'c2s:assign_roles', 'c2s:dashboard'],
+        permissions: [...MINISTRY_HEAD_PERMISSIONS],
         workerCount: 1,
     },
     {
         id: 'rt2',
         name: 'Cluster Head',
-        description: 'Cluster-wide visibility over mentors, coordinators, and mentees',
+        description: 'Same privilege level as Ministry Head across cluster operations',
         color: '#6741d9',
-        permissions: ['c2s:cluster_view', 'c2s:manage_cluster_mentees', 'c2s:dashboard', 'c2s:reports'],
+        permissions: [...MINISTRY_HEAD_PERMISSIONS],
         workerCount: 6,
+    },
+    {
+        id: 'rt5',
+        name: 'Section Head (Admin)',
+        description: 'Admin section head with same privilege level as Ministry Head',
+        color: '#1971c2',
+        permissions: [...MINISTRY_HEAD_PERMISSIONS],
+        workerCount: 1,
     },
     {
         id: 'rt3',

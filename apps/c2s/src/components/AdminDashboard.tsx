@@ -19,7 +19,7 @@ import {
     type MHActiveMentee,
 } from '@/lib/data';
 import { useSatellites, type SatelliteChurch } from '@/lib/satellite-context';
-import SettingsModal from '@/components/SettingsModal';
+import { SidebarSettingsDropdown, SettingsPageView, type MySettingsSection } from '@/components/SettingsModal';
 import dynamic from 'next/dynamic';
 import type { ClusterMapGroup } from '@/components/ClusterMap';
 import {
@@ -233,11 +233,8 @@ function WorkerDetailPanel({
     }
 
     const ALL_ROLES: { value: AdminWorker['c2sRole']; label: string; color: string }[] = [
-        { value: 'ministry_head',   label: 'Ministry Head',   color: '#0b9b8a' },
-        { value: 'cluster_head',    label: 'Cluster Head',    color: '#6741d9' },
-        { value: 'c2s_coordinator', label: 'Coordinator',     color: '#5b50d6' },
-        { value: 'mentor',          label: 'Mentor',          color: '#5b50d6' },
-        { value: 'department_head', label: 'Department Head', color: '#1971c2' },
+        { value: 'c2s_coordinator', label: 'Coor',   color: '#5b50d6' },
+        { value: 'mentor',          label: 'Worker', color: '#0b9b8a' },
     ];
 
     return (
@@ -1090,6 +1087,12 @@ function OrgStructureTab({
             <div className="flex flex-col gap-4">
                 {ORG_MINISTRIES.map(ministry => {
                     const ministryDeptName = ministry.name.replace(' Ministry', '') as Department;
+                    const unitHeadLabel =
+                        ministryDeptName === 'Administration'
+                            ? 'Section Head'
+                            : ministryDeptName === 'Worship' || ministryDeptName === 'Discipleship'
+                            ? 'Ministry Head'
+                            : 'Cluster Head';
                     return (
                         <div key={ministry.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                             {/* Ministry header */}
@@ -1145,7 +1148,7 @@ function OrgStructureTab({
                                                             <p className="text-sm font-bold text-gray-900">{cluster.name}</p>
                                                             <div className="flex items-center gap-1.5 mt-0.5">
                                                                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ background: cluster.clusterHeadColor }}>{cluster.clusterHeadInitials}</div>
-                                                                <span className="text-xs text-gray-500">{cluster.clusterHead} <span className="text-gray-300">·</span> Cluster Head</span>
+                                                                <span className="text-xs text-gray-500">{cluster.clusterHead} <span className="text-gray-300">·</span> {unitHeadLabel}</span>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-1.5">
@@ -1165,7 +1168,7 @@ function OrgStructureTab({
                                                         {/* Leaders Row */}
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {[
-                                                                { label: 'Cluster Head',    name: cluster.clusterHead,    initials: cluster.clusterHeadInitials,    color: cluster.clusterHeadColor,    role: 'Cluster Head' },
+                                                                { label: unitHeadLabel, name: cluster.clusterHead, initials: cluster.clusterHeadInitials, color: cluster.clusterHeadColor, role: unitHeadLabel },
                                                                 { label: 'C2S Coordinator', name: cluster.coordinator,    initials: cluster.coordinatorInitials,    color: cluster.coordinatorColor,    role: 'Coordinator' },
                                                             ].map(person => (
                                                                 <div key={person.label} className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--bg-subtle)' }}>
@@ -3571,11 +3574,8 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
 
 // ─── Roles Section ────────────────────────────────────────────────────────────
 const INITIAL_ROLES = [
-    { name: 'Department Head', color: '#1971c2', perms: 6, workers: 1 },
-    { name: 'Ministry Head',   color: '#0b9b8a', perms: 7, workers: 1 },
-    { name: 'Cluster Head',    color: '#6741d9', perms: 4, workers: 3 },
-    { name: 'C2S Coordinator', color: '#5b50d6', perms: 5, workers: 6 },
-    { name: 'Mentor',          color: '#5b50d6', perms: 2, workers: 9 },
+    { name: 'Coor',   color: '#5b50d6', perms: 5, workers: 6 },
+    { name: 'Worker', color: '#0b9b8a', perms: 2, workers: 9 },
 ];
 
 function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean }) {
@@ -4016,7 +4016,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
 export default function AdminDashboard() {
     const [activeNav, setActiveNav] = useState<AdminNav>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
+    const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
 
     // Shared state across tabs
     const [workers, setWorkers] = useState<AdminWorker[]>(ADMIN_WORKERS);
@@ -4151,10 +4151,10 @@ export default function AdminDashboard() {
                                 <div className="flex flex-col gap-0.5">
                                     {items.map(item => {
                                         const badge = getBadge(item.key);
-                                        const isActive = activeNav === item.key;
+                                        const isActive = !settingsSection && activeNav === item.key;
                                         return (
                                             <button key={item.key}
-                                                onClick={() => { setActiveNav(item.key); setSidebarOpen(false); }}
+                                                onClick={() => { setActiveNav(item.key); setSettingsSection(null); setSidebarOpen(false); }}
                                                 className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${isActive ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill={isActive ? '#5b50d6' : '#aaa'}>
                                                     <path d={item.icon}/>
@@ -4173,20 +4173,13 @@ export default function AdminDashboard() {
                         );
                     })}
                 </div>
-                {/* My Settings at bottom */}
-                <div className="px-3 pt-3 border-t border-gray-100 mx-1 mt-2">
-                    <button
-                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
-                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa">
-                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-                        </svg>
-                        My Settings
-                    </button>
-                </div>
+                {/* My Settings dropdown at bottom */}
+                <SidebarSettingsDropdown
+                    label="My Settings"
+                    activeSection={settingsSection}
+                    onSelect={(sec) => { setSettingsSection(sec); setSidebarOpen(false); }}
+                />
             </aside>
-            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
             {/* ── Main Content ── */}
             <div className="md:ml-60 pb-16 min-w-0">
@@ -4203,22 +4196,28 @@ export default function AdminDashboard() {
                         </svg>
                     </button>
                     <span className="text-xs text-gray-400 ml-1">
-                        {ADMIN_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                        {settingsSection ? 'My Settings' : ADMIN_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
                     </span>
                 </div>
 
                 <div className="pt-4 md:pt-5 px-4 sm:px-6">
-                    {activeNav === 'dashboard'         && <DashboardTab />}
-                    {activeNav === 'org'               && <OrgStructureTab workers={workers} onTransferWorker={w => setTransferringWorker(w)} />}
-                    {activeNav === 'workers'           && <WorkersTab workers={workers} setWorkers={setWorkers} onTransferWorker={w => setTransferringWorker(w)} />}
-                    {activeNav === 'groups'            && <GroupsTab />}
-                    {activeNav === 'potential_mentees' && <PotentialMenteesTab />}
-                    {activeNav === 'active_mentees'    && <ActiveMenteesTab />}
-                    {activeNav === 'c2s_home'          && <C2SHomeTab />}
-                    {activeNav === 'reports'           && <ReportsTab />}
-                    {activeNav === 'notifications'     && <NotificationsTab notifs={notifications} setNotifs={setNotifications} />}
-                    {activeNav === 'audit'             && <AuditLogsTab logs={auditLogs} />}
-                    {(activeNav === 'settings' || activeNav === 'rbac') && <SettingsTab initialSection={activeNav === 'rbac' ? 'rbac' : undefined} />}
+                    {settingsSection ? (
+                        <SettingsPageView section={settingsSection} />
+                    ) : (
+                        <>
+                            {activeNav === 'dashboard'         && <DashboardTab />}
+                            {activeNav === 'org'               && <OrgStructureTab workers={workers} onTransferWorker={w => setTransferringWorker(w)} />}
+                            {activeNav === 'workers'           && <WorkersTab workers={workers} setWorkers={setWorkers} onTransferWorker={w => setTransferringWorker(w)} />}
+                            {activeNav === 'groups'            && <GroupsTab />}
+                            {activeNav === 'potential_mentees' && <PotentialMenteesTab />}
+                            {activeNav === 'active_mentees'    && <ActiveMenteesTab />}
+                            {activeNav === 'c2s_home'          && <C2SHomeTab />}
+                            {activeNav === 'reports'           && <ReportsTab />}
+                            {activeNav === 'notifications'     && <NotificationsTab notifs={notifications} setNotifs={setNotifications} />}
+                            {activeNav === 'audit'             && <AuditLogsTab logs={auditLogs} />}
+                            {(activeNav === 'settings' || activeNav === 'rbac') && <SettingsTab initialSection={activeNav === 'rbac' ? 'rbac' : undefined} />}
+                        </>
+                    )}
                 </div>
             </div>
         </div>

@@ -19,7 +19,7 @@ import EndorsedViewMembersModal from '@/components/EndorsedViewMembersModal';
 import EndorsedEditGroupModal from '@/components/EndorsedEditGroupModal';
 import EndorsedCreateGroupModal from '@/components/EndorsedCreateGroupModal';
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
-import SettingsModal from '@/components/SettingsModal';
+import { SidebarSettingsDropdown, SettingsPageView, type MySettingsSection } from '@/components/SettingsModal';
 import AddMenteeModal from '@/components/AddMenteeModal';
 import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
 import { CH_MENTOR_REPORT_DATA, CH_COORD_REPORT_DATA, CH_BARANGAY_DATA, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
@@ -1102,7 +1102,7 @@ function MentorDashboard() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed' | 'potential-c2s-groups'>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
+    const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
     const [viewingGroup, setViewingGroup] = useState<C2SGroup | null>(null);
     const [editingGroup, setEditingGroup] = useState<C2SGroup | null>(null);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -1268,9 +1268,6 @@ function MentorDashboard() {
             )}
 
 
-            {/* Settings modal */}
-            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <div
@@ -1286,25 +1283,25 @@ function MentorDashboard() {
                 {/* Nav items */}
                 <nav className="px-3 flex flex-col gap-1">
                     <button
-                        onClick={() => setActiveTab('dashboard')}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeTab === 'dashboard'
+                        onClick={() => { setActiveTab('dashboard'); setSettingsSection(null); setSidebarOpen(false); }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'dashboard'
                             ? 'text-gray-800 bg-white shadow-sm'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'dashboard' ? '#555' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'dashboard' ? '#555' : '#aaa'}>
                             <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z" />
                         </svg>
                         Dashboard
                     </button>
                     <button
-                        onClick={() => setActiveTab('my-groups')}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeTab === 'my-groups'
+                        onClick={() => { setActiveTab('my-groups'); setSettingsSection(null); setSidebarOpen(false); }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'my-groups'
                             ? 'text-gray-800 bg-white shadow-sm'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'my-groups' ? '#5b50d6' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'my-groups' ? '#5b50d6' : '#aaa'}>
                             <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
                         </svg>
                         My Groups
@@ -1315,13 +1312,13 @@ function MentorDashboard() {
                         )}
                     </button>
                     <button
-                        onClick={() => setActiveTab('potential-mentees')}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeTab === 'potential-mentees'
+                        onClick={() => { setActiveTab('potential-mentees'); setSettingsSection(null); setSidebarOpen(false); }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'potential-mentees'
                             ? 'text-gray-800 bg-white shadow-sm'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'potential-mentees' ? '#5b50d6' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'potential-mentees' ? '#5b50d6' : '#aaa'}>
                             <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                         </svg>
                         Potential Mentees
@@ -1330,13 +1327,13 @@ function MentorDashboard() {
                         </span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('mentees')}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeTab === 'mentees'
+                        onClick={() => { setActiveTab('mentees'); setSettingsSection(null); setSidebarOpen(false); }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'mentees'
                             ? 'text-gray-800 bg-white shadow-sm'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'mentees' ? '#5b50d6' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'mentees' ? '#5b50d6' : '#aaa'}>
                             <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
                         </svg>
                         Mentees
@@ -1345,13 +1342,13 @@ function MentorDashboard() {
                         </span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('endorsed')}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeTab === 'endorsed'
+                        onClick={() => { setActiveTab('endorsed'); setSettingsSection(null); setSidebarOpen(false); }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'endorsed'
                             ? 'text-gray-800 bg-white shadow-sm'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'endorsed' ? '#5b50d6' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'endorsed' ? '#5b50d6' : '#aaa'}>
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
                         </svg>
                         Endorsed
@@ -1360,31 +1357,24 @@ function MentorDashboard() {
                         </span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('potential-c2s-groups')}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeTab === 'potential-c2s-groups'
+                        onClick={() => { setActiveTab('potential-c2s-groups'); setSettingsSection(null); setSidebarOpen(false); }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'potential-c2s-groups'
                             ? 'text-gray-800 bg-white shadow-sm'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'potential-c2s-groups' ? '#5b50d6' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'potential-c2s-groups' ? '#5b50d6' : '#aaa'}>
                             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                         </svg>
                         Potential C2S Groups
                     </button>
                 </nav>
 
-                {/* Settings at bottom of sidebar */}
-                <div className="mt-auto px-3 pt-3 border-t border-gray-100 mx-2">
-                    <button
-                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
-                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
-                        </svg>
-                        Settings
-                    </button>
-                </div>
+                {/* Settings dropdown at bottom of sidebar */}
+                <SidebarSettingsDropdown
+                    activeSection={settingsSection}
+                    onSelect={(sec) => { setSettingsSection(sec); setSidebarOpen(false); }}
+                />
             </aside>
 
             {/* â”€â”€ Main content â”€â”€ */}
@@ -1402,652 +1392,657 @@ function MentorDashboard() {
                         </svg>
                     </button>
                     <span className="text-xs text-gray-400 ml-1">
-                        {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
+                        {settingsSection ? 'Settings' : activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
                     </span>
                 </div>
 
                 {/* Content with padding */}
                 <div className="pt-4 md:pt-6 px-4 sm:px-6">
-
-                    {/* Title â€” only shown on dashboard tab */}
-                    {activeTab === 'dashboard' && (
-                        <div className="mb-5">
-                            <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
-                            <p className="text-sm text-gray-400 mt-0.5">
-                                Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
-                            </p>
-                        </div>
-                    )}
-
-                    {/* ── My Groups Tab ── */}
-                    {activeTab === 'my-groups' && (
-                        <div>
-                            {/* Toast Notification */}
-                            {groupToast && (
-                                <div
-                                    role="status"
-                                    aria-live="polite"
-                                    className="fixed bottom-6 right-6 z-[10000] flex items-center gap-3 bg-white border border-gray-200 shadow-2xl rounded-2xl px-5 py-3.5 animate-in fade-in slide-in-from-bottom-4 duration-300"
-                                    style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900 leading-tight">Success</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{groupToast}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => setGroupToast(null)}
-                                        className="ml-2 text-gray-400 hover:text-gray-700 p-1 text-base leading-none transition-colors"
-                                        aria-label="Dismiss toast"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Header row */}
-                            <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
-                                <div>
-                                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Connect 2 Souls</h1>
-                                    <p className="text-sm text-gray-400 mt-1">
+                    {settingsSection ? (
+                        <SettingsPageView section={settingsSection} />
+                    ) : (
+                        <>
+                            {/* Title â€” only shown on dashboard tab */}
+                            {activeTab === 'dashboard' && (
+                                <div className="mb-5">
+                                    <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
+                                    <p className="text-sm text-gray-400 mt-0.5">
                                         Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setShowCreateGroup(true)}
-                                    className="flex items-center gap-1.5 bg-[#e53e3e] hover:bg-[#c53030] text-white font-bold px-4 py-2 rounded-md text-sm transition-colors shadow-sm shrink-0"
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
-                                    Create Group
-                                </button>
-                            </div>
+                            )}
 
-                            {myGroups.length === 0 ? (
-                                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                                    <div className="text-4xl mb-3">👥</div>
-                                    <p className="font-semibold text-gray-700 text-sm">No groups assigned yet</p>
-                                    <p className="text-xs text-gray-400 mt-1">Contact the department head to get assigned to a group.</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                                    {myGroups.map((group) => (
-                                        <div key={group.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-4">
-                                            {/* Tags row + Open status */}
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                {group.tags.map((t) => (
-                                                    <span key={t.label} className={`text-xs font-semibold px-3 py-1 rounded-full ${t.color}`}>
-                                                        {t.label}
-                                                    </span>
-                                                ))}
-                                                <span className={`text-xs font-semibold px-3 py-1 rounded-full ml-auto ${group.status === 'Open'
-                                                    ? 'bg-[#16a34a] text-white'
-                                                    : 'bg-gray-400 text-white'
-                                                    }`}>
-                                                    {group.status}
-                                                </span>
+                            {/* ── My Groups Tab ── */}
+                            {activeTab === 'my-groups' && (
+                                <div>
+                                    {/* Toast Notification */}
+                                    {groupToast && (
+                                        <div
+                                            role="status"
+                                            aria-live="polite"
+                                            className="fixed bottom-6 right-6 z-[10000] flex items-center gap-3 bg-white border border-gray-200 shadow-2xl rounded-2xl px-5 py-3.5 animate-in fade-in slide-in-from-bottom-4 duration-300"
+                                            style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                                </svg>
                                             </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900 leading-tight">Success</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">{groupToast}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setGroupToast(null)}
+                                                className="ml-2 text-gray-400 hover:text-gray-700 p-1 text-base leading-none transition-colors"
+                                                aria-label="Dismiss toast"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    )}
 
-                                            {/* Name */}
-                                            <h3 className="font-semibold text-gray-900 leading-tight text-3xl">{group.name}</h3>
+                                    {/* Header row */}
+                                    <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+                                        <div>
+                                            <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Connect 2 Souls</h1>
+                                            <p className="text-sm text-gray-400 mt-1">
+                                                Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowCreateGroup(true)}
+                                            className="flex items-center gap-1.5 bg-[#e53e3e] hover:bg-[#c53030] text-white font-bold px-4 py-2 rounded-md text-sm transition-colors shadow-sm shrink-0"
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+                                            Create Group
+                                        </button>
+                                    </div>
 
-                                            {/* Description */}
-                                            <p className="text-sm text-gray-400 leading-relaxed">{group.description}</p>
+                                    {myGroups.length === 0 ? (
+                                        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                                            <div className="text-4xl mb-3">👥</div>
+                                            <p className="font-semibold text-gray-700 text-sm">No groups assigned yet</p>
+                                            <p className="text-xs text-gray-400 mt-1">Contact the department head to get assigned to a group.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                            {myGroups.map((group) => (
+                                                <div key={group.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-4">
+                                                    {/* Tags row + Open status */}
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {group.tags.map((t) => (
+                                                            <span key={t.label} className={`text-xs font-semibold px-3 py-1 rounded-full ${t.color}`}>
+                                                                {t.label}
+                                                            </span>
+                                                        ))}
+                                                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ml-auto ${group.status === 'Open'
+                                                            ? 'bg-[#16a34a] text-white'
+                                                            : 'bg-gray-400 text-white'
+                                                            }`}>
+                                                            {group.status}
+                                                        </span>
+                                                    </div>
 
-                                            {/* Satellite Church Info */}
-                                            {(group.satelliteName || group.satellite) && (
-                                                <div className="flex items-center gap-2 text-xs font-semibold text-[#5b50d6] bg-[#f5f3ff] px-3 py-2 rounded-xl border border-[#ede9fe]">
-                                                    <svg className="w-4 h-4 shrink-0 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                                                    </svg>
-                                                    <span className="truncate">
-                                                        Satellite: <span className="text-gray-900 font-bold">{group.satelliteName || group.satellite}</span>
-                                                    </span>
+                                                    {/* Name */}
+                                                    <h3 className="font-semibold text-gray-900 leading-tight text-3xl">{group.name}</h3>
+
+                                                    {/* Description */}
+                                                    <p className="text-sm text-gray-400 leading-relaxed">{group.description}</p>
+
+                                                    {/* Satellite Church Info */}
+                                                    {(group.satelliteName || group.satellite) && (
+                                                        <div className="flex items-center gap-2 text-xs font-semibold text-[#5b50d6] bg-[#f5f3ff] px-3 py-2 rounded-xl border border-[#ede9fe]">
+                                                            <svg className="w-4 h-4 shrink-0 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                                                            </svg>
+                                                            <span className="truncate">
+                                                                Satellite: <span className="text-gray-900 font-bold">{group.satelliteName || group.satellite}</span>
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Location */}
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <svg className="w-4 h-4 shrink-0 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                                                        </svg>
+                                                        {group.location}
+                                                    </div>
+
+                                                    {/* Schedule */}
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <svg className="w-4 h-4 shrink-0 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" />
+                                                        </svg>
+                                                        {group.schedule}
+                                                    </div>
+
+                                                    {/* Divider */}
+                                                    <hr className="border-gray-200 mt-1" />
+
+                                                    {/* Actions footer */}
+                                                    <div className="flex items-center gap-2">
+                                                        {/* View Members — wide rounded-lg rectangle */}
+                                                        <button
+                                                            onClick={() => setViewingGroup(group)}
+                                                            className="flex items-center justify-center gap-2 font-bold text-white text-sm px-5 py-2.5 rounded-lg transition-colors" style={{ background: '#5b50d6', minWidth: 0, flex: '0 0 auto', width: '62%' }}>
+                                                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                                                            </svg>
+                                                            View Members
+                                                        </button>
+                                                        {/* Edit — bordered rectangle */}
+                                                        <button
+                                                            onClick={() => setEditingGroup(group)}
+                                                            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                                                        >
+                                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                                                            </svg>
+                                                            Edit
+                                                        </button>
+                                                        {/* Delete — icon only, no border */}
+                                                        <button className="p-2.5 text-gray-400 hover:text-red-500 transition-colors ml-auto">
+                                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            )}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
-                                            {/* Location */}
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <svg className="w-4 h-4 shrink-0 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                                                </svg>
-                                                {group.location}
+                            {/* â”€â”€ Potential Mentees Tab â”€â”€ */}
+                            {activeTab === 'potential-mentees' && (
+                                <div>
+                                    {/* Header */}
+                                    <div className="mb-6">
+                                        <h1 className="text-[1.6rem] font-black text-gray-900 leading-tight">Connect 2 Souls</h1>
+                                        <p className="text-sm text-gray-400 mt-1">
+                                            Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
+                                        </p>
+                                    </div>
+
+                                    {/* Reminder banner */}
+                                    <div className="flex items-start gap-3 bg-[#b45309] border border-[#92400e] rounded-xl px-5 py-4 mb-7">
+                                        <svg className="w-5 h-5 text-white shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-xs font-bold text-white mb-0.5">Reminder</p>
+                                            <p className="text-xs text-white/90 leading-relaxed">
+                                                Mentors should personally meet the potential mentee before accepting the mentoring request. This helps ensure both mentor and mentee are ready for discipleship.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Cards grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                        {allPotentialMentees.map((mentee) => (
+                                            <PotentialMenteeCard key={mentee.id} mentee={mentee} onAccepted={handleMenteeAccepted} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Mentees Tab ── */}
+                            {activeTab === 'mentees' && (
+                                <MenteesTab
+                                    activeMentees={allActiveMentees}
+                                    onAddMentee={(newMentee) => setSessionAddedMentees(prev => [newMentee, ...prev])}
+                                    userGroup={user?.group}
+                                />
+                            )}
+
+                            {/* â”€â”€ Endorsed Tab â”€â”€ */}
+                            {activeTab === 'endorsed' && (
+                                <EndorsedTab />
+                            )}
+
+                            {/* Potential C2S Groups Tab */}
+                            {activeTab === 'potential-c2s-groups' && (
+                                <MentorPotentialC2STab />
+                            )}
+
+                            {/* â”€â”€ Dashboard Tab â”€â”€ */}
+                            {activeTab === 'dashboard' && <>
+                                {/* Stat cards */}
+                                <div className="grid grid-cols-2 gap-4 mb-5">
+                                    {[
+                                        { label: 'Workers', value: 3455, sub: 'Across all departments', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
+                                        { label: 'Mentors', value: 717, sub: 'Active discipleship mentors', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> },
+                                        { label: 'Mentees', value: 2765, sub: 'Church-wide C2S mentees', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
+                                        { label: 'C2S Groups', value: 179, sub: 'Church & community based', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg> },
+                                    ].map((s) => (
+                                        <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                            <div className="flex items-start justify-between">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
+                                                <span className="opacity-80">{s.icon}</span>
                                             </div>
-
-                                            {/* Schedule */}
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <svg className="w-4 h-4 shrink-0 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" />
-                                                </svg>
-                                                {group.schedule}
-                                            </div>
-
-                                            {/* Divider */}
-                                            <hr className="border-gray-200 mt-1" />
-
-                                            {/* Actions footer */}
-                                            <div className="flex items-center gap-2">
-                                                {/* View Members — wide rounded-lg rectangle */}
-                                                <button
-                                                    onClick={() => setViewingGroup(group)}
-                                                    className="flex items-center justify-center gap-2 font-bold text-white text-sm px-5 py-2.5 rounded-lg transition-colors" style={{ background: '#5b50d6', minWidth: 0, flex: '0 0 auto', width: '62%' }}>
-                                                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                                                    </svg>
-                                                    View Members
-                                                </button>
-                                                {/* Edit — bordered rectangle */}
-                                                <button
-                                                    onClick={() => setEditingGroup(group)}
-                                                    className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                                                >
-                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-                                                    </svg>
-                                                    Edit
-                                                </button>
-                                                {/* Delete — icon only, no border */}
-                                                <button className="p-2.5 text-gray-400 hover:text-red-500 transition-colors ml-auto">
-                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                            <div><p className="text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p><p className="text-sm text-gray-400 leading-snug">{s.sub}</p></div>
                                         </div>
                                     ))}
                                 </div>
-                            )}
+
+                                {/* Combined Workers + Mentors chart */}
+                                <WorkersMentorsChart />
+
+                                {/* Mentees by Department */}
+                                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                    <h2 className="font-bold text-gray-900 text-base mb-0.5">Mentees by Department</h2>
+                                    <p className="text-xs text-gray-400 mb-6">Mentee delivery mode across departments.</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
+                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-400 mb-0.5">Face-to-Face</p>
+                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{MENTEES_F2F.toLocaleString()}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_F2F / MENTEES_TOTAL * 100)}% of all mentees</p>
+                                            </div>
+                                        </div>
+                                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
+                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#f07070"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-400 mb-0.5">Online</p>
+                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{MENTEES_ONLINE.toLocaleString()}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_ONLINE / MENTEES_TOTAL * 100)}% of all mentees</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-xl border border-gray-100">
+                                        <table className="w-full table-fixed">
+                                            <colgroup>
+                                                <col className="w-[40%]" />
+                                                <col className="w-[20%]" />
+                                                <col className="w-[20%]" />
+                                                <col className="w-[20%]" />
+                                            </colgroup>
+                                            <thead><tr style={{ background: 'var(--bg-highlight)' }}>
+                                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">F2F</th>
+                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
+                                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                                            </tr></thead>
+                                            <tbody>
+                                                {MENTEES_BY_DEPT.map((row) => (
+                                                    <tr key={row.dept} className="table-body-row">
+                                                        <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.f2f}</td>
+                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.online}</td>
+                                                        <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
+                                                    </tr>
+                                                ))}
+                                                <tr className="table-total-row">
+                                                    <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
+                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_F2F.toLocaleString()}</td>
+                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_ONLINE.toLocaleString()}</td>
+                                                    <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{MENTEES_TOTAL.toLocaleString()}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* C2S Groups */}
+                                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                    <h2 className="font-bold text-gray-900 text-base mb-0.5">C2S Groups</h2>
+                                    <p className="text-xs text-gray-400 mb-6">Where discipleship groups meet.</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
+                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-400 mb-0.5">Church-based</p>
+                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{C2S_CHURCH}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">Meeting in COG Satellite Churches</p>
+                                            </div>
+                                        </div>
+                                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
+                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-400 mb-0.5">Community-based</p>
+                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{C2S_COMMUNITY}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">Meeting in barangays &amp; homes</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-xl border border-gray-100">
+                                        <table className="w-full table-fixed">
+                                            <colgroup>
+                                                <col className="w-[40%]" />
+                                                <col className="w-[20%]" />
+                                                <col className="w-[20%]" />
+                                                <col className="w-[20%]" />
+                                            </colgroup>
+                                            <thead><tr className="table-header-row">
+                                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church</th>
+                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community</th>
+                                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                                            </tr></thead>
+                                            <tbody>
+                                                {C2S_GROUPS_BY_DEPT.map((row) => (
+                                                    <tr key={row.dept} className="table-body-row">
+                                                        <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.church}</td>
+                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.community}</td>
+                                                        <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
+                                                    </tr>
+                                                ))}
+                                                <tr className="table-total-row">
+                                                    <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
+                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_CHURCH}</td>
+                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_COMMUNITY}</td>
+                                                    <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{C2S_TOTAL_ALL}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>}
+                        </>
+                        )}
                         </div>
-                    )}
-
-                    {/* â”€â”€ Potential Mentees Tab â”€â”€ */}
-                    {activeTab === 'potential-mentees' && (
-                        <div>
-                            {/* Header */}
-                            <div className="mb-6">
-                                <h1 className="text-[1.6rem] font-black text-gray-900 leading-tight">Connect 2 Souls</h1>
-                                <p className="text-sm text-gray-400 mt-1">
-                                    Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
-                                </p>
-                            </div>
-
-                            {/* Reminder banner */}
-                            <div className="flex items-start gap-3 bg-[#b45309] border border-[#92400e] rounded-xl px-5 py-4 mb-7">
-                                <svg className="w-5 h-5 text-white shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
-                                </svg>
-                                <div>
-                                    <p className="text-xs font-bold text-white mb-0.5">Reminder</p>
-                                    <p className="text-xs text-white/90 leading-relaxed">
-                                        Mentors should personally meet the potential mentee before accepting the mentoring request. This helps ensure both mentor and mentee are ready for discipleship.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Cards grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                                {allPotentialMentees.map((mentee) => (
-                                    <PotentialMenteeCard key={mentee.id} mentee={mentee} onAccepted={handleMenteeAccepted} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Mentees Tab ── */}
-                    {activeTab === 'mentees' && (
-                        <MenteesTab
-                            activeMentees={allActiveMentees}
-                            onAddMentee={(newMentee) => setSessionAddedMentees(prev => [newMentee, ...prev])}
-                            userGroup={user?.group}
-                        />
-                    )}
-
-                    {/* â”€â”€ Endorsed Tab â”€â”€ */}
-                    {activeTab === 'endorsed' && (
-                        <EndorsedTab />
-                    )}
-
-                    {/* Potential C2S Groups Tab */}
-                    {activeTab === 'potential-c2s-groups' && (
-                        <MentorPotentialC2STab />
-                    )}
-
-                    {/* â”€â”€ Dashboard Tab â”€â”€ */}
-                    {activeTab === 'dashboard' && <>
-                        {/* Stat cards */}
-                        <div className="grid grid-cols-2 gap-4 mb-5">
-                            {[
-                                { label: 'Workers', value: 3455, sub: 'Across all departments', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
-                                { label: 'Mentors', value: 717, sub: 'Active discipleship mentors', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> },
-                                { label: 'Mentees', value: 2765, sub: 'Church-wide C2S mentees', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
-                                { label: 'C2S Groups', value: 179, sub: 'Church & community based', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg> },
-                            ].map((s) => (
-                                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                    <div className="flex items-start justify-between">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                                        <span className="opacity-80">{s.icon}</span>
-                                    </div>
-                                    <div><p className="text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p><p className="text-sm text-gray-400 leading-snug">{s.sub}</p></div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Combined Workers + Mentors chart */}
-                        <WorkersMentorsChart />
-
-                        {/* Mentees by Department */}
-                        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <h2 className="font-bold text-gray-900 text-base mb-0.5">Mentees by Department</h2>
-                            <p className="text-xs text-gray-400 mb-6">Mentee delivery mode across departments.</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-400 mb-0.5">Face-to-Face</p>
-                                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{MENTEES_F2F.toLocaleString()}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_F2F / MENTEES_TOTAL * 100)}% of all mentees</p>
-                                    </div>
-                                </div>
-                                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#f07070"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-400 mb-0.5">Online</p>
-                                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{MENTEES_ONLINE.toLocaleString()}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_ONLINE / MENTEES_TOTAL * 100)}% of all mentees</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-gray-100">
-                                <table className="w-full table-fixed">
-                                    <colgroup>
-                                        <col className="w-[40%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[20%]" />
-                                    </colgroup>
-                                    <thead><tr style={{ background: 'var(--bg-highlight)' }}>
-                                        <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                                        <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">F2F</th>
-                                        <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
-                                        <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
-                                    </tr></thead>
-                                    <tbody>
-                                        {MENTEES_BY_DEPT.map((row) => (
-                                            <tr key={row.dept} className="table-body-row">
-                                                <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                                <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.f2f}</td>
-                                                <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.online}</td>
-                                                <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
-                                            </tr>
-                                        ))}
-                                        <tr className="table-total-row">
-                                            <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
-                                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_F2F.toLocaleString()}</td>
-                                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_ONLINE.toLocaleString()}</td>
-                                            <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{MENTEES_TOTAL.toLocaleString()}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* C2S Groups */}
-                        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <h2 className="font-bold text-gray-900 text-base mb-0.5">C2S Groups</h2>
-                            <p className="text-xs text-gray-400 mb-6">Where discipleship groups meet.</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-400 mb-0.5">Church-based</p>
-                                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{C2S_CHURCH}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">Meeting in COG Satellite Churches</p>
-                                    </div>
-                                </div>
-                                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-400 mb-0.5">Community-based</p>
-                                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{C2S_COMMUNITY}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">Meeting in barangays &amp; homes</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-gray-100">
-                                <table className="w-full table-fixed">
-                                    <colgroup>
-                                        <col className="w-[40%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[20%]" />
-                                    </colgroup>
-                                    <thead><tr className="table-header-row">
-                                        <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                                        <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church</th>
-                                        <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community</th>
-                                        <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
-                                    </tr></thead>
-                                    <tbody>
-                                        {C2S_GROUPS_BY_DEPT.map((row) => (
-                                            <tr key={row.dept} className="table-body-row">
-                                                <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                                <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.church}</td>
-                                                <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.community}</td>
-                                                <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
-                                            </tr>
-                                        ))}
-                                        <tr className="table-total-row">
-                                            <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
-                                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_CHURCH}</td>
-                                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_COMMUNITY}</td>
-                                            <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{C2S_TOTAL_ALL}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>}
                 </div>
             </div>
-        </div>
-    );
+            );
 }
 
-// ── CLUSTER HEAD REPORTS CHARTS ── rendered here so recharts resolves correctly
+            // ── CLUSTER HEAD REPORTS CHARTS ── rendered here so recharts resolves correctly
 
 
 
-const CH_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
+            const CH_TS = {borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
 
-type CHReportTab = 'mentor' | 'coordinator' | 'barangay' | 'growth';
+            type CHReportTab = 'mentor' | 'coordinator' | 'barangay' | 'growth';
 
-function CHReportsCharts() {
+            function CHReportsCharts() {
     const [tab, setTab] = useState<CHReportTab>('mentor');
-    const tabs: { key: CHReportTab; label: string }[] = [
-        { key: 'mentor', label: 'Per Mentor' },
-        { key: 'coordinator', label: 'Per Coordinator' },
-        { key: 'barangay', label: 'Per Barangay' },
-        { key: 'growth', label: 'Monthly Growth' },
-    ];
-    return (
-        <div>
-            <div className="flex items-center gap-2 mb-5">
-                {tabs.map(t => (
-                    <button key={t.key} onClick={() => setTab(t.key)}
-                        className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#6741d9] text-white border-[#6741d9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                {tab === 'mentor' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Mentor Performance</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={CH_MENTOR_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={CH_TS} formatter={(v: any, n: string) => [v, n === 'attendance' ? 'Attendance %' : 'Completion %']} />
-                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                <Bar dataKey="attendance" name="Attendance %" fill="#6741d9" radius={[3, 3, 0, 0]} barSize={22} />
-                                <Bar dataKey="completion" name="Completion %" fill="#6741d9" fillOpacity={0.4} radius={[3, 3, 0, 0]} barSize={22} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-                {tab === 'coordinator' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Coordinator Activity</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={CH_COORD_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={CH_TS} />
-                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                <Bar dataKey="assigned" name="Assigned Potential" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
-                                <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-                {tab === 'barangay' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Groups per Barangay</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={CH_BARANGAY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={CH_TS} />
-                                <Bar dataKey="members" name="Members" fill="#6741d9" radius={[3, 3, 0, 0]} barSize={28} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-                {tab === 'growth' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Growth</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <LineChart data={CH_GROWTH_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={CH_TS} />
-                                <Legend iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#6741d9" strokeWidth={2} dot={{ r: 4, fill: '#6741d9', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                                <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#0b9b8a" strokeWidth={2} dot={{ r: 4, fill: '#0b9b8a', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-            </div>
-        </div>
-    );
+                const tabs: {key: CHReportTab; label: string }[] = [
+                {key: 'mentor', label: 'Per Mentor' },
+                {key: 'coordinator', label: 'Per Coordinator' },
+                {key: 'barangay', label: 'Per Barangay' },
+                {key: 'growth', label: 'Monthly Growth' },
+                ];
+                return (
+                <div>
+                    <div className="flex items-center gap-2 mb-5">
+                        {tabs.map(t => (
+                            <button key={t.key} onClick={() => setTab(t.key)}
+                                className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#6741d9] text-white border-[#6741d9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                        {tab === 'mentor' && (
+                            <>
+                                <p className="text-sm font-semibold text-gray-800 mb-4">Mentor Performance</p>
+                                <ResponsiveContainer width="100%" height={220}>
+                                    <BarChart data={CH_MENTOR_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CH_TS} formatter={(v: any, n: string) => [v, n === 'attendance' ? 'Attendance %' : 'Completion %']} />
+                                        <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                        <Bar dataKey="attendance" name="Attendance %" fill="#6741d9" radius={[3, 3, 0, 0]} barSize={22} />
+                                        <Bar dataKey="completion" name="Completion %" fill="#6741d9" fillOpacity={0.4} radius={[3, 3, 0, 0]} barSize={22} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </>
+                        )}
+                        {tab === 'coordinator' && (
+                            <>
+                                <p className="text-sm font-semibold text-gray-800 mb-4">Coordinator Activity</p>
+                                <ResponsiveContainer width="100%" height={220}>
+                                    <BarChart data={CH_COORD_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CH_TS} />
+                                        <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                        <Bar dataKey="assigned" name="Assigned Potential" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
+                                        <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </>
+                        )}
+                        {tab === 'barangay' && (
+                            <>
+                                <p className="text-sm font-semibold text-gray-800 mb-4">Groups per Barangay</p>
+                                <ResponsiveContainer width="100%" height={220}>
+                                    <BarChart data={CH_BARANGAY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CH_TS} />
+                                        <Bar dataKey="members" name="Members" fill="#6741d9" radius={[3, 3, 0, 0]} barSize={28} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </>
+                        )}
+                        {tab === 'growth' && (
+                            <>
+                                <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Growth</p>
+                                <ResponsiveContainer width="100%" height={220}>
+                                    <LineChart data={CH_GROWTH_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CH_TS} />
+                                        <Legend iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                        <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#6741d9" strokeWidth={2} dot={{ r: 4, fill: '#6741d9', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#0b9b8a" strokeWidth={2} dot={{ r: 4, fill: '#0b9b8a', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </>
+                        )}
+                    </div>
+                </div>
+                );
 }
 
-// ── COORDINATOR REPORTS CHARTS ── rendered here so recharts resolves correctly
+                // ── COORDINATOR REPORTS CHARTS ── rendered here so recharts resolves correctly
 
 
 
-const COORD_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
+                const COORD_TS = {borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
 
-const COORD_ASSIGNMENT_DATA = [
-    { month: 'Feb', assigned: 4, pending: 2 },
-    { month: 'Mar', assigned: 6, pending: 3 },
-    { month: 'Apr', assigned: 5, pending: 1 },
-    { month: 'May', assigned: 8, pending: 4 },
-    { month: 'Jun', assigned: 7, pending: 2 },
-    { month: 'Jul', assigned: 9, pending: 3 },
-];
-const COORD_MONTHLY_DATA = [
-    { month: 'Feb', new: 3 }, { month: 'Mar', new: 5 }, { month: 'Apr', new: 4 },
-    { month: 'May', new: 7 }, { month: 'Jun', new: 6 }, { month: 'Jul', new: 8 },
-];
-const COORD_BARANGAY_DATA = [
-    { name: 'Burol', count: 2 }, { name: 'Paliparan III', count: 2 },
-    { name: 'Sampaloc I', count: 1 }, { name: 'Salitran III', count: 1 },
-    { name: 'Emmanuel Bergado I', count: 1 }, { name: 'Fatima I', count: 1 },
-];
-const COORD_MENTOR_DATA = [
-    { name: 'Juan', assigned: 2, capacity: 7 }, { name: 'Pedro', assigned: 2, capacity: 7 },
-    { name: 'Maria', assigned: 1, capacity: 4 }, { name: 'Lena', assigned: 0, capacity: 0 },
-];
+                const COORD_ASSIGNMENT_DATA = [
+                {month: 'Feb', assigned: 4, pending: 2 },
+                {month: 'Mar', assigned: 6, pending: 3 },
+                {month: 'Apr', assigned: 5, pending: 1 },
+                {month: 'May', assigned: 8, pending: 4 },
+                {month: 'Jun', assigned: 7, pending: 2 },
+                {month: 'Jul', assigned: 9, pending: 3 },
+                ];
+                const COORD_MONTHLY_DATA = [
+                {month: 'Feb', new: 3 }, {month: 'Mar', new: 5 }, {month: 'Apr', new: 4 },
+                {month: 'May', new: 7 }, {month: 'Jun', new: 6 }, {month: 'Jul', new: 8 },
+                ];
+                const COORD_BARANGAY_DATA = [
+                {name: 'Burol', count: 2 }, {name: 'Paliparan III', count: 2 },
+                {name: 'Sampaloc I', count: 1 }, {name: 'Salitran III', count: 1 },
+                {name: 'Emmanuel Bergado I', count: 1 }, {name: 'Fatima I', count: 1 },
+                ];
+                const COORD_MENTOR_DATA = [
+                {name: 'Juan', assigned: 2, capacity: 7 }, {name: 'Pedro', assigned: 2, capacity: 7 },
+                {name: 'Maria', assigned: 1, capacity: 4 }, {name: 'Lena', assigned: 0, capacity: 0 },
+                ];
 
-type CoordReportChartTab = 'assignment' | 'monthly' | 'barangay' | 'mentor';
+                type CoordReportChartTab = 'assignment' | 'monthly' | 'barangay' | 'mentor';
 
-function CoordReportsCharts() {
+                function CoordReportsCharts() {
     const [tab, setTab] = useState<CoordReportChartTab>('assignment');
-    const tabs: { key: CoordReportChartTab; label: string }[] = [
-        { key: 'assignment', label: 'Assignment Reports' },
-        { key: 'monthly', label: 'Monthly Potential' },
-        { key: 'barangay', label: 'Per Barangay' },
-        { key: 'mentor', label: 'Per Mentor' },
-    ];
-    return (
-        <div>
-            <div className="flex items-center gap-2 mb-5 flex-wrap">
-                {tabs.map(t => (
-                    <button key={t.key} onClick={() => setTab(t.key)}
-                        className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#0b9b8a] text-white border-[#0b9b8a]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                {tab === 'assignment' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Assignment Reports â€” Assigned vs Pending</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={COORD_ASSIGNMENT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={COORD_TS} />
-                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                <Bar dataKey="assigned" name="Assigned" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
-                                <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </>
+                    const tabs: {key: CoordReportChartTab; label: string }[] = [
+                    {key: 'assignment', label: 'Assignment Reports' },
+                    {key: 'monthly', label: 'Monthly Potential' },
+                    {key: 'barangay', label: 'Per Barangay' },
+                    {key: 'mentor', label: 'Per Mentor' },
+                    ];
+                    return (
+                    <div>
+                        <div className="flex items-center gap-2 mb-5 flex-wrap">
+                            {tabs.map(t => (
+                                <button key={t.key} onClick={() => setTab(t.key)}
+                                    className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#0b9b8a] text-white border-[#0b9b8a]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                            {tab === 'assignment' && (
+                                <>
+                                    <p className="text-sm font-semibold text-gray-800 mb-4">Assignment Reports â€” Assigned vs Pending</p>
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <BarChart data={COORD_ASSIGNMENT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <Tooltip contentStyle={COORD_TS} />
+                                            <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                            <Bar dataKey="assigned" name="Assigned" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
+                                            <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </>
+                            )}
+                            {tab === 'monthly' && (
+                                <>
+                                    <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Potential Mentees Submitted</p>
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <AreaChart data={COORD_MONTHLY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="coordFill" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#0b9b8a" stopOpacity={0.2} />
+                                                    <stop offset="95%" stopColor="#0b9b8a" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'New Potential Mentees']} />
+                                            <Area type="monotone" dataKey="new" stroke="#0b9b8a" strokeWidth={2} fill="url(#coordFill)" dot={false} activeDot={{ r: 5 }} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </>
+                            )}
+                            {tab === 'barangay' && (
+                                <>
+                                    <p className="text-sm font-semibold text-gray-800 mb-4">Potential Mentees per Barangay</p>
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <BarChart data={COORD_BARANGAY_DATA} layout="vertical" margin={{ top: 5, right: 20, left: 60, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                                            <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={55} />
+                                            <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'Mentees']} />
+                                            <Bar dataKey="count" name="Mentees" fill="#0b9b8a" radius={[0, 3, 3, 0]} barSize={16} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </>
+                            )}
+                            {tab === 'mentor' && (
+                                <>
+                                    <p className="text-sm font-semibold text-gray-800 mb-4">Mentee Assignments per Mentor</p>
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <BarChart data={COORD_MENTOR_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                            <Tooltip contentStyle={COORD_TS} />
+                                            <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                            <Bar dataKey="assigned" name="Assigned Mentees" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
+                                            <Bar dataKey="capacity" name="Available Slots" fill="#0b9b8a" fillOpacity={0.3} radius={[3, 3, 0, 0]} barSize={22} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </>
                 )}
-                {tab === 'monthly' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Potential Mentees Submitted</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <AreaChart data={COORD_MONTHLY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="coordFill" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#0b9b8a" stopOpacity={0.2} />
-                                        <stop offset="95%" stopColor="#0b9b8a" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'New Potential Mentees']} />
-                                <Area type="monotone" dataKey="new" stroke="#0b9b8a" strokeWidth={2} fill="url(#coordFill)" dot={false} activeDot={{ r: 5 }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-                {tab === 'barangay' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Potential Mentees per Barangay</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={COORD_BARANGAY_DATA} layout="vertical" margin={{ top: 5, right: 20, left: 60, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                                <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={55} />
-                                <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'Mentees']} />
-                                <Bar dataKey="count" name="Mentees" fill="#0b9b8a" radius={[0, 3, 3, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-                {tab === 'mentor' && (
-                    <>
-                        <p className="text-sm font-semibold text-gray-800 mb-4">Mentee Assignments per Mentor</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={COORD_MENTOR_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={COORD_TS} />
-                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                <Bar dataKey="assigned" name="Assigned Mentees" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
-                                <Bar dataKey="capacity" name="Available Slots" fill="#0b9b8a" fillOpacity={0.3} radius={[3, 3, 0, 0]} barSize={22} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </>
-                )}
-            </div>
-        </div>
-    );
+                    </div>
+                </div>
+                );
 }
 
-// ── ROOT ──
+                // ── ROOT ──
 
 
-export default function DashboardPage() {
-    const { user, logout } = useAuth();
-    const router = useRouter();
+                export default function DashboardPage() {
+    const {user, logout} = useAuth();
+                const router = useRouter();
 
     useEffect(() => {
         const stored = typeof window !== 'undefined' ? localStorage.getItem('c2s_user') : null;
-        if (!stored) router.replace('/login');
+                if (!stored) router.replace('/login');
     }, []); // eslint-disable-line
 
-    if (!user) return null;
+                if (!user) return null;
 
-    function handleLogout() {
-        logout();
-        router.push('/login');
+                function handleLogout() {
+                    logout();
+                router.push('/login');
     }
 
-    if (user.role === 'admin') {
+                if (user.role === 'admin') {
         return (
-            <>
-                <DashNav onLogout={handleLogout} />
-                <div className="pt-nav-fixed">
-                    <AdminDashboard />
-                </div>
-            </>
-        );
+                <>
+                    <DashNav onLogout={handleLogout} />
+                    <div className="pt-nav-fixed">
+                        <AdminDashboard />
+                    </div>
+                </>
+                );
     }
 
-    if (user.role === 'ministry_head') {
+                if (user.role === 'ministry_head') {
         return (
-            <>
-                <DashNav onLogout={handleLogout} />
-                <div className="pt-nav-fixed">
-                    <DepartmentHeadDashboard />
-                </div>
-            </>
-        );
+                <>
+                    <DashNav onLogout={handleLogout} />
+                    <div className="pt-nav-fixed">
+                        <DepartmentHeadDashboard />
+                    </div>
+                </>
+                );
     }
 
-    if (user.role === 'cluster_head') {
+                if (user.role === 'cluster_head') {
         return (
-            <>
-                <DashNav onLogout={handleLogout} />
-                <div className="pt-nav-fixed">
-                    <ClusterHeadDashboard onLogout={handleLogout} reportsContent={<CHReportsCharts />} />
-                </div>
-            </>
-        );
+                <>
+                    <DashNav onLogout={handleLogout} />
+                    <div className="pt-nav-fixed">
+                        <ClusterHeadDashboard onLogout={handleLogout} reportsContent={<CHReportsCharts />} />
+                    </div>
+                </>
+                );
     }
 
-    if (user.role === 'c2s_coordinator') {
+                if (user.role === 'c2s_coordinator') {
         return (
-            <>
-                <DashNav onLogout={handleLogout} />
-                <div className="pt-nav-fixed">
-                    <CoordinatorDashboard onLogout={handleLogout} reportsContent={<CoordReportsCharts />} />
-                </div>
-            </>
-        );
+                <>
+                    <DashNav onLogout={handleLogout} />
+                    <div className="pt-nav-fixed">
+                        <CoordinatorDashboard onLogout={handleLogout} reportsContent={<CoordReportsCharts />} />
+                    </div>
+                </>
+                );
     }
 
-    return (
-        <>
-            <DashNav onLogout={handleLogout} />
-            <div className="pt-nav-fixed overflow-x-hidden">
-                <MentorDashboard />
-            </div>
-        </>
-    );
+                return (
+                <>
+                    <DashNav onLogout={handleLogout} />
+                    <div className="pt-nav-fixed overflow-x-hidden">
+                        <MentorDashboard />
+                    </div>
+                </>
+                );
 }
 

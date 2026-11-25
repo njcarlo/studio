@@ -9,7 +9,7 @@ import {
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
 import type { ReactNode } from 'react';
-import SettingsModal from '@/components/SettingsModal';
+import { SidebarSettingsDropdown, SettingsPageView, type MySettingsSection } from '@/components/SettingsModal';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
     LineChart, Line, CartesianGrid, XAxis, YAxis, Legend,
@@ -1242,7 +1242,7 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
     const { user } = useAuth();
     const [activeNav, setActiveNav] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
+    const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
     const clusterName = user?.cluster ?? 'Outreach Cluster 4';
     const [menteeStatuses, setMenteeStatuses] = useState<Record<string, CoordPotentialMentee['status']>>({});
     const [assignedMentors, setAssignedMentors] = useState<Record<string, string>>({});
@@ -1300,9 +1300,9 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
                 <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
                     {COORD_NAV.map(item => (
-                        <button key={item.key} onClick={() => { setActiveNav(item.key); setSidebarOpen(false); }}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left relative ${activeNav === item.key ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#5b50d6' : '#aaa'}>
+                        <button key={item.key} onClick={() => { setActiveNav(item.key); setSettingsSection(null); setSidebarOpen(false); }}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left relative ${!settingsSection && activeNav === item.key ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeNav === item.key ? '#5b50d6' : '#aaa'}>
                                 <path d={item.icon} />
                             </svg>
                             {item.label}
@@ -1318,20 +1318,12 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                         </button>
                     ))}
                 </nav>
-                {/* Settings at bottom */}
-                <div className="mt-auto px-3 pt-3 border-t border-gray-100 mx-2">
-                    <button
-                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
-                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
-                        </svg>
-                        Settings
-                    </button>
-                </div>
+                {/* Settings dropdown at bottom */}
+                <SidebarSettingsDropdown
+                    activeSection={settingsSection}
+                    onSelect={(sec) => { setSettingsSection(sec); setSidebarOpen(false); }}
+                />
             </aside>
-            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
             {/* ── Main ── */}
             <div className="md:ml-56 flex-1 pb-16 min-w-0">
@@ -1348,50 +1340,56 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                         </svg>
                     </button>
                     <span className="text-xs text-gray-400 ml-1">
-                        {COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                        {settingsSection ? 'Settings' : COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
                     </span>
                 </div>
 
                 <div className="pt-4 md:pt-5 px-4 sm:px-6">
-                    {/* -- Dashboard -- */}
-                    {activeNav === 'dashboard' && (
-                        <div>
-                            <div className="mb-5">
-                                <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
-                                <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
-                            </div>
-                            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
-                        </div>
+                    {settingsSection ? (
+                        <SettingsPageView section={settingsSection} />
+                    ) : (
+                        <>
+                            {/* -- Dashboard -- */}
+                            {activeNav === 'dashboard' && (
+                                <div>
+                                    <div className="mb-5">
+                                        <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
+                                        <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
+                                    </div>
+                                    <SharedDashboardTab data={CHURCH_WIDE_DATA} />
+                                </div>
+                            )}
+                            {/* ── Potential Mentees Tab ── */}
+                            {activeNav === 'potential' && (
+                                <PotentialMenteesTab
+                                    mentees={resolvedMentees}
+                                    mentors={COORD_MENTORS}
+                                    groups={COORD_GROUPS}
+                                    statuses={menteeStatuses}
+                                    onAssign={handleAssign}
+                                    onStatusUpdate={handleStatusUpdate}
+                                />
+                            )}
+
+                            {/* ── Potential C2S Groups Tab ── */}
+                            {activeNav === 'potential_c2s' && <PotentialC2SGroupsTab />}
+
+                            {/* ── Mentors Tab ── */}
+                            {activeNav === 'mentors' && <MentorsTab mentors={COORD_MENTORS} />}
+
+                            {/* ── Groups Tab ── */}
+                            {activeNav === 'groups' && <GroupsTab groups={COORD_GROUPS} />}
+
+                            {/* ── Reports Tab ── */}
+                            {activeNav === 'reports' && <CoordReportsTab clusterName={clusterName} groups={COORD_GROUPS} reportsContent={reportsContent} />}
+
+                            {/* ── Notifications Tab ── */}
+                            {activeNav === 'notifs' && <CoordNotifsTab />}
+                        </>
                     )}
-                    {/* ── Potential Mentees Tab ── */}
-                    {activeNav === 'potential' && (
-                        <PotentialMenteesTab
-                            mentees={resolvedMentees}
-                            mentors={COORD_MENTORS}
-                            groups={COORD_GROUPS}
-                            statuses={menteeStatuses}
-                            onAssign={handleAssign}
-                            onStatusUpdate={handleStatusUpdate}
-                        />
-                    )}
 
-                    {/* ── Potential C2S Groups Tab ── */}
-                    {activeNav === 'potential_c2s' && <PotentialC2SGroupsTab />}
-
-                    {/* ── Mentors Tab ── */}
-                    {activeNav === 'mentors' && <MentorsTab mentors={COORD_MENTORS} />}
-
-                    {/* ── Groups Tab ── */}
-                    {activeNav === 'groups' && <GroupsTab groups={COORD_GROUPS} />}
-
-                    {/* ── Reports Tab ── */}
-                    {activeNav === 'reports' && <CoordReportsTab clusterName={clusterName} groups={COORD_GROUPS} reportsContent={reportsContent} />}
-
-                    {/* ── Notifications Tab ── */}
-                    {activeNav === 'notifs' && <CoordNotifsTab />}
-
-                </div>{/* end inner pt-5 div */}
+                        </div>{/* end inner pt-5 div */}
+                </div>
             </div>
-        </div>
-    );
+            );
 }
