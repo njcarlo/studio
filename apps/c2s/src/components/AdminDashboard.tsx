@@ -19,7 +19,8 @@ import {
     type MHActiveMentee,
 } from '@/lib/data';
 import { useSatellites, type SatelliteChurch } from '@/lib/satellite-context';
-import { SidebarSettingsDropdown, SettingsPageView, type MySettingsSection } from '@/components/SettingsModal';
+import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
+import { exportToCsv } from '@/lib/export-csv';
 import dynamic from 'next/dynamic';
 import type { ClusterMapGroup } from '@/components/ClusterMap';
 import {
@@ -110,7 +111,6 @@ const ADMIN_NAV: NavItem[] = [
     { key: 'reports',           label: 'Reports & Analytics', section: 'ANALYTICS',icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
     { key: 'notifications',     label: 'Notifications',       section: 'SYSTEM',   icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
     { key: 'audit',             label: 'Audit Logs',          section: 'SYSTEM',   icon: 'M9 5H7c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-2c0-1.1-.9-2-2-2s-2 .9-2 2zm2 0h2v1h-2V5zm1 12l-3-3 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z' },
-    { key: 'settings',          label: 'Settings',            section: 'SYSTEM',   icon: 'M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54A.484.484 0 0 0 14 4h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z' },
 ];
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -863,9 +863,9 @@ function DashboardTab() {
                                 },
                             ].map(t => (
                                 <div key={t.label}
-                                    className="flex items-start sm:items-center gap-3.5 rounded-xl border border-gray-100 dark:border-gray-700 dark:!bg-[#2d2e2f] p-4 min-w-0"
+                                    className="flex items-start sm:items-center gap-3.5 rounded-xl border border-gray-100 dark:border-[#334155] dark:!bg-[#1E293B] p-4 min-w-0"
                                     style={{ background: t.bg + '55' }}>
-                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 dark:!bg-[#3a3b3c]"
+                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 dark:!bg-[#162032]"
                                         style={{ background: t.bg }}>
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill={t.color}>
                                             <path d={t.icon}/>
@@ -936,7 +936,7 @@ function DashboardTab() {
                                 },
                             ].map(t => (
                                 <div key={t.label}
-                                    className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-700 dark:!bg-[#2d2e2f] px-4 py-3.5"
+                                    className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-[#334155] dark:!bg-[#1E293B] px-4 py-3.5"
                                     style={{ background: t.color + '10' }}>
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                                         style={{ background: t.color + '20' }}>
@@ -1137,7 +1137,7 @@ function OrgStructureTab({
                                         );
 
                                         return (
-                                            <div key={cluster.id} className={`${ci > 0 ? 'border-t border-gray-50 dark:border-gray-700' : ''}`}>
+                                            <div key={cluster.id} className={`${ci > 0 ? 'border-t border-gray-50 dark:border-[#475569]' : ''}`}>
                                                 <button
                                                     className="w-full flex items-center gap-4 px-6 py-3.5 text-left transition-colors dark:hover:bg-transparent"
                                                     onClick={() => setExpandedCluster(prev => prev === cluster.id ? null : cluster.id)}
@@ -1378,17 +1378,17 @@ function WorkersTab({
 
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div>
-                    <table className="w-full text-xs min-w-[700px]">
-                        <thead className="bg-[#f8f9fc]">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
                             <tr>{['Worker','Department','Ministry / Cluster','C2S Role','Status','Worker ID','Actions'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
                             ))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map(w => (
                                 <tr key={w.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-3 py-3.5">
+                                    <td className="pl-6 pr-4 py-3.5">
                                         <div className="flex items-center gap-2.5">
                                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: w.color }}>{w.initials}</div>
                                             <div>
@@ -1397,24 +1397,24 @@ function WorkersTab({
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3.5 font-semibold text-gray-800">
+                                    <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
                                         <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px]">
                                             {getDepartmentOfWorker(w)}
                                         </span>
                                     </td>
-                                    <td className="px-3 py-3.5 text-gray-600">{w.cluster ?? w.ministry ?? '—'}</td>
-                                    <td className="px-3 py-3.5">
+                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{w.cluster ?? w.ministry ?? '—'}</td>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
                                         {w.c2sRole ? (
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#5b50d6' }}>{ROLE_LABEL[w.c2sRole]}</span>
+                                            <span className="inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#5b50d6' }}>{ROLE_LABEL[w.c2sRole]}</span>
                                         ) : <span className="text-gray-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
                                     </td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{w.workerIdStatus}</span>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{w.workerIdStatus}</span>
                                     </td>
-                                    <td className="px-3 py-3.5">
+                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => onTransferWorker(w)}
@@ -1638,24 +1638,24 @@ function GroupsTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div>
-                    <table className="w-full text-xs min-w-[640px]">
-                        <thead className="bg-[#f8f9fc]">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
                             <tr>
-                                {['Group','Mentor'].map(h => (
-                                    <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                {['Group','Mentor'].map((h, idx) => (
+                                    <th key={h} className={`text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest py-3.5 ${idx === 0 ? 'pl-5 pr-2.5' : 'px-2.5'}`}>{h}</th>
                                 ))}
                                 {typeFilter === 'All' && (
-                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">Barangay / Satellite</th>
+                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 py-3.5">Barangay / Satellite</th>
                                 )}
                                 {typeFilter === 'Community-based' && (
-                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">Barangay</th>
+                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 py-3.5">Barangay</th>
                                 )}
                                 {typeFilter === 'Church-based' && (
-                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">Satellite</th>
+                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 py-3.5">Satellite</th>
                                 )}
                                 {['Type','Members','Capacity','Available','Status','Schedule'].map(h => (
-                                    <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                    <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 last:pr-5 py-3.5">{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -1664,20 +1664,20 @@ function GroupsTab() {
                                 const pct = Math.round((g.members / g.capacity) * 100);
                                 return (
                                     <tr key={g.id} className="hover:bg-[#fafbff] transition-colors">
-                                        <td className="px-3 py-3.5 font-bold text-gray-900">{g.name}</td>
-                                        <td className="px-3 py-3.5">
+                                        <td className="pl-6 pr-4 py-3.5 font-bold text-gray-900">{g.name}</td>
+                                        <td className="px-4 py-3.5">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
                                                 <span className="text-gray-700">{g.mentor}</span>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3.5 text-gray-600">
+                                        <td className="px-4 py-3.5 text-gray-600">
                                             {g.type === 'Church-based' ? (g.satellite ?? '—') : g.barangay}
                                         </td>
-                                        <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#0b9b8a] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                                        <td className="px-4 py-3.5 whitespace-nowrap">
+                                            <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#0b9b8a] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                         </td>
-                                        <td className="px-3 py-3.5">
+                                        <td className="px-4 py-3.5 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#0b9b8a' }} />
@@ -1685,12 +1685,12 @@ function GroupsTab() {
                                                 <span className="font-semibold text-gray-700">{g.members}</span>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3.5 text-center text-gray-600">{g.capacity}</td>
-                                        <td className="px-3 py-3.5 text-center font-bold" style={{ color: g.availableSlots > 0 ? '#0b9b8a' : '#e67700' }}>{g.availableSlots}</td>
-                                        <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${g.status === 'Open' ? 'bg-[#16a34a]' : g.status === 'Full' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{g.status}</span>
+                                        <td className="px-4 py-3.5 text-center text-gray-600 whitespace-nowrap">{g.capacity}</td>
+                                        <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap" style={{ color: g.availableSlots > 0 ? '#0b9b8a' : '#e67700' }}>{g.availableSlots}</td>
+                                        <td className="px-4 py-3.5 whitespace-nowrap">
+                                            <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-1 rounded-full leading-none text-white ${g.status === 'Open' ? 'bg-[#16a34a]' : g.status === 'Full' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{g.status}</span>
                                         </td>
-                                        <td className="px-3 py-3.5 text-gray-500">{g.schedule}</td>
+                                        <td className="pl-4 pr-6 py-3.5 text-gray-500 whitespace-nowrap">{g.schedule}</td>
                                     </tr>
                                 );
                             })}
@@ -1709,21 +1709,22 @@ function PotentialMenteesTab() {
     const [statusFilter, setStatusFilter]   = useState('All');
     const [search, setSearch] = useState('');
 
-    const statuses = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'];
+    const statuses = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Interview Completed', 'Accepted'];
 
     const STATUS_STYLE: Record<string, string> = {
         'New':                    'bg-[#1971c2] text-white',
         'Waiting for Assignment': 'bg-[#e67700] text-white',
         'Assigned to Mentor':     'bg-[#6741d9] text-white',
         'Interview Scheduled':    'bg-[#5b50d6] text-white',
+        'Interview Completed':    'bg-[#0c8a6e] text-white',
         'Accepted':               'bg-[#16a34a] text-white',
     };
 
     const filtered = MH_POTENTIAL_MENTEES.filter(m =>
         (deptFilter === 'All' || m.cluster === deptFilter) &&
-        (statusFilter === 'All' || (m.status !== 'Interview Completed' && m.status === statusFilter) || (statusFilter === 'All')) &&
+        (statusFilter === 'All' || m.status === statusFilter) &&
         (m.name.toLowerCase().includes(search.toLowerCase()) || m.barangay.toLowerCase().includes(search.toLowerCase()))
-    ).filter(m => m.status !== 'Interview Completed' || statusFilter === 'All');
+    );
 
     return (
         <div>
@@ -1766,7 +1767,7 @@ function PotentialMenteesTab() {
                                 <p className="font-semibold text-gray-900 truncate">{m.name}</p>
                                 <p className="text-[10px] text-gray-400">{m.age} · {m.gender} · {m.barangay}</p>
                             </div>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span>
+                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${STATUS_STYLE[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span>
                         </div>
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
                             <span>{m.cluster}</span>
@@ -1774,7 +1775,7 @@ function PotentialMenteesTab() {
                             {m.mentor !== '—' && <span>{m.mentor}</span>}
                         </div>
                         <div className="flex items-center justify-between gap-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
+                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
                                 {m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}
                             </span>
                             <span className="text-[10px] text-gray-400">{m.dateSubmitted}</span>
@@ -1784,37 +1785,37 @@ function PotentialMenteesTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div>
-                    <table className="w-full text-xs min-w-[720px]">
-                        <thead className="bg-[#f8f9fc]">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
                             <tr>{['Name','Age','Gender','Cluster','Coordinator','Mentor','Barangay','Source','Status','Submitted'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
                             ))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map(m => (
                                 <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-3 py-3">
+                                    <td className="pl-6 pr-4 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
                                             <span className="font-semibold text-gray-900">{m.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3 text-gray-600">{m.age}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.gender}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
-                                    <td className="px-3 py-3">
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
+                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.age}</td>
+                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.gender}</td>
+                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.cluster}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.coordinator}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.mentor}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.barangay}</td>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
                                             {m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}
                                         </span>
                                     </td>
-                                    <td className="px-3 py-3">
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span>
                                     </td>
-                                    <td className="px-3 py-3 text-gray-400">{m.dateSubmitted}</td>
+                                    <td className="pl-4 pr-6 py-3.5 text-gray-400 whitespace-nowrap">{m.dateSubmitted}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -1962,28 +1963,28 @@ function ActiveMenteesTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div>
-                    <table className="w-full text-xs min-w-[560px]">
-                        <thead className="bg-[#f8f9fc]">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
                             <tr>{['Name','Cluster','Coordinator','Mentor','Barangay','Module','Progress'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
                             ))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map(m => (
                                 <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-3 py-3">
+                                    <td className="pl-6 pr-4 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
                                             <span className="font-semibold text-gray-900">{m.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3 text-gray-600">{m.cluster ?? '—'}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.coordinator ?? '—'}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.mentor ?? '—'}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.barangay ?? '—'}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.module ?? '—'}</td>
-                                    <td className="px-3 py-3">
+                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.cluster ?? '—'}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.coordinator ?? '—'}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.mentor ?? '—'}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.barangay ?? '—'}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.module ?? '—'}</td>
+                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                 <div className="h-full rounded-full" style={{ width: `${m.progress ?? 0}%`, background: '#5b50d6' }}/>
@@ -2129,26 +2130,26 @@ function C2SHomeTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div>
-                    <table className="w-full text-xs min-w-[640px]">
-                        <thead className="bg-[#f8f9fc]">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
                             <tr>{['Home Group','Barangay','Schedule','Potential','Coordinator','Submitted','Status','Actions'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
                             ))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map(h => (
                                 <tr key={h.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-3 py-3.5 font-bold text-gray-900">{h.name}</td>
-                                    <td className="px-3 py-3.5 text-gray-600">{h.barangay}</td>
-                                    <td className="px-3 py-3.5 text-gray-600">{h.schedule}</td>
-                                    <td className="px-3 py-3.5 text-center font-semibold text-[#5b50d6]">{h.potential}</td>
-                                    <td className="px-3 py-3.5 text-gray-600">{h.coordinator}</td>
-                                    <td className="px-3 py-3.5 text-gray-400">{h.submitted}</td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[h.status]}`}>{h.status}</span>
+                                    <td className="pl-6 pr-4 py-3.5 font-bold text-gray-900">{h.name}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{h.barangay}</td>
+                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{h.schedule}</td>
+                                    <td className="px-4 py-3.5 text-center font-semibold text-[#5b50d6] whitespace-nowrap">{h.potential}</td>
+                                    <td className="px-4 py-3.5 text-gray-600">{h.coordinator}</td>
+                                    <td className="px-4 py-3.5 text-gray-400 whitespace-nowrap">{h.submitted}</td>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[h.status]}`}>{h.status}</span>
                                     </td>
-                                    <td className="px-3 py-3.5">
+                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <button onClick={() => setConfirmAction({ id: h.id, action: 'approve', name: h.name })}
                                                 className="text-[11px] font-semibold text-[#0b9b8a] hover:underline">Approve</button>
@@ -2181,6 +2182,37 @@ function ReportsTab() {
             lat: 14.3294 + (i * 0.008), lng: 120.9367 + (i * 0.006),
         }));
 
+    function handleExportCsv() {
+        if (reportType === 'growth') {
+            exportToCsv(
+                'c2s-growth-analytics.csv',
+                ['Month', 'Active Mentees', 'Mentors', 'Groups'],
+                ADMIN_GROWTH_DATA.map((d) => [d.month, d.mentees, d.mentors, d.groups]),
+            );
+            return;
+        }
+        if (reportType === 'ministry') {
+            exportToCsv(
+                'c2s-ministry-performance.csv',
+                ['Ministry', 'Mentors', 'Groups', 'Mentees (F2F)', 'Mentees (Online)', 'Total Mentees'],
+                ADMIN_MINISTRY_PERF.map((r) => [
+                    r.name,
+                    r.mentors,
+                    r.groups,
+                    Math.round(r.mentees * 0.65),
+                    Math.round(r.mentees * 0.35),
+                    r.mentees,
+                ]),
+            );
+            return;
+        }
+        exportToCsv(
+            'c2s-interactive-map-groups.csv',
+            ['Group Name', 'Barangay', 'Type', 'Members', 'Capacity', 'Mentor', 'Status'],
+            allMapGroups.map((g) => [g.name, g.barangay, g.type, g.members, g.capacity, g.mentor, g.status]),
+        );
+    }
+
     return (
         <div>
             <SectionHeader
@@ -2188,13 +2220,13 @@ function ReportsTab() {
                 sub="Ministry-wide statistics, growth trends, and interactive maps."
                 action={
                     <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors">
+                        <button
+                            type="button"
+                            onClick={handleExportCsv}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors"
+                        >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>
-                            Export PDF
-                        </button>
-                        <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors">
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>
-                            Export Excel
+                            Export CSV / Excel
                         </button>
                     </div>
                 }
@@ -2295,10 +2327,10 @@ function ReportsTab() {
                             <p className="text-sm font-bold text-gray-800">Ministry Performance Report</p>
                         </div>
                         <div>
-                            <table className="w-full text-xs min-w-[480px]">
+                            <table className="w-full text-xs">
                                 <thead className="bg-[#f8f9fc]">
                                     <tr>{['Ministry','Mentors','Groups','Mentees (F2F)','Mentees (Online)','Total Mentees'].map(h => (
-                                        <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
+                                        <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
                                     ))}</tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -2863,13 +2895,12 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
             </div>
 
             {/* Add new */}
-            <div className="flex flex-col gap-1.5">
+            <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
                 <div className="flex flex-col gap-2">
                     <input
                         type="text"
                         value={newSubName}
                         onChange={e => { setNewSubName(e.target.value); if (addError) setAddError(''); }}
-                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
                         placeholder="New subdivision name..."
                         className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#5b50d6]'}`}
                     />
@@ -2886,11 +2917,11 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
                                 </optgroup>
                             ))}
                         </select>
-                        <button onClick={handleAdd} className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>Add</button>
+                        <button type="submit" className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>Add</button>
                     </div>
                 </div>
                 {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
-            </div>
+            </form>
 
             {/* Browse by barangay */}
             <div className="flex flex-col gap-3">
@@ -2998,13 +3029,12 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
             </div>
 
             {/* Add new */}
-            <div className="flex flex-col gap-1.5">
+            <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
                         value={newBrgyName}
                         onChange={e => { setNewBrgyName(e.target.value); if (addError) setAddError(''); }}
-                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
                         placeholder="New barangay name..."
                         className={`flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#5b50d6]'}`}
                     />
@@ -3016,10 +3046,10 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
                         <option value="">Select City / Municipality</option>
                         {cities.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <button onClick={handleAdd} className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>Add</button>
+                    <button type="submit" className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>Add</button>
                 </div>
                 {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
-            </div>
+            </form>
 
             {/* One block per city — non-clickable header + dropdown */}
             <div className="flex flex-col gap-4">
@@ -3506,19 +3536,18 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
             </div>
 
             {/* Add new ministry */}
-            <div className="flex flex-col gap-1.5">
+            <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
                         value={newName}
                         onChange={e => { setNewName(e.target.value); if (addError) setAddError(''); }}
-                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
                         placeholder={`New ministry under ${activeDept}...`}
                         className={`flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${
                             addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#5b50d6]'
                         }`}
                     />
-                    <button onClick={handleAdd}
+                    <button type="submit"
                         className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0"
                         style={{ background: '#5b50d6' }}>
                         Add
@@ -3526,7 +3555,7 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
                 </div>
                 {addError && <FieldError msg={addError} />}
                 {saved && !addError && <SavedBadge />}
-            </div>
+            </form>
 
             {/* Ministry list for active department */}
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: c.border }}>
@@ -3622,22 +3651,21 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
                 <p className="text-sm text-gray-400">Add and manage custom roles. New roles appear in Permissions for configuration.</p>
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
                         value={newRoleName}
                         onChange={e => { setNewRoleName(e.target.value); if (addError) setAddError(''); }}
-                        onKeyDown={e => e.key === 'Enter' && handleAdd()}
                         placeholder="New role name (e.g. Zone Leader)..."
                         className={`flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#5b50d6]'}`}
                     />
-                    <button onClick={handleAdd} className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>
+                    <button type="submit" className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>
                         Add Role
                     </button>
                 </div>
                 {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
-            </div>
+            </form>
 
             <div className="flex flex-col gap-3">
                 {roles.map(role => (
@@ -3723,7 +3751,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                 <div className="flex-1 bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
                     {activeSection === 'c2s_config' && (
-                        <div className="flex flex-col gap-6">
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 mb-1">C2S Configuration</h2>
                                 <p className="text-sm text-gray-400">Core settings for the Connect2Souls system.</p>
@@ -3747,14 +3775,14 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                     )}
                                 </div>
                             ))}
-                            <button onClick={handleSave} className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
+                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
                                 {saved ? '✓ Saved!' : 'Save Configuration'}
                             </button>
-                        </div>
+                        </form>
                     )}
 
                     {activeSection === 'otp' && (
-                        <div className="flex flex-col gap-6">
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 mb-1">OTP Settings</h2>
                                 <p className="text-sm text-gray-400">Configure one-time password behavior for worker access.</p>
@@ -3764,7 +3792,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                     <p className="text-sm font-semibold text-gray-900">OTP Authentication</p>
                                     <p className="text-xs text-gray-400 mt-0.5">Require OTP on worker login</p>
                                 </div>
-                                <button onClick={() => setOtpEnabled(!otpEnabled)}
+                                <button type="button" onClick={() => setOtpEnabled(!otpEnabled)}
                                     className={`w-12 h-6 rounded-full transition-colors relative ${otpEnabled ? 'bg-[#5b50d6]' : 'bg-gray-300'}`}>
                                     <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-transform ${otpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}/>
                                 </button>
@@ -3781,7 +3809,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                 <label className="text-sm font-semibold text-gray-700">OTP Length</label>
                                 <div className="flex gap-2">
                                     {[4, 6, 8].map(n => (
-                                        <button key={n} onClick={() => setOtpLength(n)}
+                                        <button type="button" key={n} onClick={() => setOtpLength(n)}
                                             className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${otpLength === n ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200'}`}>
                                             {n} digits
                                         </button>
@@ -3792,20 +3820,20 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                 <label className="text-sm font-semibold text-gray-700">Delivery Method</label>
                                 <div className="flex gap-2">
                                     {['SMS', 'Email', 'Both'].map(m => (
-                                        <button key={m} className="px-4 py-2 rounded-xl text-sm font-semibold border bg-white text-gray-500 border-gray-200 hover:border-[#5b50d6] hover:text-[#5b50d6] transition-colors">
+                                        <button type="button" key={m} className="px-4 py-2 rounded-xl text-sm font-semibold border bg-white text-gray-500 border-gray-200 hover:border-[#5b50d6] hover:text-[#5b50d6] transition-colors">
                                             {m}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            <button onClick={handleSave} className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
+                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
                                 {saved ? '✓ Saved!' : 'Save OTP Settings'}
                             </button>
-                        </div>
+                        </form>
                     )}
 
                     {activeSection === 'notifications' && (
-                        <div className="flex flex-col gap-6">
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 mb-1">Notification Settings</h2>
                                 <p className="text-sm text-gray-400">Control when and how the system sends alerts.</p>
@@ -3820,7 +3848,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                     ].map(c => (
                                         <div key={c.label} className="flex items-center justify-between p-3.5 rounded-xl border border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
                                             <p className="text-sm font-semibold text-gray-800">{c.label}</p>
-                                            <button onClick={() => c.setter(!c.value)}
+                                            <button type="button" onClick={() => c.setter(!c.value)}
                                                 className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${c.value ? 'bg-[#5b50d6]' : 'bg-gray-300'}`}>
                                                 <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-transform ${c.value ? 'translate-x-6' : 'translate-x-0.5'}`}/>
                                             </button>
@@ -3842,7 +3870,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                                 <p className="text-sm font-semibold text-gray-800">{e.label}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">{e.desc}</p>
                                             </div>
-                                            <button onClick={() => e.setter(!e.value)}
+                                            <button type="button" onClick={() => e.setter(!e.value)}
                                                 className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ml-4 ${e.value ? 'bg-[#5b50d6]' : 'bg-gray-300'}`}>
                                                 <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-transform ${e.value ? 'translate-x-6' : 'translate-x-0.5'}`}/>
                                             </button>
@@ -3850,14 +3878,14 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                     ))}
                                 </div>
                             </div>
-                            <button onClick={handleSave} className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
+                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
                                 {saved ? '✓ Saved!' : 'Save Notification Settings'}
                             </button>
-                        </div>
+                        </form>
                     )}
 
                     {activeSection === 'capacity' && (
-                        <div className="flex flex-col gap-6">
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 mb-1">Group Capacity Settings</h2>
                                 <p className="text-sm text-gray-400">Define default and hard-maximum capacities per group type.</p>
@@ -3887,14 +3915,14 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={handleSave} className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
+                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
                                 {saved ? '✓ Saved!' : 'Save Capacity Settings'}
                             </button>
-                        </div>
+                        </form>
                     )}
 
                     {activeSection === 'labels' && (
-                        <div className="flex flex-col gap-6">
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
                             <div>
                                 <h2 className="text-base font-bold text-gray-900 mb-1">Status / Label Settings</h2>
                                 <p className="text-sm text-gray-400">Customize status labels used across the C2S system.</p>
@@ -3923,22 +3951,22 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                         {cat.items.map(item => (
                                             <div key={item} className="flex items-center gap-2 border border-gray-100 rounded-xl px-3 py-2" style={{ background: 'var(--bg-subtle)' }}>
                                                 <span className="text-sm font-semibold text-gray-800">{item}</span>
-                                                <button className="text-gray-300 hover:text-gray-500 transition-colors">
+                                                <button type="button" className="text-gray-300 hover:text-gray-500 transition-colors">
                                                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                                                 </button>
                                             </div>
                                         ))}
-                                        <button className="flex items-center gap-1 bg-white border border-dashed border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-400 hover:border-[#5b50d6] hover:text-[#5b50d6] transition-colors">
+                                        <button type="button" className="flex items-center gap-1 bg-white border border-dashed border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-400 hover:border-[#5b50d6] hover:text-[#5b50d6] transition-colors">
                                             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                                             Add
                                         </button>
                                     </div>
                                 </div>
                             ))}
-                            <button onClick={handleSave} className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
+                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#5b50d6' }}>
                                 {saved ? '✓ Saved!' : 'Save Label Settings'}
                             </button>
-                        </div>
+                        </form>
                     )}
 
                     {activeSection === 'rbac' && (
@@ -4016,7 +4044,9 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
 export default function AdminDashboard() {
     const [activeNav, setActiveNav] = useState<AdminNav>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
+    useScrollToTop(`${activeNav}:${settingsSection ?? ''}`);
 
     // Shared state across tabs
     const [workers, setWorkers] = useState<AdminWorker[]>(ADMIN_WORKERS);
@@ -4031,15 +4061,49 @@ export default function AdminDashboard() {
     const pendingWorkerID = workers.filter(w => w.workerIdStatus === 'Pending').length;
     const criticalAudit = auditLogs.filter(l => l.severity === 'critical').length;
 
-    // Group nav items by section
-    const sections = [...new Set(ADMIN_NAV.map(n => n.section).filter(Boolean))] as string[];
-
     function getBadge(key: AdminNav): number | undefined {
         if (key === 'notifications') return unreadNotifs || undefined;
         if (key === 'workers')       return pendingWorkerID || undefined;
         if (key === 'audit')         return criticalAudit || undefined;
         return undefined;
     }
+
+    const navItem = (key: AdminNav) => {
+        const found = ADMIN_NAV.find(n => n.key === key)!;
+        return { key: found.key, label: found.label, icon: found.icon, badge: getBadge(key) };
+    };
+
+    const adminNavEntries: SidebarNavEntry[] = [
+        { kind: 'item', item: navItem('dashboard') },
+        {
+            kind: 'group',
+            group: {
+                id: 'organization',
+                label: 'Organization',
+                icon: navItem('workers').icon,
+                items: [navItem('org'), navItem('workers')],
+            },
+        },
+        {
+            kind: 'group',
+            group: {
+                id: 'c2s',
+                label: 'C2S Management',
+                icon: navItem('groups').icon,
+                items: [navItem('groups'), navItem('potential_mentees'), navItem('active_mentees'), navItem('c2s_home')],
+            },
+        },
+        { kind: 'item', item: navItem('reports') },
+        {
+            kind: 'group',
+            group: {
+                id: 'system',
+                label: 'System',
+                icon: navItem('notifications').icon,
+                items: [navItem('notifications'), navItem('audit')],
+            },
+        },
+    ];
 
     function handleTransferConfirm(result: TransferDepartmentResult) {
         // 1. Update worker record
@@ -4129,60 +4193,37 @@ export default function AdminDashboard() {
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-60 border-r flex flex-col pt-4 pb-4 fixed top-16 bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-transform duration-200`}>
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-60 md:w-[68px]' : 'w-60'} border-r flex flex-col pt-4 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
 
-                {/* Admin badge */}
-                <div className="mx-4 mb-4 px-3 py-2 rounded-xl flex items-center gap-2.5" style={{ background: 'var(--bg-subtle)' }}>
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: '#6366c1' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                    </div>
-                    <div className="leading-tight">
-                        <p className="text-[10px] font-black text-[#6366c1] uppercase tracking-widest">C2S Admin</p>
-                        <p className="text-[9px] text-[#4f52a3]">Full system access</p>
-                    </div>
+                {/* MENU label + collapse toggle */}
+                <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
+                    <p className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${sidebarCollapsed ? 'md:hidden' : ''}`}>Menu</p>
+                    <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-3">
-                    {sections.map((section, si) => {
-                        const items = ADMIN_NAV.filter(n => n.section === section);
-                        return (
-                            <div key={section} className={si > 0 ? 'mt-4' : ''}>
-                                <p className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{section}</p>
-                                <div className="flex flex-col gap-0.5">
-                                    {items.map(item => {
-                                        const badge = getBadge(item.key);
-                                        const isActive = !settingsSection && activeNav === item.key;
-                                        return (
-                                            <button key={item.key}
-                                                onClick={() => { setActiveNav(item.key); setSettingsSection(null); setSidebarOpen(false); }}
-                                                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${isActive ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill={isActive ? '#5b50d6' : '#aaa'}>
-                                                    <path d={item.icon}/>
-                                                </svg>
-                                                <span className="flex-1 truncate text-[13px]">{item.label}</span>
-                                                {badge !== undefined && badge > 0 && (
-                                                    <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0 px-1 bg-[#5b50d6] text-white">
-                                                        {badge}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-                {/* My Settings dropdown at bottom */}
+                <SidebarNavList
+                    entries={adminNavEntries}
+                    activeKey={!settingsSection ? activeNav : null}
+                    collapsed={sidebarCollapsed}
+                    onSelect={(key) => { setActiveNav(key as AdminNav); setSettingsSection(null); setSidebarOpen(false); }}
+                />
+                {/* Settings dropdown at bottom */}
                 <SidebarSettingsDropdown
-                    label="My Settings"
+                    label="Settings"
                     activeSection={settingsSection}
+                    collapsed={sidebarCollapsed}
+                    onExpandSidebar={() => setSidebarCollapsed(false)}
+                    extraItem={{
+                        label: 'System Settings',
+                        active: !settingsSection && (activeNav === 'settings' || activeNav === 'rbac'),
+                        onClick: () => { setActiveNav('settings'); setSettingsSection(null); setSidebarOpen(false); },
+                    }}
                     onSelect={(sec) => { setSettingsSection(sec); setSidebarOpen(false); }}
                 />
             </aside>
 
             {/* ── Main Content ── */}
-            <div className="md:ml-60 pb-16 min-w-0">
+            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-60'} pb-16 min-w-0 transition-[margin] duration-200`}>
 
                 {/* Mobile sticky top bar */}
                 <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
@@ -4196,7 +4237,7 @@ export default function AdminDashboard() {
                         </svg>
                     </button>
                     <span className="text-xs text-gray-400 ml-1">
-                        {settingsSection ? 'My Settings' : ADMIN_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                        {settingsSection ? 'Settings' : (activeNav === 'settings' || activeNav === 'rbac') ? 'System Settings' : ADMIN_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
                     </span>
                 </div>
 

@@ -9,7 +9,8 @@ import {
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
 import type { ReactNode } from 'react';
-import { SidebarSettingsDropdown, SettingsPageView, type MySettingsSection } from '@/components/SettingsModal';
+import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
+import { exportToCsv } from '@/lib/export-csv';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
     LineChart, Line, CartesianGrid, XAxis, YAxis, Legend,
@@ -417,19 +418,20 @@ function PotentialMenteesTab({
             </div>
 
             {/* Desktop table */}
-            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                        <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
                             {['Name', 'Preferred Group (max 2)', 'Barangay', 'Type', 'Date Submitted', 'Status', 'Actions'].map(h => (
-                                <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
+                                <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
                             ))}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                         {filtered.map(m => (
                             <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                <td className="px-4 py-3.5">
+                                <td className="pl-6 pr-4 py-3.5">
                                     <div className="flex items-center gap-2.5">
                                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
                                         <div>
@@ -438,7 +440,7 @@ function PotentialMenteesTab({
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-3 py-3.5">
+                                <td className="px-4 py-3.5">
                                     <div className="flex flex-col gap-0.5">
                                         {m.preferredGroups.map((g, i) => (
                                             <span key={i} className="text-[11px] text-gray-700 leading-snug">
@@ -447,17 +449,17 @@ function PotentialMenteesTab({
                                         ))}
                                     </div>
                                 </td>
-                                <td className="px-3 py-3.5 text-xs text-gray-600">{m.barangay}</td>
-                                <td className="px-3 py-3.5">
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>
+                                <td className="px-4 py-3.5 text-xs text-gray-600">{m.barangay}</td>
+                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                    <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${m.groupType === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>
                                         {m.groupType}
                                     </span>
                                 </td>
-                                <td className="px-3 py-3.5 text-xs text-gray-500">{m.dateSubmitted}</td>
-                                <td className="px-3 py-3.5">
-                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status]}`}>{m.status}</span>
+                                <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{m.dateSubmitted}</td>
+                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                    <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${STATUS_STYLE[m.status]}`}>{m.status}</span>
                                 </td>
-                                <td className="px-3 py-3.5">
+                                <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5">
                                         <button onClick={() => setViewingMentee(m)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
                                         <span className="text-gray-200">|</span>
@@ -471,6 +473,7 @@ function PotentialMenteesTab({
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );
@@ -628,12 +631,13 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                 })}
             </div>
             {/* Desktop table */}
-            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                        <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-100">
                             {['Group Name', 'Mentor', 'Barangay', 'Type', 'Members', 'Capacity', 'Available', 'Status', 'Schedule'].map(h => (
-                                <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
+                                <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -642,18 +646,18 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                             const pct = Math.round((g.members / g.capacity) * 100);
                             return (
                                 <tr key={g.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900 text-sm">{g.name}</td>
-                                    <td className="px-3 py-3.5">
+                                    <td className="pl-6 pr-4 py-3.5 font-semibold text-gray-900 text-sm">{g.name}</td>
+                                    <td className="px-4 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
                                             <span className="text-xs text-gray-700">{g.mentor}</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3.5 text-xs text-gray-600">{g.barangay}</td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                                    <td className="px-4 py-3.5 text-xs text-gray-600">{g.barangay}</td>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                     </td>
-                                    <td className="px-3 py-3.5 text-center">
+                                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                 <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#5b50d6' }} />
@@ -661,19 +665,20 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                                             <span className="text-xs font-semibold text-gray-700">{g.members}</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3.5 text-xs text-center text-gray-600">{g.capacity}</td>
-                                    <td className="px-3 py-3.5 text-center">
+                                    <td className="px-4 py-3.5 text-xs text-center text-gray-600 whitespace-nowrap">{g.capacity}</td>
+                                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
                                         <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#5b50d6]' : 'text-[#e67700]'}`}>{g.availableSlots}</span>
                                     </td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
+                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-1 rounded-full leading-none ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                                     </td>
-                                    <td className="px-3 py-3.5 text-xs text-gray-500">{g.schedule}</td>
+                                    <td className="pl-4 pr-6 py-3.5 text-xs text-gray-500 whitespace-nowrap">{g.schedule}</td>
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );
@@ -689,6 +694,15 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
     const filteredGroups = mapType === 'All' ? groups : groups.filter(g => g.type === mapType);
     const mapGroups = coordGroupsToMapGroups(filteredGroups);
 
+    function handleExportCsv() {
+        const slug = clusterName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        exportToCsv(
+            `${slug || 'coordinator'}-groups-report.csv`,
+            ['Group Name', 'Barangay', 'Type', 'Members', 'Capacity', 'Available Slots', 'Mentor', 'Status', 'Schedule'],
+            filteredGroups.map((g) => [g.name, g.barangay, g.type, g.members, g.capacity, g.availableSlots, g.mentor, g.status, g.schedule]),
+        );
+    }
+
     return (
         <div>
             <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
@@ -697,13 +711,13 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
                     <p className="text-xs text-gray-400 mt-0.5">{clusterName}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors">
+                    <button
+                        type="button"
+                        onClick={handleExportCsv}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors"
+                    >
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
-                        Export PDF
-                    </button>
-                    <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
-                        Export Excel
+                        Export CSV / Excel
                     </button>
                 </div>
             </div>
@@ -1191,19 +1205,20 @@ function PotentialC2SGroupsTab() {
                         ))}
                     </div>
                     {/* Desktop table */}
-                    <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+                    <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                                <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
                                     {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
-                                        <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
+                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filtered.map(a => (
                                     <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="px-4 py-3.5">
+                                        <td className="pl-6 pr-4 py-3.5">
                                             <div className="flex items-center gap-2.5">
                                                 <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
                                                     {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -1214,14 +1229,14 @@ function PotentialC2SGroupsTab() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.barangay}</td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.schedule}</td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-500">{a.submitted}</td>
-                                        <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
+                                        <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
+                                        <td className="px-4 py-3.5 text-xs text-gray-600 whitespace-nowrap">{a.schedule}</td>
+                                        <td className="px-4 py-3.5 text-xs text-gray-600 text-center whitespace-nowrap">{a.potential}</td>
+                                        <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
+                                        <td className="px-4 py-3.5 whitespace-nowrap">
+                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
                                         </td>
-                                        <td className="px-3 py-3.5">
+                                        <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                             <div className="flex items-center gap-1.5">
                                                 <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
                                             </div>
@@ -1230,6 +1245,7 @@ function PotentialC2SGroupsTab() {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </>
             )}
@@ -1242,7 +1258,9 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
     const { user } = useAuth();
     const [activeNav, setActiveNav] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
+    useScrollToTop(`${activeNav}:${settingsSection ?? ''}`);
     const clusterName = user?.cluster ?? 'Outreach Cluster 4';
     const [menteeStatuses, setMenteeStatuses] = useState<Record<string, CoordPotentialMentee['status']>>({});
     const [assignedMentors, setAssignedMentors] = useState<Record<string, string>>({});
@@ -1296,37 +1314,56 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-transform duration-200`}>
-                <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
-                <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
-                    {COORD_NAV.map(item => (
-                        <button key={item.key} onClick={() => { setActiveNav(item.key); setSettingsSection(null); setSidebarOpen(false); }}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left relative ${!settingsSection && activeNav === item.key ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeNav === item.key ? '#5b50d6' : '#aaa'}>
-                                <path d={item.icon} />
-                            </svg>
-                            {item.label}
-                            {item.key === 'potential' && (newCount + waitingCount) > 0 && (
-                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shrink-0 bg-[#5b50d6] text-white">{newCount + waitingCount}</span>
-                            )}
-                            {item.key === 'notifs' && unreadCount > 0 && (
-                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shrink-0 bg-[#5b50d6] text-white">{unreadCount}</span>
-                            )}
-                            {item.key === 'potential_c2s' && hubPendingCount > 0 && (
-                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shrink-0 bg-[#d97706] text-white">{hubPendingCount}</span>
-                            )}
-                        </button>
-                    ))}
-                </nav>
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-56 md:w-[68px]' : 'w-56'} border-r flex flex-col pt-4 md:pt-4 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+                <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
+                    <p className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${sidebarCollapsed ? 'md:hidden' : ''}`}>Menu</p>
+                    <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
+                </div>
+                <SidebarNavList
+                    entries={[
+                        { kind: 'item', item: COORD_NAV.find(n => n.key === 'dashboard')! },
+                        {
+                            kind: 'group',
+                            group: {
+                                id: 'people',
+                                label: 'People',
+                                icon: COORD_NAV.find(n => n.key === 'potential')!.icon,
+                                items: [
+                                    { ...COORD_NAV.find(n => n.key === 'potential')!, badge: newCount + waitingCount },
+                                    COORD_NAV.find(n => n.key === 'mentors')!,
+                                ],
+                            },
+                        },
+                        {
+                            kind: 'group',
+                            group: {
+                                id: 'groups',
+                                label: 'Groups',
+                                icon: COORD_NAV.find(n => n.key === 'groups')!.icon,
+                                items: [
+                                    COORD_NAV.find(n => n.key === 'groups')!,
+                                    { ...COORD_NAV.find(n => n.key === 'potential_c2s')!, badge: hubPendingCount, badgeColor: '#d97706' },
+                                ],
+                            },
+                        },
+                        { kind: 'item', item: COORD_NAV.find(n => n.key === 'reports')! },
+                        { kind: 'item', item: { ...COORD_NAV.find(n => n.key === 'notifs')!, badge: unreadCount } },
+                    ] as SidebarNavEntry[]}
+                    activeKey={!settingsSection ? activeNav : null}
+                    collapsed={sidebarCollapsed}
+                    onSelect={(key) => { setActiveNav(key); setSettingsSection(null); setSidebarOpen(false); }}
+                />
                 {/* Settings dropdown at bottom */}
                 <SidebarSettingsDropdown
                     activeSection={settingsSection}
+                    collapsed={sidebarCollapsed}
+                    onExpandSidebar={() => setSidebarCollapsed(false)}
                     onSelect={(sec) => { setSettingsSection(sec); setSidebarOpen(false); }}
                 />
             </aside>
 
             {/* ── Main ── */}
-            <div className="md:ml-56 flex-1 pb-16 min-w-0">
+            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-56'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
 
                 {/* Mobile sticky menu bar */}
                 <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">

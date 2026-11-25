@@ -19,7 +19,7 @@ import EndorsedViewMembersModal from '@/components/EndorsedViewMembersModal';
 import EndorsedEditGroupModal from '@/components/EndorsedEditGroupModal';
 import EndorsedCreateGroupModal from '@/components/EndorsedCreateGroupModal';
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
-import { SidebarSettingsDropdown, SettingsPageView, type MySettingsSection } from '@/components/SettingsModal';
+import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
 import AddMenteeModal from '@/components/AddMenteeModal';
 import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
 import { CH_MENTOR_REPORT_DATA, CH_COORD_REPORT_DATA, CH_BARANGAY_DATA, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
@@ -54,39 +54,57 @@ function DashNav({ onLogout }: { onLogout: () => void }) {
     const isCluster = user.role === 'cluster_head';
     const isCoord = user.role === 'c2s_coordinator';
     const isAdmin = user.role === 'admin';
-    const roleColor = isAdmin ? '#111827' : isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#5b50d6';
-    const roleLabel = isAdmin ? 'Admin' : isHead ? 'Department Head' : isCluster ? 'Cluster Head' : isCoord ? 'C2S Coordinator' : 'Mentor';
+    const roleColor = isAdmin ? '#4f46e5' : isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#5b50d6';
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-            <div className="w-full px-4 sm:px-6 flex items-center justify-between nav-fixed-h">
-                <Link href="/" className="flex items-center gap-2.5">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm" style={{ backgroundColor: 'var(--nav-bg)', borderBottom: '1px solid var(--border)' }}>
+            <div className="w-full px-4 sm:px-6 flex items-center justify-between gap-3 nav-fixed-h">
+                <Link href="/" className="flex items-center gap-2.5 min-w-0">
                     <div className="w-9 h-9 relative shrink-0">
                         <Image src="/logo.png" alt="COG" fill className="object-contain" priority />
                     </div>
-                    <div className="leading-tight">
-                        <p className="text-[13px] font-bold text-gray-800">Church of God Dasmariñas</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">CONNECT2SOULS</p>
+                    <div className="flex flex-col gap-0.5 leading-snug min-w-0">
+                        <p className="text-[13px] font-bold text-gray-800 truncate leading-snug">Church of God Dasmariñas</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest truncate leading-snug">CONNECT2SOULS</p>
                     </div>
                 </Link>
 
-                {/* Avatar dropdown */}
-                <div className="relative">
+                {/* Account dropdown trigger (fixed 16px-scale sizing so header stays compact across all accounts) */}
+                <div className="relative shrink-0" style={{ fontSize: '16px' }}>
                     <button
+                        type="button"
                         onClick={() => setDropdownOpen(o => !o)}
-                        className="flex items-center gap-2.5 rounded-full pr-1 hover:opacity-90 transition-opacity"
+                        style={{ padding: '4px 10px 4px 5px', gap: '8px' }}
+                        className="flex items-center rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 border border-gray-200/70 dark:border-white/10 transition-colors"
                     >
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
-                            style={{ background: roleColor }}>
+                        <div
+                            className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
+                            style={{
+                                width: '28px',
+                                height: '28px',
+                                fontSize: '11px',
+                                background: roleColor,
+                                boxShadow: `0 0 0 2px ${roleColor}26`,
+                            }}
+                        >
                             {user.avatar}
                         </div>
-                        <div className="hidden sm:block leading-tight text-left">
-                            <p className="text-sm font-bold text-gray-800">{user.name}</p>
-                            <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: roleColor }}>
-                                {roleLabel}
-                            </p>
-                        </div>
-                        <svg className="w-3.5 h-3.5 text-gray-400 shrink-0 hidden" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 10l5 5 5-5z" />
+                        <span
+                            className="hidden sm:inline font-semibold text-gray-800 dark:text-gray-100 truncate"
+                            style={{ fontSize: '14px', lineHeight: '1.25', maxWidth: '150px' }}
+                        >
+                            {user.name}
+                        </span>
+                        <svg
+                            className={`text-gray-500 shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
+                            style={{ width: '14px', height: '14px' }}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M6 9l6 6 6-6" />
                         </svg>
                     </button>
 
@@ -95,22 +113,28 @@ function DashNav({ onLogout }: { onLogout: () => void }) {
                         <>
                             {/* Backdrop */}
                             <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-                            <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20"
-                                style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
-                                {/* User info */}
-                                <div className="px-4 py-3 border-b border-gray-100">
-                                    <p className="text-xs font-bold text-gray-900 truncate">{user.name}</p>
-                                    <p className="text-[10px] uppercase tracking-widest font-semibold mt-0.5" style={{ color: roleColor }}>{roleLabel}</p>
-                                </div>
-                                {/* Sign out */}
+                            <div
+                                className="absolute right-0 top-full mt-2 bg-white rounded-xl border border-gray-200/80 overflow-hidden z-20"
+                                style={{
+                                    width: '152px',
+                                    maxWidth: 'calc(100vw - 32px)',
+                                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.12)',
+                                    backgroundColor: 'var(--surface)',
+                                    borderColor: 'var(--border)',
+                                }}
+                            >
                                 <button
+                                    type="button"
                                     onClick={() => { setDropdownOpen(false); onLogout(); }}
-                                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors text-left"
+                                    style={{ padding: '10px 14px', gap: '10px', fontSize: '14px', lineHeight: '1.25' }}
+                                    className="w-full flex items-center font-medium text-red-500 hover:bg-red-50/80 dark:hover:bg-red-950/30 transition-colors text-left"
                                 >
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+                                    <svg style={{ width: '15px', height: '15px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                        <polyline points="16 17 21 12 16 7" />
+                                        <line x1="21" y1="12" x2="9" y2="12" />
                                     </svg>
-                                    Sign Out
+                                    <span>Log out</span>
                                 </button>
                             </div>
                         </>
@@ -645,28 +669,29 @@ function MenteesTab({
                                     ))}
                                 </div>
                                 {/* Desktop table */}
-                                <table className="hidden sm:table w-full text-sm">
+                                <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-gray-100 bg-[#f8f9fc]">
                                             {['Name', 'Assigned Group', 'Connected Since', 'Devotional Manual Status', 'Progress', 'Actions'].map(h => (
-                                                <th key={h} className="px-3 py-3.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
+                                                <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
                                         {filteredActive.map((m) => (
                                             <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                                <td className="px-3 py-4">
+                                                <td className="pl-6 pr-4 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0"
                                                             style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
                                                         <span className="font-bold text-gray-900 text-sm">{m.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-4 text-sm text-gray-500">{m.assignedGroup}</td>
-                                                <td className="px-3 py-4 text-sm text-gray-500">{m.connectedSince}</td>
-                                                <td className="px-3 py-4 text-sm text-gray-600">{m.module}, {m.lesson}</td>
-                                                <td className="px-3 py-4">
+                                                <td className="px-4 py-4 text-sm text-gray-500">{m.assignedGroup}</td>
+                                                <td className="px-4 py-4 text-sm text-gray-500 whitespace-nowrap">{m.connectedSince}</td>
+                                                <td className="px-4 py-4 text-sm text-gray-600">{m.module}, {m.lesson}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[60px]">
                                                             <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
@@ -674,7 +699,7 @@ function MenteesTab({
                                                         <span className="text-xs font-semibold text-gray-600 shrink-0">{m.progress}%</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-4">
+                                                <td className="pl-4 pr-6 py-4 whitespace-nowrap">
                                                     <div className="flex flex-col gap-1.5">
                                                         <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 hover:underline transition-colors">View Profile</button>
                                                         <button onClick={() => setShowDevotional(m)}
@@ -688,6 +713,7 @@ function MenteesTab({
                                         ))}
                                     </tbody>
                                 </table>
+                                </div>
                             </>
                         )}
                     </div>
@@ -706,7 +732,7 @@ function MenteesTab({
                                             <p className="font-bold text-gray-900 text-sm">{m.name}</p>
                                             <p className="text-xs text-gray-400">{m.assignedGroup}</p>
                                         </div>
-                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${reasonBadge(m.reason)}`}>{m.reason}</span>
+                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${reasonBadge(m.reason)}`}>{m.reason}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
                                         <span><span className="font-semibold text-gray-400">Inactive: </span>{m.dateInactive}</span>
@@ -742,25 +768,26 @@ function MenteesTab({
                             )}
                         </div>
                         {/* Desktop table */}
-                        <table className="hidden sm:table w-full text-sm">
+                        <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
+                                <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
                                     {['Name', 'Assigned Group', 'Date Became Inactive', 'Last Devotional Manual', 'Reason', 'Actions'].map(h => (
-                                        <th key={h} className="px-3 py-3.5 text-left font-semibold">{h}</th>
+                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3.5 text-left font-semibold">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {inactiveList.map((m) => (
                                     <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="px-3 py-4 font-semibold text-gray-900">{m.name}</td>
-                                        <td className="px-3 py-4 text-gray-500">{m.assignedGroup}</td>
-                                        <td className="px-3 py-4 text-gray-500">{m.dateInactive}</td>
-                                        <td className="px-3 py-4 text-gray-500">{m.lastModule}</td>
-                                        <td className="px-3 py-4">
-                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
+                                        <td className="pl-6 pr-4 py-4 font-semibold text-gray-900">{m.name}</td>
+                                        <td className="px-4 py-4 text-gray-500">{m.assignedGroup}</td>
+                                        <td className="px-4 py-4 text-gray-500 whitespace-nowrap">{m.dateInactive}</td>
+                                        <td className="px-4 py-4 text-gray-500">{m.lastModule}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
                                         </td>
-                                        <td className="px-3 py-4">
+                                        <td className="pl-4 pr-6 py-4 whitespace-nowrap">
                                             <button
                                                 onClick={() => {
                                                     const fake: import('@/lib/data').Mentee = {
@@ -789,6 +816,7 @@ function MenteesTab({
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                         {inactiveList.length === 0 && (
                             <div className="hidden sm:block p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
                         )}
@@ -1054,19 +1082,20 @@ function MentorPotentialC2STab() {
                         ))}
                     </div>
                     {/* Desktop table */}
-                    <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+                    <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                                <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
                                     {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
-                                        <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
+                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filtered.map(a => (
                                     <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="px-3 py-3.5">
+                                        <td className="pl-6 pr-4 py-3.5">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
                                                     {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -1077,20 +1106,21 @@ function MentorPotentialC2STab() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.barangay}</td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.schedule}</td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
-                                        <td className="px-3 py-3.5 text-xs text-gray-500">{a.submitted}</td>
-                                        <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
+                                        <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
+                                        <td className="px-4 py-3.5 text-xs text-gray-600 whitespace-nowrap">{a.schedule}</td>
+                                        <td className="px-4 py-3.5 text-xs text-gray-600 text-center whitespace-nowrap">{a.potential}</td>
+                                        <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
+                                        <td className="px-4 py-3.5 whitespace-nowrap">
+                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
                                         </td>
-                                        <td className="px-3 py-3.5">
+                                        <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                             <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </>
             )}
@@ -1102,7 +1132,9 @@ function MentorDashboard() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed' | 'potential-c2s-groups'>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
+    useScrollToTop(`${activeTab}:${settingsSection ?? ''}`);
     const [viewingGroup, setViewingGroup] = useState<C2SGroup | null>(null);
     const [editingGroup, setEditingGroup] = useState<C2SGroup | null>(null);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -1276,109 +1308,94 @@ function MentorDashboard() {
                 />
             )}
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-56 border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-transform duration-200`}>
-                {/* MENU label */}
-                <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-56 md:w-[68px]' : 'w-56'} border-r border-gray-200 flex flex-col pt-4 md:pt-4 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+                {/* MENU label + collapse toggle */}
+                <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
+                    <p className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${sidebarCollapsed ? 'md:hidden' : ''}`}>Menu</p>
+                    <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
+                </div>
 
                 {/* Nav items */}
-                <nav className="px-3 flex flex-col gap-1">
-                    <button
-                        onClick={() => { setActiveTab('dashboard'); setSettingsSection(null); setSidebarOpen(false); }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'dashboard'
-                            ? 'text-gray-800 bg-white shadow-sm'
-                            : 'text-gray-500 hover:bg-white/60'
-                            }`}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'dashboard' ? '#555' : '#aaa'}>
-                            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z" />
-                        </svg>
-                        Dashboard
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('my-groups'); setSettingsSection(null); setSidebarOpen(false); }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'my-groups'
-                            ? 'text-gray-800 bg-white shadow-sm'
-                            : 'text-gray-500 hover:bg-white/60'
-                            }`}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'my-groups' ? '#5b50d6' : '#aaa'}>
-                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-                        </svg>
-                        My Groups
-                        {myGroups.length > 0 && (
-                            <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white shrink-0">
-                                {myGroups.length}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('potential-mentees'); setSettingsSection(null); setSidebarOpen(false); }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'potential-mentees'
-                            ? 'text-gray-800 bg-white shadow-sm'
-                            : 'text-gray-500 hover:bg-white/60'
-                            }`}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'potential-mentees' ? '#5b50d6' : '#aaa'}>
-                            <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
-                        Potential Mentees
-                        <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white shrink-0">
-                            {allPotentialMentees.length}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('mentees'); setSettingsSection(null); setSidebarOpen(false); }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'mentees'
-                            ? 'text-gray-800 bg-white shadow-sm'
-                            : 'text-gray-500 hover:bg-white/60'
-                            }`}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'mentees' ? '#5b50d6' : '#aaa'}>
-                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-                        </svg>
-                        Mentees
-                        <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white shrink-0">
-                            {allActiveMentees.length}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('endorsed'); setSettingsSection(null); setSidebarOpen(false); }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'endorsed'
-                            ? 'text-gray-800 bg-white shadow-sm'
-                            : 'text-gray-500 hover:bg-white/60'
-                            }`}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'endorsed' ? '#5b50d6' : '#aaa'}>
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
-                        </svg>
-                        Endorsed
-                        <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white shrink-0">
-                            {ENDORSED_WORKERS.length + ENDORSED_GROUPS.reduce((s, g) => s + g.members, 0)}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('potential-c2s-groups'); setSettingsSection(null); setSidebarOpen(false); }}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${!settingsSection && activeTab === 'potential-c2s-groups'
-                            ? 'text-gray-800 bg-white shadow-sm'
-                            : 'text-gray-500 hover:bg-white/60'
-                            }`}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={!settingsSection && activeTab === 'potential-c2s-groups' ? '#5b50d6' : '#aaa'}>
-                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                        </svg>
-                        Potential C2S Groups
-                    </button>
-                </nav>
+                <SidebarNavList
+                    entries={[
+                        {
+                            kind: 'item',
+                            item: {
+                                key: 'dashboard',
+                                label: 'Dashboard',
+                                icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z',
+                            },
+                        },
+                        {
+                            kind: 'group',
+                            group: {
+                                id: 'groups',
+                                label: 'Groups',
+                                icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+                                items: [
+                                    {
+                                        key: 'my-groups',
+                                        label: 'My Groups',
+                                        icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+                                        badge: myGroups.length,
+                                    },
+                                    {
+                                        key: 'potential-c2s-groups',
+                                        label: 'Potential C2S Groups',
+                                        icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            kind: 'group',
+                            group: {
+                                id: 'mentees',
+                                label: 'Mentees',
+                                icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+                                items: [
+                                    {
+                                        key: 'potential-mentees',
+                                        label: 'Potential Mentees',
+                                        icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+                                        badge: allPotentialMentees.length,
+                                    },
+                                    {
+                                        key: 'mentees',
+                                        label: 'Mentees',
+                                        icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+                                        badge: allActiveMentees.length,
+                                    },
+                                    {
+                                        key: 'endorsed',
+                                        label: 'Endorsed',
+                                        icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z',
+                                        badge: ENDORSED_WORKERS.length + ENDORSED_GROUPS.reduce((s, g) => s + g.members, 0),
+                                    },
+                                ],
+                            },
+                        },
+                    ] as SidebarNavEntry[]}
+                    activeKey={!settingsSection ? activeTab : null}
+                    collapsed={sidebarCollapsed}
+                    onSelect={(key) => {
+                        setActiveTab(key as typeof activeTab);
+                        setSettingsSection(null);
+                        setSidebarOpen(false);
+                    }}
+                />
 
                 {/* Settings dropdown at bottom of sidebar */}
                 <SidebarSettingsDropdown
                     activeSection={settingsSection}
+                    collapsed={sidebarCollapsed}
+                    onExpandSidebar={() => setSidebarCollapsed(false)}
                     onSelect={(sec) => { setSettingsSection(sec); setSidebarOpen(false); }}
                 />
             </aside>
 
             {/* â”€â”€ Main content â”€â”€ */}
-            <div className="md:ml-56 flex-1 pb-16 min-w-0">
+            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-56'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
 
                 {/* Mobile sticky menu bar */}
                 <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">

@@ -60,13 +60,16 @@ export default function LoginPage() {
             {/* Centered page content */}
             <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 w-full max-w-[420px] mx-auto">
 
-                {/* Crisp white login card */}
+                {/* Frosted glassmorphism login card */}
                 <div
-                    className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-[0_24px_60px_rgba(15,23,42,0.42)]"
+                    className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-[0_28px_68px_rgba(15,23,42,0.48)]"
                     style={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '16px',
-                        boxShadow: '0 18px 45px rgba(15, 23, 42, 0.32)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.64)',
+                        backdropFilter: 'blur(20px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                        border: '1px solid rgba(255, 255, 255, 0.58)',
+                        borderRadius: '20px',
+                        boxShadow: '0 24px 60px rgba(15, 23, 42, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
                     }}
                 >
                     <div className="px-6 sm:px-8 pt-7 pb-6 sm:pb-7">
@@ -77,8 +80,8 @@ export default function LoginPage() {
                                 className="w-24 h-24 rounded-full mx-auto mb-3.5 flex items-center justify-center overflow-hidden p-2"
                                 style={{
                                     backgroundColor: '#FFFFFF',
-                                    border: '1px solid #E5E7EB',
-                                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.06)',
+                                    border: '2px solid rgba(255, 255, 255, 0.9)',
+                                    boxShadow: '0 8px 22px rgba(15, 23, 42, 0.14)',
                                 }}
                             >
                                 <Image
@@ -94,8 +97,8 @@ export default function LoginPage() {
                             <p
                                 className="font-bold uppercase"
                                 style={{
-                                    color: '#149B85',
-                                    fontSize: '11px',
+                                    color: '#0F766E',
+                                    fontSize: '0.75rem',
                                     letterSpacing: '0.08em',
                                     lineHeight: 1.4,
                                 }}
@@ -105,18 +108,18 @@ export default function LoginPage() {
                             <h1
                                 className="font-extrabold tracking-tight mt-1"
                                 style={{
-                                    color: '#111827',
-                                    fontSize: '22px',
+                                    color: '#0F172A',
+                                    fontSize: 'clamp(1.25rem, 2.5vw, 1.5rem)',
                                     lineHeight: 1.25,
                                 }}
                             >
                                 Login to your account
                             </h1>
                             <p
-                                className="mt-1"
+                                className="mt-1 font-medium"
                                 style={{
-                                    color: '#6B7280',
-                                    fontSize: '13.5px',
+                                    color: '#334155',
+                                    fontSize: '0.875rem',
                                     lineHeight: 1.45,
                                 }}
                             >
@@ -130,12 +133,12 @@ export default function LoginPage() {
                                 <label
                                     htmlFor="worker-id"
                                     className="block font-bold mb-1.5"
-                                    style={{ color: '#1F2937', fontSize: '13px' }}
+                                    style={{ color: '#0F172A', fontSize: '0.8125rem' }}
                                 >
                                     Worker ID
                                 </label>
                                 <div className="relative group">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-600 group-focus-within:text-[#149B85] transition-colors duration-200 pointer-events-none">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-slate-700 group-focus-within:text-[#0F766E] transition-colors duration-200 pointer-events-none">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                                         </svg>
@@ -149,14 +152,15 @@ export default function LoginPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="e.g. 145021"
                                         style={{
-                                            color: '#111827',
-                                            backgroundColor: '#F9FAFB',
-                                            borderColor: '#E5E7EB',
-                                            borderRadius: '8px',
+                                            color: '#0F172A',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                                            borderColor: 'rgba(255, 255, 255, 0.75)',
+                                            borderRadius: '10px',
                                             height: '44px',
-                                            fontSize: '14px',
+                                            fontSize: '1rem',
+                                            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
                                         }}
-                                        className="w-full border pl-9 pr-3.5 placeholder:text-gray-400 transition-all duration-200 hover:border-[#149B85]/60 focus:outline-none focus:border-[#149B85] focus:ring-4 focus:ring-[#14B8A6]/15"
+                                        className="w-full border pl-9 pr-3.5 placeholder:text-slate-400 transition-all duration-200 hover:bg-white/95 hover:border-[#0D9488]/60 focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-4 focus:ring-[#14B8A6]/20"
                                     />
                                 </div>
                             </div>
@@ -167,7 +171,7 @@ export default function LoginPage() {
                                     <label
                                         htmlFor="worker-password"
                                         className="font-bold"
-                                        style={{ color: '#1F2937', fontSize: '13px' }}
+                                        style={{ color: '#0F172A', fontSize: '0.8125rem' }}
                                     >
                                         Password
                                     </label>
@@ -175,13 +179,13 @@ export default function LoginPage() {
                                         type="button"
                                         onClick={() => setShowPwHelp((prev) => !prev)}
                                         className="font-semibold hover:underline transition-colors"
-                                        style={{ color: '#149B85', fontSize: '12px' }}
+                                        style={{ color: '#0F766E', fontSize: '0.75rem' }}
                                     >
                                         Forgot Password?
                                     </button>
                                 </div>
                                 <div className="relative group">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-600 group-focus-within:text-[#149B85] transition-colors duration-200 pointer-events-none">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-slate-700 group-focus-within:text-[#0F766E] transition-colors duration-200 pointer-events-none">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                                         </svg>
@@ -195,20 +199,21 @@ export default function LoginPage() {
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Enter your password"
                                         style={{
-                                            color: '#111827',
-                                            backgroundColor: '#F9FAFB',
-                                            borderColor: '#E5E7EB',
-                                            borderRadius: '8px',
+                                            color: '#0F172A',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                                            borderColor: 'rgba(255, 255, 255, 0.75)',
+                                            borderRadius: '10px',
                                             height: '44px',
-                                            fontSize: '14px',
+                                            fontSize: '1rem',
+                                            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
                                         }}
-                                        className="w-full border pl-9 pr-10 placeholder:text-gray-400 transition-all duration-200 hover:border-[#149B85]/60 focus:outline-none focus:border-[#149B85] focus:ring-4 focus:ring-[#14B8A6]/15"
+                                        className="w-full border pl-9 pr-10 placeholder:text-slate-400 transition-all duration-200 hover:bg-white/95 hover:border-[#0D9488]/60 focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-4 focus:ring-[#14B8A6]/20"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-all duration-150"
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all duration-150"
                                     >
                                         {showPassword ? (
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -223,7 +228,7 @@ export default function LoginPage() {
                                     </button>
                                 </div>
                                 {showPwHelp && (
-                                    <p className="mt-2 text-xs text-gray-600 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 leading-relaxed">
+                                    <p className="mt-2 text-xs text-slate-700 bg-white/90 border border-white/80 rounded-lg px-3 py-2 leading-relaxed shadow-sm">
                                         Please contact your C2S Coordinator or Admin to reset your password.
                                     </p>
                                 )}
@@ -236,11 +241,11 @@ export default function LoginPage() {
                                         type="checkbox"
                                         checked={keepSigned}
                                         onChange={(e) => setKeepSigned(e.target.checked)}
-                                        className="w-4 h-4 rounded border-gray-300 accent-[#0D9488] cursor-pointer"
+                                        className="w-4 h-4 rounded border-slate-400 bg-white/90 accent-[#0D9488] cursor-pointer"
                                     />
                                     <span
-                                        className="text-gray-600 group-hover:text-gray-900 transition-colors duration-150"
-                                        style={{ fontSize: '13px' }}
+                                        className="text-slate-800 font-medium group-hover:text-slate-950 transition-colors duration-150"
+                                        style={{ fontSize: '0.8125rem' }}
                                     >
                                         Keep me signed in
                                     </span>
@@ -265,7 +270,7 @@ export default function LoginPage() {
                                     background: 'linear-gradient(90deg, #14B8A6, #0D9488)',
                                     borderRadius: '8px',
                                 }}
-                                className="group relative w-full h-[44px] text-white font-bold text-sm overflow-hidden shadow-md shadow-[#0D9488]/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0D9488]/35 active:translate-y-0 active:scale-[0.99] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                                className="group relative w-full h-[44px] text-white font-bold text-base overflow-hidden shadow-md shadow-[#0D9488]/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0D9488]/35 active:translate-y-0 active:scale-[0.99] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                             >
                                 <span
                                     className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -290,21 +295,21 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* Two centered micro-captions outside and below the white card */}
-                <div className="mt-5 flex flex-col items-center gap-1.5 text-center">
+                {/* Two centered micro-captions outside and below the glass card */}
+                <div className="mt-5 flex flex-col items-center gap-2 text-center">
                     <p
-                        className="text-gray-300/85 flex items-center gap-1.5"
-                        style={{ fontSize: '12px' }}
+                        className="text-white/90 font-medium flex items-center gap-1.5 drop-shadow-sm"
+                        style={{ fontSize: '0.75rem' }}
                     >
-                        <svg className="w-3.5 h-3.5 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 text-[#5EEAD4]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                         </svg>
                         Secure sign-in for authorized C2S workers
                     </p>
                     <Link
                         href="/c2s-finder"
-                        className="group inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium text-[#5EEAD4] hover:text-white hover:bg-white/10 transition-all duration-200"
-                        style={{ fontSize: '12px' }}
+                        className="group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold text-[#5EEAD4] hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/15 transition-all duration-200"
+                        style={{ fontSize: '0.75rem' }}
                     >
                         <span className="transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
                         <span>Back to C2S Finder</span>

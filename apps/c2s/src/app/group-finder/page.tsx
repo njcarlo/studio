@@ -249,7 +249,7 @@ export default function GroupFinderPage() {
                     </div>
                     <div className="flex items-center gap-2.5 sm:gap-3 mb-1">
                         <img src="/c2s.png" alt="C2S" className="w-9 h-9 sm:w-12 sm:h-12 shrink-0 object-contain" />
-                        <h1 className="text-xl sm:text-3xl lg:text-4xl font-black text-gray-900 leading-tight">Group Finder</h1>
+                        <h1 className="text-[clamp(1.75rem,4vw,2.5rem)] font-black text-gray-900 leading-tight">Group Finder</h1>
                     </div>
                     <p className="text-xs sm:text-sm text-gray-500 leading-snug sm:ml-1 max-w-2xl">
                         Discover a Connect2Souls group near you in Dasmariñas City — built for real friendships, growth in faith, and a place to belong.

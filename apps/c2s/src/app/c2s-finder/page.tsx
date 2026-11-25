@@ -74,7 +74,7 @@ export default function C2SFinderPage() {
                                     className="w-12 h-12 sm:w-16 sm:h-16 shrink-0"
                                     style={{ objectFit: 'contain' }}
                                 />
-                                <h1 className="text-2xl sm:text-[2rem] font-black leading-tight text-gray-900">
+                                <h1 className="text-[clamp(1.75rem,4vw,2.5rem)] font-black leading-tight text-gray-900">
                                     Find a Christ-Centered<br />Community Near You.
                                 </h1>
                             </div>
@@ -118,7 +118,7 @@ export default function C2SFinderPage() {
 
             {/* ── Featured Groups ────────────────────────────── */}
             <section className="max-w-5xl mx-auto px-6 py-8">
-                <h2 className="text-2xl font-black text-gray-900 mb-1">Featured C2S Groups</h2>
+                <h2 className="text-[clamp(1.25rem,2.5vw,1.75rem)] font-black text-gray-900 mb-1">Featured C2S Groups</h2>
                 <p className="text-sm text-gray-400 mb-7">
                     Explore some of our active discipleship groups in Dasmariñas City
                 </p>

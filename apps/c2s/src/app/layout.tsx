@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { ThemeProvider } from '@/lib/theme-context';
+import { ConfirmProvider } from '@/lib/confirm-context';
 import { SatelliteProvider } from '@/lib/satellite-context';
 
 const inter = Inter({
@@ -25,15 +26,22 @@ export const viewport: Viewport = {
     viewportFit: 'cover',
 };
 
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('c2s_theme');if(t==='dark'){document.documentElement.classList.add('dark');}else if(t==='light'){document.documentElement.classList.remove('dark');}}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" className={inter.variable}>
+        <html lang="en" className={inter.variable} suppressHydrationWarning>
+            <head>
+                <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+            </head>
             <body className={inter.className}>
                 <AuthProvider>
                     <ThemeProvider>
                         <FontSizeProvider>
                             <SatelliteProvider>
-                                {children}
+                                <ConfirmProvider>
+                                    {children}
+                                </ConfirmProvider>
                             </SatelliteProvider>
                         </FontSizeProvider>
                     </ThemeProvider>

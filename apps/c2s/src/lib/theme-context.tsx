@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 
 export const THEME_KEY = 'c2s_theme';
 export type Theme = 'light' | 'dark';
@@ -17,39 +17,54 @@ const ThemeContext = createContext<ThemeContextType>({
     toggleTheme: () => {},
 });
 
+function applyThemeToDom(t: Theme) {
+    const root = document.documentElement;
+    if (t === 'dark') {
+        root.classList.add('dark');
+    } else {
+        root.classList.remove('dark');
+    }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [theme, setThemeState] = useState<Theme>('light');
+    const themeRef = useRef<Theme>('light');
 
-    // Load from localStorage on mount
+    // Sync from localStorage on mount without overwriting saved preference with initial default
     useEffect(() => {
         try {
-            const stored = localStorage.getItem(THEME_KEY) as Theme | null;
+            const stored = localStorage.getItem(THEME_KEY);
             if (stored === 'light' || stored === 'dark') {
+                themeRef.current = stored;
                 setThemeState(stored);
+                applyThemeToDom(stored);
             }
         } catch { /* ignore */ }
+
+        const onStorage = (e: StorageEvent) => {
+            if (e.key === THEME_KEY && (e.newValue === 'light' || e.newValue === 'dark')) {
+                themeRef.current = e.newValue;
+                setThemeState(e.newValue);
+                applyThemeToDom(e.newValue);
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
     }, []);
 
-    // Apply theme class to <html> and persist
-    useEffect(() => {
-        const root = document.documentElement;
-        if (theme === 'dark') {
-            root.classList.add('dark');
-        } else {
-            root.classList.remove('dark');
-        }
-        try {
-            localStorage.setItem(THEME_KEY, theme);
-        } catch { /* ignore */ }
-    }, [theme]);
-
     const setTheme = useCallback((t: Theme) => {
+        themeRef.current = t;
         setThemeState(t);
+        applyThemeToDom(t);
+        try {
+            localStorage.setItem(THEME_KEY, t);
+        } catch { /* ignore */ }
     }, []);
 
     const toggleTheme = useCallback(() => {
-        setThemeState((prev) => (prev === 'light' ? 'dark' : 'light'));
-    }, []);
+        const next: Theme = themeRef.current === 'light' ? 'dark' : 'light';
+        setTheme(next);
+    }, [setTheme]);
 
     return (
         <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>

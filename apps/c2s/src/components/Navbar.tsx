@@ -48,9 +48,9 @@ export default function Navbar() {
                                 priority
                             />
                         </div>
-                        <div className="leading-tight min-w-0">
-                            <p className="text-[13px] font-bold text-gray-800 truncate">Church of God Dasmarinas</p>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-widest truncate">CONNECT2SOULS</p>
+                        <div className="flex flex-col gap-0.5 leading-snug min-w-0">
+                            <p className="text-[13px] font-bold text-gray-800 truncate leading-snug">Church of God Dasmarinas</p>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-widest truncate leading-snug">CONNECT2SOULS</p>
                         </div>
                     </Link>
 
