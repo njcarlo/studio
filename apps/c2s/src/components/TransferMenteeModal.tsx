@@ -85,7 +85,7 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                             {/* Currently Assigned */}
                             <div className="border border-gray-200 rounded-xl px-5 py-4" style={{ background: 'var(--bg-subtle)' }}>
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Currently Assigned</p>
-                                <div className="grid grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                                     {[
                                         { label: 'Department', value: CURRENT.dept },
                                         { label: 'Ministry',   value: CURRENT.ministry },

@@ -2,34 +2,35 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
 
 export function SidebarBrandHeader({ collapsed }: { collapsed: boolean }) {
     return (
         <div
-            className={`sidebar-brand-header nav-fixed-h border-b flex items-center shrink-0 transition-all duration-200 ${
+            className={`sidebar-brand-header nav-fixed-h border-b flex items-center shrink-0 transition-all duration-200 cursor-default pointer-events-none select-none ${
                 collapsed ? 'px-3 md:px-0 md:justify-center' : 'px-3'
             }`}
         >
-            <Link
-                href="/"
-                title="Connect2Souls — Church of God Dasmariñas"
-                className={`flex items-center min-w-0 ${collapsed ? 'gap-2.5 md:gap-0 md:justify-center' : 'gap-2.5'}`}
+            <div
+                className={`flex items-center min-w-0 cursor-default pointer-events-none ${collapsed ? 'gap-2.5 md:gap-0 md:justify-center' : 'gap-2.5'}`}
             >
-                <div className={`bg-white rounded-full p-1 shadow-sm flex items-center justify-center shrink-0 relative transition-all duration-200 ${collapsed ? 'w-11 h-11' : 'w-12 h-12'}`}>
+                <div
+                    data-logo-badge="true"
+                    style={{ backgroundColor: '#FFFFFF' }}
+                    className={`sidebar-logo-badge !bg-white rounded-full p-1 shadow-sm flex items-center justify-center shrink-0 relative transition-all duration-200 ${collapsed ? 'w-11 h-11' : 'w-12 h-12'}`}
+                >
                     <Image src="/c2s.png" alt="Connect2Souls Logo" width={48} height={48} className="w-full h-full object-contain" priority />
                 </div>
                 <div className={`flex flex-col gap-0.5 leading-tight min-w-0 ${collapsed ? 'md:hidden' : ''}`}>
-                    <p className="sidebar-brand-title text-[18px] font-extrabold tracking-tight leading-tight">
+                    <p className="sidebar-brand-title text-[1.125rem] font-extrabold tracking-tight leading-tight">
                         Connect2Souls
                     </p>
-                    <p className="sidebar-brand-sub text-[14px] font-medium tracking-[-0.015em] leading-tight">
+                    <p className="sidebar-brand-sub text-[0.875rem] font-medium tracking-[-0.015em] leading-tight">
                         Church of God Dasmariñas
                     </p>
                 </div>
-            </Link>
+            </div>
         </div>
     );
 }
@@ -88,21 +89,21 @@ export function DashboardTopHeader({
                 )}
             </div>
 
-            {/* Right: Account dropdown pill (fixed 16px-scale sizing) */}
-            <div className="relative shrink-0" style={{ fontSize: '16px' }}>
+            {/* Right: Account dropdown pill (proportional rem sizing) */}
+            <div className="relative shrink-0" style={{ fontSize: '1rem' }}>
                 <button
                     type="button"
                     data-account-pill="true"
                     onClick={() => setDropdownOpen((o) => !o)}
-                    style={{ padding: '4px 10px 4px 5px', gap: '8px' }}
+                    style={{ padding: '0.25rem 0.625rem 0.25rem 0.3125rem', gap: '0.5rem' }}
                     className="flex items-center rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 border border-gray-200/70 dark:border-white/10 transition-colors"
                 >
                     <div
                         className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
                         style={{
-                            width: '28px',
-                            height: '28px',
-                            fontSize: '11px',
+                            width: '1.75rem',
+                            height: '1.75rem',
+                            fontSize: '0.6875rem',
                             background: roleColor,
                             boxShadow: `0 0 0 2px ${roleColor}26`,
                         }}
@@ -110,14 +111,14 @@ export function DashboardTopHeader({
                         {user.avatar}
                     </div>
                     <span
-                        className="hidden sm:inline font-semibold text-gray-800 dark:text-gray-100 truncate max-w-[180px] lg:max-w-[260px]"
-                        style={{ fontSize: '14px', lineHeight: '1.25' }}
+                        className="hidden sm:inline font-semibold text-gray-800 dark:text-gray-100 truncate max-w-[11.25rem] lg:max-w-[16.25rem]"
+                        style={{ fontSize: '0.875rem', lineHeight: '1.25' }}
                     >
                         {user.name}
                     </span>
                     <svg
                         className={`text-gray-500 shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
-                        style={{ width: '14px', height: '14px' }}
+                        style={{ width: '0.875rem', height: '0.875rem' }}
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"

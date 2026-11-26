@@ -92,15 +92,15 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-4">Performance Overview</p>
 
                         {/* Stat boxes */}
-                        <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
                             {[
                                 { label: 'Active Mentees', value: mentor.activeMentees },
                                 { label: 'Attendance',     value: `${mentor.attendance}%` },
                                 { label: 'Completion',     value: `${mentor.completion}%` },
                             ].map((s) => (
-                                <div key={s.label} className="bg-white rounded-xl px-3 py-3 text-center border border-gray-100">
+                                <div key={s.label} className="bg-white rounded-xl px-2.5 py-3 text-center border border-gray-100">
                                     <p className="text-base font-black text-gray-900">{s.value}</p>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">{s.label}</p>
+                                    <p className="text-[0.75rem] text-gray-400 mt-0.5 whitespace-nowrap">{s.label}</p>
                                 </div>
                             ))}
                         </div>

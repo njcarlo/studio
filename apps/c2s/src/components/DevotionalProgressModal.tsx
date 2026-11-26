@@ -39,13 +39,13 @@ const MODULE_DEFINITIONS = [
     {
         id: 4, title: 'Marks of a True Follower of Jesus',
         lessons: [
-            { id: 'l9',  title: 'The Call to Discipleship' },
+            { id: 'l9', title: 'The Call to Discipleship' },
             { id: 'l10', title: 'Living the Great Commission' },
         ],
     },
 ];
 
-const TRAININGS_LIST = ['CLDP 1','CLDP 2','CLDP 3','LIFE Movers','LIFE Ambassadors','LAMP','LW3H','C2S 101','ASP','KnOT'];
+const TRAININGS_LIST = ['CLDP 1', 'CLDP 2', 'CLDP 3', 'LIFE Movers', 'LIFE Ambassadors', 'LAMP', 'LW3H', 'C2S 101', 'ASP', 'KnOT'];
 const ACTIVE_MENTEES_STORAGE_KEY = 'c2s_active_mentees';
 
 function buildInitialModules(progress: number) {
@@ -56,135 +56,275 @@ function buildInitialModules(progress: number) {
     }));
 }
 
-function calcProgress(modules: typeof MODULES_INIT): number {
-    const completed = modules.filter((m) => m.lessons.every((l) => l.done)).length;
-    return completed * 25;
+type ModuleState = ReturnType<typeof buildInitialModules>;
+
+function calcProgress(modules: ModuleState): number {
+    const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
+    const doneLessons = modules.reduce((sum, m) => sum + m.lessons.filter((l) => l.done).length, 0);
+    if (totalLessons === 0) return 0;
+    return Math.round((doneLessons / totalLessons) * 100);
 }
 
-function currentModuleLabel(modules: typeof MODULES_INIT): string {
+function currentModuleLabel(modules: ModuleState): string {
     const first = modules.find((m) => !m.lessons.every((l) => l.done));
     return first ? `Module ${first.id} — ${first.title}` : `Module 4 — ${MODULE_DEFINITIONS[3].title}`;
 }
 
-function currentLessonLabel(modules: typeof MODULES_INIT): string {
+function currentLessonLabel(modules: ModuleState): string {
     for (const mod of modules) {
         for (let i = 0; i < mod.lessons.length; i++) {
             if (!mod.lessons[i].done) return `Lesson ${i + 1}: ${mod.lessons[i].title}`;
         }
     }
-    return `Lesson ${MODULE_DEFINITIONS[3].lessons.length}: ${MODULE_DEFINITIONS[3].lessons[MODULE_DEFINITIONS[3].lessons.length - 1].title}`;
+    const lastMod = MODULE_DEFINITIONS[MODULE_DEFINITIONS.length - 1];
+    return `Lesson ${lastMod.lessons.length}: ${lastMod.lessons[lastMod.lessons.length - 1].title}`;
 }
 
-type ModuleState = ReturnType<typeof buildInitialModules>;
-const MODULES_INIT = buildInitialModules(0);
+function resolveInitialSelection(mentee: Mentee, initialModules: ModuleState) {
+    const modMatch = (mentee.currentModule || mentee.module || '').match(/Module\s*(\d+)/i);
+    const parsedModId = modMatch ? Number(modMatch[1]) : 0;
+    const lessonNumMatch = (mentee.currentLesson || mentee.lesson || '').match(/Lesson\s*(\d+)/i);
+    const parsedLessonNum = lessonNumMatch ? Number(lessonNumMatch[1]) : 0;
+
+    const matchedMod = initialModules.find((m) => m.id === parsedModId);
+    if (matchedMod) {
+        const lessonIdx = parsedLessonNum > 0 && parsedLessonNum <= matchedMod.lessons.length
+            ? parsedLessonNum - 1
+            : Math.max(0, matchedMod.lessons.findIndex((l) => !l.done));
+        const picked = matchedMod.lessons[lessonIdx] ?? matchedMod.lessons[0];
+        return {
+            moduleId: matchedMod.id,
+            moduleTitle: matchedMod.title,
+            lessonId: picked.id,
+            lessonTitle: picked.title,
+            lessonNum: lessonIdx + 1,
+        };
+    }
+
+    for (const mod of initialModules) {
+        const idx = mod.lessons.findIndex((l) => !l.done);
+        if (idx >= 0) {
+            return {
+                moduleId: mod.id,
+                moduleTitle: mod.title,
+                lessonId: mod.lessons[idx].id,
+                lessonTitle: mod.lessons[idx].title,
+                lessonNum: idx + 1,
+            };
+        }
+    }
+
+    const fallbackMod = initialModules[0];
+    return {
+        moduleId: fallbackMod.id,
+        moduleTitle: fallbackMod.title,
+        lessonId: fallbackMod.lessons[0].id,
+        lessonTitle: fallbackMod.lessons[0].title,
+        lessonNum: 1,
+    };
+}
 
 export default function DevotionalProgressModal({ mentee, onClose, onSave }: Props) {
-    const [expandedModule, setExpandedModule]       = useState<number>(1);
-    const [selectedLesson, setSelectedLesson]       = useState({
-        moduleId: 2, moduleTitle: 'Life of a Winner',
-        lessonTitle: 'Forgiveness: The Best Choice', lessonNum: 2,
-    });
-    const [modules, setModules]     = useState<ModuleState>(() => buildInitialModules(mentee.progress));
-    const [status]                  = useState<'In Progress' | 'Completed'>('In Progress');
-    const [notes, setNotes]         = useState(mentee.mentorNotes);
-    const [selectedTraining, setSelectedTraining] = useState('');
-    const [showTrainingList, setShowTrainingList] = useState(false);
-    const [showMenu, setShowMenu]   = useState(false);
-    const [showEndorse, setShowEndorse]           = useState(false);
-    const [showTransfer, setShowTransfer]         = useState(false);
-    const [showTransferGroup, setShowTransferGroup] = useState(false);
-    const [saved, setSaved]         = useState(false);
-    const [mobileTab, setMobileTab] = useState<'modules' | 'details'>('modules');
-    const menuRef = useRef<HTMLDivElement>(null);
+    const [modules, setModules] = useState<ModuleState>(() => buildInitialModules(mentee.progress));
+    const initialSelection = useRef(resolveInitialSelection(mentee, modules)).current;
 
+    const [expandedModule, setExpandedModule] = useState<number>(initialSelection.moduleId);
+    const [selectedLesson, setSelectedLesson] = useState(initialSelection);
+    const [notes, setNotes] = useState(mentee.mentorNotes ?? '');
+    const [selectedTrainings, setSelectedTrainings] = useState<string[]>(() =>
+        (mentee.trainings ?? [])
+            .filter((t) => t.year && t.year !== '—' && t.year !== '-')
+            .map((t) => t.label)
+    );
+    const [showTrainingList, setShowTrainingList] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const [showEndorse, setShowEndorse] = useState(false);
+    const [showTransfer, setShowTransfer] = useState(false);
+    const [showTransferGroup, setShowTransferGroup] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [mobileTab, setMobileTab] = useState<'modules' | 'details'>('modules');
+
+    const menuRef = useRef<HTMLDivElement>(null);
+    const trainingRef = useRef<HTMLDivElement>(null);
+
+    const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
+    const completedLessons = modules.reduce((sum, m) => sum + m.lessons.filter((l) => l.done).length, 0);
     const pct = calcProgress(modules);
+
+    // Keep left active module expanded to match the currently selected lesson
+    useEffect(() => {
+        setExpandedModule(selectedLesson.moduleId);
+    }, [selectedLesson.moduleId]);
 
     useEffect(() => {
         function handler(e: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+            if (trainingRef.current && !trainingRef.current.contains(e.target as Node)) setShowTrainingList(false);
+        }
+        function keyHandler(e: KeyboardEvent) {
+            if (e.key === 'Escape') {
+                setShowMenu(false);
+                setShowTrainingList(false);
+            }
         }
         document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+        document.addEventListener('keydown', keyHandler);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            document.removeEventListener('keydown', keyHandler);
+        };
     }, []);
 
     function toggleLesson(modId: number, lessonId: string) {
-        setModules(prev => prev.map(m =>
-            m.id === modId
-                ? { ...m, lessons: m.lessons.map(l => l.id === lessonId ? { ...l, done: !l.done } : l) }
-                : m
-        ));
+        setModules((prev) =>
+            prev.map((m) =>
+                m.id === modId
+                    ? { ...m, lessons: m.lessons.map((l) => (l.id === lessonId ? { ...l, done: !l.done } : l)) }
+                    : m
+            )
+        );
     }
 
-    function markModuleComplete() {
-        setModules(prev => prev.map(m =>
-            m.id === expandedModule ? { ...m, lessons: m.lessons.map(l => ({ ...l, done: true })) } : m
-        ));
+    function addTraining(label: string) {
+        setSelectedTrainings((prev) => (prev.includes(label) ? prev : [...prev, label]));
+        setShowTrainingList(false);
+    }
+
+    function removeTraining(label: string) {
+        setSelectedTrainings((prev) => prev.filter((item) => item !== label));
     }
 
     function handleSave() {
         const newProgress = calcProgress(modules);
         const newModule = currentModuleLabel(modules);
         const newLesson = currentLessonLabel(modules);
-        const completedCount = modules.filter((m) => m.lessons.every((l) => l.done)).length;
-        const moduleShort = `Module ${Math.min(completedCount + 1, 4)}`;
+        const completedMods = modules.filter((m) => m.lessons.every((l) => l.done)).length;
+        const moduleShort = `Module ${Math.min(completedMods + 1, 4)}`;
         const lessonShort = newLesson.split(':')[0];
+        const currentYear = String(new Date().getFullYear());
+        const updatedTrainings = TRAININGS_LIST.map((label) => ({
+            label,
+            year: selectedTrainings.includes(label)
+                ? mentee.trainings?.find((t) => t.label === label && t.year !== '—')?.year || currentYear
+                : '—',
+        }));
+
         try {
             const stored: Mentee[] = JSON.parse(localStorage.getItem(ACTIVE_MENTEES_STORAGE_KEY) ?? '[]');
             const updated = stored.map((m) =>
                 m.id === mentee.id
-                    ? { ...m, progress: newProgress, currentModule: newModule, currentLesson: newLesson, module: moduleShort, lesson: lessonShort, mentorNotes: notes }
+                    ? {
+                        ...m,
+                        progress: newProgress,
+                        currentModule: newModule,
+                        currentLesson: newLesson,
+                        module: moduleShort,
+                        lesson: lessonShort,
+                        mentorNotes: notes,
+                        trainings: updatedTrainings,
+                    }
                     : m
             );
             localStorage.setItem(ACTIVE_MENTEES_STORAGE_KEY, JSON.stringify(updated));
         } catch { /* ignore */ }
+
         onSave?.(newProgress, newModule, newLesson, moduleShort, lessonShort);
         setSaved(true);
         setTimeout(() => { setSaved(false); onClose(); }, 900);
     }
 
-    /* ── Shared: module tree ── */
+    const activeModuleObj = modules.find((m) => m.id === selectedLesson.moduleId);
+    const activeLessonObj = activeModuleObj?.lessons.find((l) => l.id === selectedLesson.lessonId);
+    const isLessonCompleted = Boolean(activeLessonObj?.done);
+    const availableTrainings = TRAININGS_LIST.filter((t) => !selectedTrainings.includes(t));
+
+    /* ── Shared: left module tree ── */
     const moduleTree = (
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-2.5">
             {modules.map((mod) => {
-                const allDone = mod.lessons.every(l => l.done);
+                const modDoneCount = mod.lessons.filter((l) => l.done).length;
+                const allDone = modDoneCount === mod.lessons.length;
+                const isExpanded = expandedModule === mod.id;
+                const hasSelectedLesson = selectedLesson.moduleId === mod.id;
+
                 return (
-                    <div key={mod.id}>
+                    <div key={mod.id} className="rounded-xl border border-[#E7E5E4] bg-[#FAF8F5] overflow-hidden">
                         <button
-                            onClick={() => setExpandedModule(expandedModule === mod.id ? 0 : mod.id)}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#FEF3C7] transition-colors rounded-xl"
-                            style={{ background: 'var(--bg-subtle)' }}
+                            type="button"
+                            onClick={() => setExpandedModule(isExpanded ? 0 : mod.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isExpanded || hasSelectedLesson ? 'bg-[#F5F2EC]' : 'hover:bg-[#F5F2EC]/70'
+                                }`}
                         >
-                            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                allDone ? 'bg-[#D97706] text-white' : 'bg-gray-200 text-gray-500'
-                            }`}>{mod.id}</span>
-                            <div className="flex-1 text-left">
-                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Module {mod.id}</p>
-                                <p className="text-sm font-semibold text-gray-800">{mod.title}</p>
+                            <span
+                                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${allDone
+                                    ? 'bg-[#0F766E] text-white'
+                                    : hasSelectedLesson
+                                        ? 'bg-[#D97706] text-white'
+                                        : 'bg-[#1B2432]/10 text-[#1B2432]'
+                                    }`}
+                            >
+                                {allDone ? '✓' : mod.id}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-wider">Module {mod.id}</p>
+                                    <span className="text-[10px] font-semibold text-[#6B665F] shrink-0">
+                                        {modDoneCount}/{mod.lessons.length}
+                                    </span>
+                                </div>
+                                <p className="text-sm font-semibold text-[#1B2432] truncate">{mod.title}</p>
                             </div>
-                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedModule === mod.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M7 10l5 5 5-5z"/>
+                            <svg
+                                className={`w-4 h-4 text-[#6B665F] shrink-0 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`}
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path d="M7 10l5 5 5-5z" />
                             </svg>
                         </button>
-                        {expandedModule === mod.id && (
-                            <div className="mt-1.5 flex flex-col gap-1 pl-3">
-                                {mod.lessons.map((lesson, li) => (
-                                    <button
-                                        key={lesson.id}
-                                        onClick={() => {
-                                            toggleLesson(mod.id, lesson.id);
-                                            setSelectedLesson({ moduleId: mod.id, moduleTitle: mod.title, lessonTitle: lesson.title, lessonNum: li + 1 });
-                                            setMobileTab('details');
-                                        }}
-                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors text-left ${
-                                            lesson.done ? 'bg-[#f0fdf4] text-[#166534]' : 'bg-white hover:bg-[#f8f9fc] text-gray-700 border border-gray-100'
-                                        }`}
-                                    >
-                                        <svg className={`w-5 h-5 shrink-0 ${lesson.done ? 'text-[#22c55e]' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                        </svg>
-                                        Lesson {li + 1}: {lesson.title}
-                                    </button>
-                                ))}
+
+                        {isExpanded && (
+                            <div className="p-2 pt-1.5 flex flex-col gap-1.5 border-t border-[#E7E5E4] bg-white">
+                                {mod.lessons.map((lesson, li) => {
+                                    const isSelected = selectedLesson.lessonId === lesson.id;
+                                    return (
+                                        <button
+                                            key={lesson.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedLesson({
+                                                    moduleId: mod.id,
+                                                    moduleTitle: mod.title,
+                                                    lessonId: lesson.id,
+                                                    lessonTitle: lesson.title,
+                                                    lessonNum: li + 1,
+                                                });
+                                                setMobileTab('details');
+                                            }}
+                                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors text-left border ${isSelected
+                                                ? 'bg-[#FEF3C7]/70 border-[#D97706] text-[#1B2432]'
+                                                : lesson.done
+                                                    ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#065F46]'
+                                                    : 'bg-white border-transparent hover:bg-[#FAF8F5] text-[#292524]'
+                                                }`}
+                                        >
+                                            <span
+                                                className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${lesson.done
+                                                    ? 'bg-[#0F766E] text-white'
+                                                    : isSelected
+                                                        ? 'border-2 border-[#D97706] text-[#D97706]'
+                                                        : 'border border-[#D6D3D1] text-transparent'
+                                                    }`}
+                                            >
+                                                {lesson.done ? '✓' : ''}
+                                            </span>
+                                            <span className="truncate">
+                                                Lesson {li + 1}: {lesson.title}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -193,41 +333,49 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
         </div>
     );
 
-    /* ── Shared: detail panel ── */
+    /* ── Shared: right detail panel ── */
     const detailPanel = (
-        <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-5">
-            <div className="flex items-start justify-between">
-                <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 flex flex-col gap-5">
+            {/* Lesson Header + Quick Actions Menu */}
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-[#D97706] uppercase tracking-wider mb-1">
                         Module {selectedLesson.moduleId} · Lesson {selectedLesson.lessonNum}
                     </p>
-                    <h3 className="text-xl font-semibold text-gray-900">{selectedLesson.lessonTitle}</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-[#1B2432] leading-snug">{selectedLesson.lessonTitle}</h3>
+                    <p className="text-xs text-[#6B665F] mt-0.5">{selectedLesson.moduleTitle}</p>
                 </div>
-                <div ref={menuRef} className="relative ml-3 shrink-0">
+
+                <div ref={menuRef} className="relative shrink-0 z-30">
                     <button
-                        onClick={() => setShowMenu(!showMenu)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                        type="button"
+                        aria-label="Mentee actions"
+                        onClick={() => setShowMenu((v) => !v)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B665F] hover:text-[#1B2432] hover:bg-[#F5F2EC] transition-colors"
                     >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                         </svg>
                     </button>
                     {showMenu && (
-                        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-52 overflow-hidden">
+                        <div className="absolute right-0 top-full mt-1.5 bg-white border border-[#E7E5E4] rounded-xl shadow-xl z-50 w-56 p-1.5">
                             {[
-                                { icon: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>, label: 'Transfer to Another Mentor' },
-                                { icon: <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>, label: 'Endorse as Worker' },
-                                { icon: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>, label: 'Transfer to Group' },
+                                { icon: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />, label: 'Transfer to Another Mentor' },
+                                { icon: <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />, label: 'Endorse as Worker' },
+                                { icon: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />, label: 'Transfer to Group' },
                             ].map((item) => (
-                                <button key={item.label}
+                                <button
+                                    key={item.label}
+                                    type="button"
                                     onClick={() => {
                                         setShowMenu(false);
                                         if (item.label === 'Endorse as Worker') setShowEndorse(true);
                                         else if (item.label === 'Transfer to Another Mentor') setShowTransfer(true);
                                         else if (item.label === 'Transfer to Group') setShowTransferGroup(true);
                                     }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-[#FEF3C7] transition-colors text-left">
-                                    <svg className="w-4 h-4 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">{item.icon}</svg>
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-[#292524] hover:bg-[#FEF3C7]/70 transition-colors text-left"
+                                >
+                                    <svg className="w-4 h-4 text-[#6B665F] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{item.icon}</svg>
                                     {item.label}
                                 </button>
                             ))}
@@ -236,46 +384,113 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Current Status</p>
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                        status === 'In Progress' ? 'bg-[#fde8ef] text-[#e6184d]' : 'bg-[#dcfce7] text-[#166534]'
-                    }`}>{status}</span>
+            {/* Lesson Status Header + Mark Lesson Completed Action */}
+            <div className="rounded-xl border border-[#E7E5E4] bg-[#F5F2EC] p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-4">
+                    <div>
+                        <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-wider mb-1">Lesson Status</p>
+                        <span
+                            data-pill="true"
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${isLessonCompleted
+                                ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
+                                : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
+                                }`}
+                        >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isLessonCompleted ? 'bg-[#0F766E]' : 'bg-[#D97706]'}`} />
+                            {isLessonCompleted ? 'Completed' : 'In Progress'}
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-wider mb-1">Completion</p>
+                        <p className="text-xs font-semibold text-[#1B2432]">{isLessonCompleted ? 'Marked Done' : 'Pending'}</p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Completion Date</p>
-                    <p className="text-sm text-gray-400">——</p>
-                </div>
+
+                <button
+                    type="button"
+                    onClick={() => toggleLesson(selectedLesson.moduleId, selectedLesson.lessonId)}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors shrink-0 ${isLessonCompleted
+                        ? 'bg-white border border-[#0F766E]/40 text-[#0F766E] hover:bg-[#ECFDF5]'
+                        : 'bg-[#0F766E] hover:bg-[#0D5F58] text-white shadow-sm'
+                        }`}
+                >
+                    <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    {isLessonCompleted ? 'Lesson Completed ✓' : 'Mark Lesson Completed'}
+                </button>
             </div>
 
-            <div className="rounded-xl border border-gray-100 px-4 py-3" style={{ background: 'var(--bg-subtle)' }}>
-                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Mentor Notes</p>
+            {/* Mentor Notes */}
+            <div className="rounded-xl border border-[#E7E5E4] bg-[#F5F2EC] p-4">
+                <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-wider mb-2">Mentor Notes</p>
                 <textarea
                     value={notes}
-                    onChange={e => setNotes(e.target.value)}
+                    onChange={(e) => setNotes(e.target.value)}
                     rows={3}
-                    className="w-full text-sm text-gray-700 bg-transparent resize-none focus:outline-none leading-relaxed"
+                    placeholder="Write observations, prayer requests, or follow-up notes..."
+                    className="w-full text-sm text-[#292524] placeholder:text-[#6B665F]/70 bg-white border border-[#E7E5E4] rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7] leading-relaxed"
                 />
             </div>
 
-            <div>
-                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Trainings</p>
-                <div className="relative">
+            {/* Attended Trainings (Removable Pills + Unclipped Picker) */}
+            <div className="rounded-xl border border-[#E7E5E4] bg-[#F5F2EC] p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-wider">Attended Trainings</p>
+                    <span className="text-[11px] font-semibold text-[#6B665F]">{selectedTrainings.length} selected</span>
+                </div>
+
+                {selectedTrainings.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                        {selectedTrainings.map((t) => (
+                            <span
+                                key={t}
+                                data-pill="true"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]"
+                            >
+                                <span>{t}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => removeTraining(t)}
+                                    aria-label={`Remove ${t}`}
+                                    className="w-4 h-4 rounded-full inline-flex items-center justify-center hover:bg-[#F59E0B]/25 text-[#92400E] leading-none transition-colors"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-xs text-[#6B665F] italic">No trainings selected yet.</p>
+                )}
+
+                <div ref={trainingRef} className="relative z-40">
                     <button
-                        onClick={() => setShowTrainingList(!showTrainingList)}
-                        className="w-full flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-400"
-                        style={{ background: 'var(--bg-subtle)' }}
+                        type="button"
+                        onClick={() => setShowTrainingList((v) => !v)}
+                        disabled={availableTrainings.length === 0}
+                        className="w-full flex items-center justify-between bg-white border border-[#E7E5E4] hover:border-[#D97706] rounded-xl px-3.5 py-2 text-xs font-medium text-[#292524] transition-colors disabled:opacity-60"
                     >
-                        {selectedTraining || 'Choose an attended training....'}
-                        <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                        <span className="text-[#6B665F]">
+                            {availableTrainings.length === 0 ? 'All trainings selected' : '+ Add attended training...'}
+                        </span>
+                        <svg
+                            className={`w-4 h-4 text-[#6B665F] transition-transform duration-150 ${showTrainingList ? 'rotate-180' : ''}`}
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                        >
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
                     </button>
-                    {showTrainingList && (
-                        <ul className="absolute z-10 top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 overflow-hidden">
-                            {TRAININGS_LIST.map(t => (
-                                <li key={t}
-                                    onClick={() => { setSelectedTraining(t); setShowTrainingList(false); }}
-                                    className="px-4 py-3 text-sm text-gray-700 hover:bg-[#FEF3C7] cursor-pointer">
+                    {showTrainingList && availableTrainings.length > 0 && (
+                        <ul className="absolute z-50 bottom-full mb-1.5 left-0 right-0 bg-white border border-[#E7E5E4] rounded-xl shadow-xl p-1.5 max-h-44 overflow-y-auto">
+                            {availableTrainings.map((t) => (
+                                <li
+                                    key={t}
+                                    onClick={() => addTraining(t)}
+                                    className="px-3 py-2 rounded-lg text-xs font-medium text-[#292524] hover:bg-[#FEF3C7] hover:text-[#92400E] cursor-pointer transition-colors"
+                                >
                                     {t}
                                 </li>
                             ))}
@@ -288,7 +503,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
 
     return (
         <>
-            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-[1px]" onClick={onClose} />
             <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
 
                 {showEndorse && (
@@ -316,106 +531,112 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                 )}
 
                 <div
-                    className="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full"
-                    style={{ maxWidth: '860px', height: '92vh', maxHeight: '680px' }}
-                    onClick={e => e.stopPropagation()}
+                    className="bg-white rounded-2xl border border-[#E7E5E4] shadow-2xl flex flex-col overflow-hidden w-full"
+                    style={{ maxWidth: '56.25rem', minHeight: '28rem', height: 'min(45rem, 92dvh)', maxHeight: '92dvh' }}
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Header */}
-                    <div className="px-5 sm:px-8 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between shrink-0">
-                        <div>
-                            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Devotional Progress</h2>
-                            <p className="text-xs text-gray-400 mt-0.5">Official Connect 2 Souls Devotional Manual · {pct}% complete</p>
+                    {/* Header: Mentee Name + Progress Bar */}
+                    <div className="px-5 sm:px-7 py-4 border-b border-[#E7E5E4] bg-[#FAF8F5] flex flex-col gap-3 shrink-0">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-full bg-[#D97706] text-white font-bold text-sm flex items-center justify-center shrink-0">
+                                    {mentee.initials}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h2 className="text-base sm:text-lg font-bold text-[#1B2432] leading-tight truncate">
+                                            {mentee.name}
+                                        </h2>
+                                        <span
+                                            data-pill="true"
+                                            className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]"
+                                        >
+                                            {pct}% Complete
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-[#6B665F] mt-0.5 truncate">
+                                        Devotional Progress · {mentee.assignedGroup}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                aria-label="Close modal"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B665F] hover:text-[#1B2432] hover:bg-[#E7E5E4]/60 transition-colors shrink-0"
+                            >
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                                </svg>
+                            </button>
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                            </svg>
-                        </button>
+
+                        {/* Header Progress Bar */}
+                        <div className="space-y-1">
+                            <div className="w-full h-2 rounded-full bg-[#E7E5E4] overflow-hidden">
+                                <div
+                                    className="h-full rounded-full transition-all duration-300"
+                                    style={{
+                                        width: `${pct}%`,
+                                        background: pct === 100 ? '#0F766E' : '#D97706',
+                                    }}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] font-medium text-[#6B665F]">
+                                <span>Official Connect 2 Souls Devotional Manual</span>
+                                <span>{completedLessons} of {totalLessons} lessons completed</span>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Mobile tab switcher */}
-                    <div className="sm:hidden flex border-b border-gray-100 shrink-0">
+                    <div className="sm:hidden flex border-b border-[#E7E5E4] bg-white shrink-0">
                         <button
+                            type="button"
                             onClick={() => setMobileTab('modules')}
-                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'modules' ? 'text-[#D97706] border-b-2 border-[#D97706]' : 'text-gray-400'}`}
+                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'modules' ? 'text-[#D97706] border-b-2 border-[#D97706]' : 'text-[#6B665F]'
+                                }`}
                         >
                             Modules
                         </button>
                         <button
+                            type="button"
                             onClick={() => setMobileTab('details')}
-                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'details' ? 'text-[#D97706] border-b-2 border-[#D97706]' : 'text-gray-400'}`}
+                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'details' ? 'text-[#D97706] border-b-2 border-[#D97706]' : 'text-[#6B665F]'
+                                }`}
                         >
-                            Details
+                            Lesson Details
                         </button>
                     </div>
 
-                    {/* Mobile: single panel */}
-                    <div className="sm:hidden flex flex-col flex-1 overflow-hidden">
-                        {mobileTab === 'modules' ? (
-                            <>
-                                {moduleTree}
-                                <div className="px-4 py-3 border-t border-gray-100 shrink-0">
-                                    <button
-                                        onClick={markModuleComplete}
-                                        className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white rounded-xl transition-colors"
-                                        style={{ background: '#D97706' }}
-                                    >
-                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                                        Mark as Completed
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {detailPanel}
-                                <div className="px-4 py-3 border-t border-gray-100 flex gap-3 shrink-0">
-                                    <button
-                                        onClick={handleSave}
-                                        className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors"
-                                        style={{ background: saved ? '#22c55e' : '#D97706' }}
-                                    >
-                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                                        {saved ? 'Saved!' : 'Save Changes'}
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                    {/* Mobile body */}
+                    <div className="sm:hidden flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
+                        {mobileTab === 'modules' ? moduleTree : detailPanel}
                     </div>
 
-                    {/* Desktop: two-panel side by side */}
-                    <div className="hidden sm:flex flex-1 overflow-hidden">
-                        {/* Left: Module tree */}
-                        <div className="w-[42%] border-r border-gray-100 flex flex-col overflow-hidden">
+                    {/* Desktop body: two independent scrollable panes */}
+                    <div className="hidden sm:flex flex-1 min-h-0 overflow-hidden bg-white">
+                        <div className="w-[42%] min-w-0 border-r border-[#E7E5E4] flex flex-col min-h-0">
                             {moduleTree}
-                            <div className="px-5 py-4 border-t border-gray-100 shrink-0">
-                                <button
-                                    onClick={markModuleComplete}
-                                    className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white rounded-xl transition-colors"
-                                    style={{ background: '#D97706' }}
-                                >
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                                    Mark as Completed
-                                </button>
-                            </div>
                         </div>
-                        {/* Right: Lesson detail */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-1 min-w-0 flex flex-col min-h-0">
                             {detailPanel}
-                            <div className="px-7 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
-                                <button className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 border border-gray-200 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                                    Add Notes
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    className="flex items-center gap-1.5 text-sm font-semibold text-white px-6 py-2.5 rounded-xl transition-colors"
-                                    style={{ background: saved ? '#22c55e' : '#D97706' }}
-                                >
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                                    {saved ? 'Saved!' : 'Save Changes'}
-                                </button>
-                            </div>
                         </div>
+                    </div>
+
+                    {/* Footer: Single Save Changes CTA on bottom-right */}
+                    <div className="px-5 sm:px-7 py-3.5 border-t border-[#E7E5E4] bg-[#FAF8F5] flex items-center justify-end shrink-0">
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-white px-6 py-2.5 rounded-xl transition-colors shadow-sm"
+                            style={{ background: saved ? '#0F766E' : '#D97706' }}
+                        >
+                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                            </svg>
+                            {saved ? 'Saved!' : 'Save Changes'}
+                        </button>
                     </div>
                 </div>
             </div>

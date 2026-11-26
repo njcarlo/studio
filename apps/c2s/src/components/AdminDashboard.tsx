@@ -2,6 +2,7 @@
 
 import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
+import { useConfirm } from '@/lib/confirm-context';
 import TransferDepartmentModal, { type TransferDepartmentResult } from '@/components/TransferDepartmentModal';
 import AddMenteeModal from '@/components/AddMenteeModal';
 import type { Mentee } from '@/lib/data';
@@ -156,16 +157,15 @@ function WorkerDetailPanel({
     onSave: (updated: AdminWorker) => void;
     onOpenTransfer?: (worker: AdminWorker) => void;
 }) {
+    const { confirmAction } = useConfirm();
     const [activeTab, setActiveTab] = useState<'info' | 'permissions'>('info');
 
     // Editable draft state
     const [draftRole, setDraftRole] = useState<AdminWorker['c2sRole']>(worker.c2sRole);
-    const [draftStatus, setDraftStatus] = useState<AdminWorker['status']>(worker.status);
     const [draftPerms, setDraftPerms] = useState<string[]>([...worker.permissions]);
     const [editingRole, setEditingRole] = useState(false);
     const [saved, setSaved] = useState(false);
     const [applyingTemplate, setApplyingTemplate] = useState(false);
-    const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
     const [selectedTemplates, setSelectedTemplates] = useState<string[]>(() => {
         // Pre-select the template matching the worker's current role
         const match = ROLE_TEMPLATES.find(rt =>
@@ -180,7 +180,6 @@ function WorkerDetailPanel({
     const permGroups = [...new Set(C2S_PERMISSIONS.map(p => p.group))];
     const hasChanges =
         draftRole !== worker.c2sRole ||
-        draftStatus !== worker.status ||
         JSON.stringify([...draftPerms].sort()) !== JSON.stringify([...worker.permissions].sort());
 
     function togglePerm(key: string) {
@@ -204,15 +203,22 @@ function WorkerDetailPanel({
     }
 
     function handleSave() {
-        const updated: AdminWorker = {
-            ...worker,
-            c2sRole: draftRole,
-            status: draftStatus,
-            permissions: draftPerms,
-        };
-        onSave(updated);
-        setSaved(true);
-        setTimeout(() => { setSaved(false); }, 1800);
+        if (!hasChanges) return;
+        confirmAction({
+            title: 'Save Worker Changes?',
+            description: `Apply the updated role and permission settings for ${worker.name}?`,
+            confirmLabel: 'Save Changes',
+            onConfirm: () => {
+                const updated: AdminWorker = {
+                    ...worker,
+                    c2sRole: draftRole,
+                    permissions: draftPerms,
+                };
+                onSave(updated);
+                setSaved(true);
+                setTimeout(() => { setSaved(false); }, 1800);
+            },
+        });
     }
 
     function handleRoleSelect(role: AdminWorker['c2sRole']) {
@@ -284,8 +290,8 @@ function WorkerDetailPanel({
                                         {ROLE_LABEL[draftRole]}
                                     </span>
                                 )}
-                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full text-white ${draftStatus === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>
-                                    {draftStatus}
+                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full text-white ${worker.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>
+                                    {worker.status}
                                 </span>
                                 <span className={`text-[11px] font-bold px-3 py-1 rounded-full text-white ${worker.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : worker.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>
                                     Worker ID: {worker.workerIdStatus}
@@ -421,52 +427,32 @@ function WorkerDetailPanel({
                                 )}
                             </section>
 
-                            {/* ── Activate / Deactivate ── */}
+                            {/* ── Read-only Account Status Indicator ── */}
                             <section className="rounded-xl border border-gray-100 overflow-hidden">
                                 <div className="px-4 py-3" style={{ background: 'var(--bg-subtle)' }}>
                                     <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Account Status</p>
                                 </div>
-                                <div className="px-4 py-3 flex items-center justify-between">
+                                <div className="px-4 py-3 flex items-center justify-between gap-3">
                                     <div>
                                         <p className="text-sm font-semibold text-gray-900">
-                                            {draftStatus === 'Active' ? 'Worker is Active' : 'Worker is Inactive'}
+                                            {worker.status === 'Active' ? 'Worker is Active' : 'Worker is Inactive'}
                                         </p>
                                         <p className="text-[11px] text-gray-400 mt-0.5">
-                                            {draftStatus === 'Active'
-                                                ? 'Can log in and access C2S features based on role'
-                                                : 'Access revoked — cannot log in'}
+                                            {worker.status === 'Active'
+                                                ? 'Can log in and access C2S features based on assigned role & permissions'
+                                                : 'Account status is managed centrally'}
                                         </p>
                                     </div>
-                                    <button
-                                        onClick={() => draftStatus === 'Active' ? setShowDeactivateConfirm(true) : setDraftStatus('Active')}
-                                        className={`ml-4 shrink-0 text-xs font-bold px-4 py-2 rounded-xl border transition-colors ${draftStatus === 'Active'
-                                            ? 'border-red-200 text-red-600 hover:bg-red-50'
-                                            : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
-                                        {draftStatus === 'Active' ? 'Deactivate' : 'Activate'}
-                                    </button>
+                                    <span
+                                        data-pill="true"
+                                        className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${worker.status === 'Active'
+                                            ? 'bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]'
+                                            : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                                    >
+                                        {worker.status}
+                                    </span>
                                 </div>
                             </section>
-
-                            {/* Worker ID approval */}
-                            {worker.workerIdStatus === 'Pending' && (
-                                <section className="rounded-xl border border-[#fef9c3] bg-[#fffbeb] overflow-hidden">
-                                    <div className="px-4 py-3 flex items-start gap-3">
-                                        <svg className="w-4 h-4 text-[#d97706] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
-                                        <div className="flex-1">
-                                            <p className="text-xs font-bold text-[#92400e]">Worker ID Request Pending</p>
-                                            <p className="text-[11px] text-[#92400e] mt-0.5">Review and approve or reject this worker's ID request.</p>
-                                        </div>
-                                    </div>
-                                    <div className="px-4 pb-3 flex gap-2">
-                                        <button className="flex-1 text-xs font-bold text-white py-2 rounded-lg" style={{ background: '#0284C7' }}>
-                                            Approve ID
-                                        </button>
-                                        <button className="flex-1 text-xs font-bold text-white py-2 rounded-lg" style={{ background: '#D97706' }}>
-                                            Reject ID
-                                        </button>
-                                    </div>
-                                </section>
-                            )}
                         </div>
                     )}
 
@@ -572,52 +558,54 @@ function WorkerDetailPanel({
                         Cancel
                     </button>
                     <button
+                        type="button"
+                        disabled={!hasChanges}
                         onClick={handleSave}
-                        className={`flex-1 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors ${!hasChanges ? 'opacity-60' : ''}`}
+                        className={`flex-1 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors ${!hasChanges ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                         style={{ background: saved ? '#22c55e' : '#D97706' }}>
                         {saved ? '✓ Saved!' : 'Save Changes'}
                     </button>
                 </div>
-
-                {/* Deactivation confirmation modal */}
-                {showDeactivateConfirm && (
-                    <>
-                        <div className="fixed inset-0 z-[9999] bg-black/50" />
-                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                        <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-900">Deactivate Worker?</h3>
-                                        <p className="text-xs text-gray-400 mt-0.5">This will revoke access for {worker.name}</p>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-600 mb-5 leading-relaxed">
-                                    Deactivating this worker will immediately revoke their login access and all C2S features. This action can be reversed by reactivating the account.
-                                </p>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setShowDeactivateConfirm(false)}
-                                        className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-                                        Cancel
-                                    </button>
-                                    <button onClick={() => { setDraftStatus('Inactive'); setShowDeactivateConfirm(false); }}
-                                        className="flex-1 text-sm font-semibold text-white py-2.5 rounded-xl bg-red-600 hover:bg-red-700 transition-colors">
-                                        Deactivate
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
             </div>
         </>
     );
 }
 
+// ─── Shared C2S Home Applications State ───────────────────────────────────────
+type HomeGroupStatus = 'Pending' | 'Approved' | 'Recommended' | 'Rejected';
+
+interface AdminHomeGroup {
+    id: string;
+    name: string;
+    barangay: string;
+    schedule: string;
+    potential: number;
+    coordinator: string;
+    submitted: string;
+    status: HomeGroupStatus;
+}
+
+const INITIAL_HOME_GROUPS: AdminHomeGroup[] = [
+    { id: 'hg1', name: 'Santos Family Home', barangay: 'Burol', schedule: 'Wed 7:00 PM', potential: 6, coordinator: 'Rosa Castillo', submitted: 'Aug 10, 2026', status: 'Pending' },
+    { id: 'hg2', name: 'Villanueva Home Group', barangay: 'Paliparan III', schedule: 'Sat 4:00 PM', potential: 5, coordinator: 'Ben Macaraeg', submitted: 'Aug 11, 2026', status: 'Pending' },
+    { id: 'hg3', name: 'Reyes Household', barangay: 'Sampaloc I', schedule: 'Fri 7:00 PM', potential: 4, coordinator: 'Sofia Aguila', submitted: 'Aug 9, 2026', status: 'Recommended' },
+    { id: 'hg4', name: 'Cruz Home Fellowship', barangay: 'Langkaan I', schedule: 'Thu 7:00 PM', potential: 7, coordinator: 'Patricia Bautista', submitted: 'Aug 7, 2026', status: 'Approved' },
+    { id: 'hg5', name: 'Aquino Family Circle', barangay: 'Salitran III', schedule: 'Sun 4:00 PM', potential: 3, coordinator: 'Ferdinand Ramos', submitted: 'Aug 13, 2026', status: 'Pending' },
+    { id: 'hg6', name: 'Dela Cruz Gatherings', barangay: 'San Agustin I', schedule: 'Tue 7:00 PM', potential: 5, coordinator: 'Maricel Santos', submitted: 'Aug 6, 2026', status: 'Approved' },
+];
+
 // ─── ADMIN DASHBOARD OVERVIEW ────────────────────────────────────────────────
-function DashboardTab() {
+function DashboardTab({
+    homeGroups,
+    onUpdateHomeGroupStatus,
+    onOpenHomeGroupsTab,
+}: {
+    homeGroups: AdminHomeGroup[];
+    onUpdateHomeGroupStatus: (id: string, status: 'Approved' | 'Rejected') => void;
+    onOpenHomeGroupsTab: () => void;
+}) {
+    const { confirmAction } = useConfirm();
+    const [reviewingApp, setReviewingApp] = useState<AdminHomeGroup | null>(null);
 
     /* ── data ── */
     const totalActive = MH_ACTIVE_MENTEES_LIST.length;
@@ -636,19 +624,11 @@ function DashboardTab() {
     const f2fMentees = Math.round(totalActive * (faceToFace / Math.max(totalGroups, 1)));
     const onlineMentees = totalActive - f2fMentees;
 
-    const HOME_GROUPS = [
-        { id: 'hg1', name: 'Santos Family Home', barangay: 'Burol', coordinator: 'Rosa Castillo', submitted: 'Aug 10, 2026', status: 'Pending' as const },
-        { id: 'hg2', name: 'Villanueva Home Group', barangay: 'Paliparan III', coordinator: 'Ben Macaraeg', submitted: 'Aug 11, 2026', status: 'Pending' as const },
-        { id: 'hg3', name: 'Reyes Household', barangay: 'Sampaloc I', coordinator: 'Sofia Aguila', submitted: 'Aug 9, 2026', status: 'Recommended' as const },
-        { id: 'hg4', name: 'Cruz Home Fellowship', barangay: 'Langkaan I', coordinator: 'Patricia Bautista', submitted: 'Aug 7, 2026', status: 'Approved' as const },
-        { id: 'hg5', name: 'Aquino Family Circle', barangay: 'Salitran III', coordinator: 'Ferdinand Ramos', submitted: 'Aug 13, 2026', status: 'Pending' as const },
-        { id: 'hg6', name: 'Dela Cruz Gatherings', barangay: 'San Agustin I', coordinator: 'Maricel Santos', submitted: 'Aug 6, 2026', status: 'Approved' as const },
-    ];
-    const totalHomeGroups = HOME_GROUPS.length;
-    const pendingApps = HOME_GROUPS.filter(h => h.status === 'Pending');
+    const totalHomeGroups = homeGroups.length;
+    const pendingApps = homeGroups.filter(h => h.status === 'Pending');
     const pendingCount = pendingApps.length;
-    const approvedCount = HOME_GROUPS.filter(h => h.status === 'Approved').length;
-    const recommendedCount = HOME_GROUPS.filter(h => h.status === 'Recommended').length;
+    const approvedCount = homeGroups.filter(h => h.status === 'Approved').length;
+    const recommendedCount = homeGroups.filter(h => h.status === 'Recommended').length;
 
     // ── Department donut data — from ORG_MINISTRIES ──────────────────────────
     const DEPT_COLORS: Record<string, string> = {
@@ -1056,7 +1036,11 @@ function DashboardTab() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <button className="text-[11px] font-semibold text-[#D97706] border border-[#c4bbf8] hover:bg-[#FEF3C7] px-3 py-1 rounded-md transition-colors">
+                                            <button
+                                                type="button"
+                                                onClick={() => setReviewingApp(app)}
+                                                className="text-[11px] font-semibold text-[#D97706] border border-[#FDE68A] hover:bg-[#FEF3C7] px-3 py-1 rounded-md transition-colors cursor-pointer"
+                                            >
                                                 Review
                                             </button>
                                         </td>
@@ -1068,172 +1052,1167 @@ function DashboardTab() {
                 )}
             </div>
 
+            {/* ── Review C2S Home Application Modal ─────────────────────── */}
+            {reviewingApp && (
+                <div
+                    className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4"
+                    onClick={() => setReviewingApp(null)}
+                >
+                    <div
+                        className="bg-white rounded-2xl border border-gray-100 shadow-2xl w-full max-w-md overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#D97706]">C2S Home Application</p>
+                                <h3 className="text-base font-bold text-gray-900 mt-0.5">{reviewingApp.name}</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setReviewingApp(null)}
+                                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg transition-colors"
+                                aria-label="Close review modal"
+                            >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
+                                <div className="divide-y divide-gray-100">
+                                    {[
+                                        { label: 'Barangay', value: reviewingApp.barangay },
+                                        { label: 'Schedule', value: reviewingApp.schedule },
+                                        { label: 'Potential Mentees', value: `${reviewingApp.potential} prospective members` },
+                                        { label: 'Coordinator', value: reviewingApp.coordinator },
+                                        { label: 'Date Submitted', value: reviewingApp.submitted },
+                                    ].map(row => (
+                                        <div key={row.label} className="flex items-center justify-between px-4 py-2.5 gap-3">
+                                            <span className="text-xs text-gray-500">{row.label}</span>
+                                            <span className="text-xs font-semibold text-gray-900 text-right">{row.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setReviewingApp(null);
+                                        onOpenHomeGroupsTab();
+                                    }}
+                                    className="text-xs font-semibold text-[#0284C7] hover:underline"
+                                >
+                                    Open C2S Home Groups →
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const target = reviewingApp;
+                                            confirmAction({
+                                                variant: 'danger',
+                                                title: 'Reject Home Group Application?',
+                                                description: `Reject "${target.name}" submitted by ${target.coordinator}?`,
+                                                confirmLabel: 'Reject',
+                                                onConfirm: () => {
+                                                    onUpdateHomeGroupStatus(target.id, 'Rejected');
+                                                    setReviewingApp(null);
+                                                },
+                                            });
+                                        }}
+                                        className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                        Reject
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const target = reviewingApp;
+                                            confirmAction({
+                                                title: 'Approve Home Group Application?',
+                                                description: `Approve "${target.name}" (${target.barangay}) and list it as an active C2S Home group?`,
+                                                confirmLabel: 'Approve',
+                                                onConfirm: () => {
+                                                    onUpdateHomeGroupStatus(target.id, 'Approved');
+                                                    setReviewingApp(null);
+                                                },
+                                            });
+                                        }}
+                                        className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#D97706] hover:bg-[#B45309] transition-colors"
+                                    >
+                                        Approve
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
 
 
+const DEPT_ACCENT_COLORS: Record<string, string> = {
+    Worship: '#0284C7',
+    Outreach: '#D97706',
+    Relationship: '#DC2626',
+    Discipleship: '#16A34A',
+    Administration: '#1B2432',
+};
+
+type DeptClusterModalState =
+    | { kind: 'dept-head'; ministryId: string; ministryName: string; currentHead: string }
+    | { kind: 'add-cluster'; ministryId: string; ministryName: string }
+    | { kind: 'cluster-head'; ministryId: string; clusterId: string; clusterName: string; roleLabel: string; currentPerson: string }
+    | { kind: 'cluster-coord'; ministryId: string; clusterId: string; clusterName: string; currentPerson: string };
+
+interface DerivedClusterGroup {
+    id: string;
+    name: string;
+    mentorName: string;
+    mentorInitials: string;
+    schedule: string;
+    location: string;
+    members: number;
+    capacity: number;
+    status: 'Open' | 'Full' | 'Closed';
+}
+
+function getClusterGroupsForView(
+    cluster: OrgCluster,
+    mentors: AdminWorker[]
+): DerivedClusterGroup[] {
+    if (cluster.groupCount === 0) return [];
+    const matchedCoord = COORD_GROUPS.filter(
+        (g) =>
+            g.name.toLowerCase().includes(cluster.name.toLowerCase()) ||
+            mentors.some((m) => m.name.toLowerCase() === g.mentor.toLowerCase())
+    );
+    if (matchedCoord.length > 0) {
+        return matchedCoord.map((g) => ({
+            id: g.id,
+            name: g.name,
+            mentorName: g.mentor,
+            mentorInitials: g.mentorInitials,
+            schedule: g.schedule,
+            location: g.satellite ? `${g.barangay} · ${g.satellite}` : g.barangay,
+            members: g.members,
+            capacity: g.capacity,
+            status: g.status,
+        }));
+    }
+
+    const schedules = [
+        'Friday · 7:00 PM',
+        'Saturday · 4:00 PM',
+        'Wednesday · 7:00 PM',
+        'Sunday · 1:30 PM',
+        'Thursday · 7:00 PM',
+    ];
+    const hubs = [
+        'Main Campus',
+        'Burol Main Hub',
+        'Salitran III',
+        'Paliparan III',
+        'San Agustin I',
+    ];
+    const count = Math.min(cluster.groupCount, 5);
+    return Array.from({ length: count }, (_, idx) => {
+        const mentor = mentors[idx % Math.max(mentors.length, 1)];
+        const mentorName = mentor?.name ?? cluster.clusterHead;
+        const mentorInitials = mentor?.initials ?? cluster.clusterHeadInitials;
+        const capacity = 10;
+        const rawMembers = Math.max(1, Math.round(cluster.menteeCount / Math.max(cluster.groupCount, 1)));
+        const members = Math.min(capacity, idx === 0 ? Math.min(capacity, rawMembers + 1) : rawMembers);
+        return {
+            id: `${cluster.id}-grp-${idx + 1}`,
+            name: `${cluster.name} Group ${idx + 1}`,
+            mentorName,
+            mentorInitials,
+            schedule: schedules[idx % schedules.length],
+            location: hubs[idx % hubs.length],
+            members,
+            capacity,
+            status: members >= capacity ? 'Full' : 'Open',
+        };
+    });
+}
+
 function OrgStructureTab({
     workers = ADMIN_WORKERS,
     onTransferWorker,
+    onNavigate,
+    onNotifyAction,
 }: {
     workers?: AdminWorker[];
     onTransferWorker?: (worker: AdminWorker) => void;
+    onNavigate?: (nav: AdminNav) => void;
+    onNotifyAction?: (title: string, desc: string, auditAction?: string, auditTarget?: string) => void;
 }) {
-    const [expandedMinistry, setExpandedMinistry] = useState<string | null>(null);
+    const [ministries, setMinistries] = useState<OrgMinistry[]>(() => ORG_MINISTRIES);
+    const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(() => new Set());
     const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+    const [modalState, setModalState] = useState<DeptClusterModalState | null>(null);
+    const [drawerCluster, setDrawerCluster] = useState<{
+        ministryName: string;
+        deptColor: string;
+        unitHeadLabel: string;
+        cluster: OrgCluster;
+    } | null>(null);
+
+    // Modal form state
+    const [draftPerson, setDraftPerson] = useState('');
+    const [newClusterName, setNewClusterName] = useState('');
+    const [newClusterHead, setNewClusterHead] = useState('');
+    const [newClusterCoord, setNewClusterCoord] = useState('');
+
+    const q = searchQuery.trim().toLowerCase();
+
+    function toggleMinistry(id: string) {
+        setExpandedMinistries((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    function openDeptHeadModal(ministry: OrgMinistry, deptName: string) {
+        setOpenMenuKey(null);
+        setDraftPerson(ministry.head);
+        setModalState({
+            kind: 'dept-head',
+            ministryId: ministry.id,
+            ministryName: deptName,
+            currentHead: ministry.head,
+        });
+    }
+
+    function openAddClusterModal(ministry: OrgMinistry, deptName: string) {
+        setOpenMenuKey(null);
+        setNewClusterName('');
+        setNewClusterHead('');
+        setNewClusterCoord('');
+        setModalState({
+            kind: 'add-cluster',
+            ministryId: ministry.id,
+            ministryName: deptName,
+        });
+    }
+
+    function openClusterLeaderModal(
+        kind: 'cluster-head' | 'cluster-coord',
+        ministryId: string,
+        cluster: OrgCluster,
+        roleLabel: string
+    ) {
+        setOpenMenuKey(null);
+        setDraftPerson(kind === 'cluster-head' ? cluster.clusterHead : cluster.coordinator);
+        setModalState(
+            kind === 'cluster-head'
+                ? { kind, ministryId, clusterId: cluster.id, clusterName: cluster.name, roleLabel, currentPerson: cluster.clusterHead }
+                : { kind, ministryId, clusterId: cluster.id, clusterName: cluster.name, currentPerson: cluster.coordinator }
+        );
+    }
+
+    function handleExportMinistry(ministry: OrgMinistry, deptName: string) {
+        setOpenMenuKey(null);
+        exportToCsv(
+            `c2s-${deptName.toLowerCase()}-roster.csv`,
+            ['Department', 'Department Head', 'Cluster / Ministry', 'Head', 'C2S Coordinator', 'Mentors', 'Mentees', 'Groups'],
+            ministry.clusters.map((c) => [
+                deptName,
+                ministry.head,
+                c.name,
+                c.clusterHead,
+                c.coordinator,
+                c.mentorCount,
+                c.menteeCount,
+                c.groupCount,
+            ])
+        );
+        onNotifyAction?.(
+            `${deptName} Roster Exported`,
+            `Downloaded CSV roster covering ${ministry.clusters.length} units under ${deptName}.`,
+            'Exported Department Roster',
+            deptName
+        );
+    }
+
+    function makeInitials(name: string) {
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 0) return '??';
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    function handleModalSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!modalState) return;
+
+        if (modalState.kind === 'dept-head') {
+            const clean = draftPerson.trim();
+            if (!clean) return;
+            setMinistries((prev) =>
+                prev.map((m) =>
+                    m.id === modalState.ministryId
+                        ? { ...m, head: clean, headInitials: makeInitials(clean) }
+                        : m
+                )
+            );
+            onNotifyAction?.(
+                'Department Head Updated',
+                `${clean} is now assigned as Head of ${modalState.ministryName}.`,
+                'Updated Department Head',
+                `${modalState.ministryName} -> ${clean}`
+            );
+        } else if (modalState.kind === 'add-cluster') {
+            const name = newClusterName.trim();
+            if (!name) return;
+            const head = newClusterHead.trim() || 'TBD Leader';
+            const coord = newClusterCoord.trim() || 'Unassigned';
+            const newCluster: OrgCluster = {
+                id: `cl-${Date.now()}`,
+                name,
+                clusterHead: head,
+                clusterHeadInitials: makeInitials(head),
+                clusterHeadColor: '#1B2432',
+                coordinator: coord,
+                coordinatorInitials: makeInitials(coord),
+                coordinatorColor: '#D97706',
+                mentorCount: 0,
+                menteeCount: 0,
+                groupCount: 0,
+            };
+            setMinistries((prev) =>
+                prev.map((m) =>
+                    m.id === modalState.ministryId
+                        ? { ...m, clusters: [...m.clusters, newCluster] }
+                        : m
+                )
+            );
+            setExpandedMinistries((prev) => new Set(prev).add(modalState.ministryId));
+            onNotifyAction?.(
+                'New Unit Added',
+                `Added "${name}" under ${modalState.ministryName}.`,
+                'Added Ministry Cluster',
+                `${modalState.ministryName} / ${name}`
+            );
+        } else if (modalState.kind === 'cluster-head') {
+            const clean = draftPerson.trim();
+            if (!clean) return;
+            setMinistries((prev) =>
+                prev.map((m) =>
+                    m.id === modalState.ministryId
+                        ? {
+                              ...m,
+                              clusters: m.clusters.map((c) =>
+                                  c.id === modalState.clusterId
+                                      ? { ...c, clusterHead: clean, clusterHeadInitials: makeInitials(clean) }
+                                      : c
+                              ),
+                          }
+                        : m
+                )
+            );
+            onNotifyAction?.(
+                `${modalState.roleLabel} Updated`,
+                `${clean} assigned to ${modalState.clusterName}.`,
+                'Assigned Cluster Head',
+                `${modalState.clusterName} -> ${clean}`
+            );
+        } else if (modalState.kind === 'cluster-coord') {
+            const clean = draftPerson.trim();
+            if (!clean) return;
+            setMinistries((prev) =>
+                prev.map((m) =>
+                    m.id === modalState.ministryId
+                        ? {
+                              ...m,
+                              clusters: m.clusters.map((c) =>
+                                  c.id === modalState.clusterId
+                                      ? { ...c, coordinator: clean, coordinatorInitials: makeInitials(clean) }
+                                      : c
+                              ),
+                          }
+                        : m
+                )
+            );
+            onNotifyAction?.(
+                'C2S Coordinator Assigned',
+                `${clean} assigned as C2S Coordinator for ${modalState.clusterName}.`,
+                'Assigned C2S Coordinator',
+                `${modalState.clusterName} -> ${clean}`
+            );
+        }
+
+        setModalState(null);
+    }
+
+    const filteredMinistries = ministries
+        .map((ministry) => {
+            const ministryDeptName = ministry.name.replace(' Ministry', '') as Department;
+            const ministryMatchesSearch =
+                !q ||
+                ministryDeptName.toLowerCase().includes(q) ||
+                ministry.name.toLowerCase().includes(q) ||
+                ministry.head.toLowerCase().includes(q);
+
+            const matchingClusters = ministry.clusters.filter((cluster) => {
+                const clusterMentors = workers.filter(
+                    (w) =>
+                        w.cluster === cluster.name ||
+                        (getDepartmentOfWorker(w) === ministryDeptName && w.cluster === cluster.name)
+                );
+                const mentorMatch = clusterMentors.some((w) => w.name.toLowerCase().includes(q));
+                const clusterTextMatch =
+                    cluster.name.toLowerCase().includes(q) ||
+                    cluster.clusterHead.toLowerCase().includes(q) ||
+                    cluster.coordinator.toLowerCase().includes(q) ||
+                    mentorMatch;
+
+                const matchesSearch = !q || ministryMatchesSearch || clusterTextMatch;
+                return matchesSearch;
+            });
+
+            return {
+                ministry,
+                ministryDeptName,
+                matchingClusters,
+                hasDirectClusterMatch:
+                    Boolean(q) &&
+                    ministry.clusters.some((cluster) => {
+                        const clusterMentors = workers.filter(
+                            (w) =>
+                                w.cluster === cluster.name ||
+                                (getDepartmentOfWorker(w) === ministryDeptName && w.cluster === cluster.name)
+                        );
+                        return (
+                            cluster.name.toLowerCase().includes(q) ||
+                            cluster.clusterHead.toLowerCase().includes(q) ||
+                            cluster.coordinator.toLowerCase().includes(q) ||
+                            clusterMentors.some((w) => w.name.toLowerCase().includes(q))
+                        );
+                    }),
+            };
+        })
+        .filter((entry) => entry.matchingClusters.length > 0);
 
     return (
-        <div>
-            <SectionHeader title="Departments" sub="WORDA — all clusters, heads, coordinators, and assigned mentors" />
-            <div className="flex flex-col gap-4">
-                {ORG_MINISTRIES.map(ministry => {
-                    const ministryDeptName = ministry.name.replace(' Ministry', '') as Department;
-                    const unitHeadLabel =
-                        ministryDeptName === 'Administration'
-                            ? 'Section Head'
-                            : ministryDeptName === 'Worship' || ministryDeptName === 'Discipleship'
-                                ? 'Ministry Head'
-                                : 'Cluster Head';
-                    return (
-                        <div key={ministry.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            {/* Ministry header */}
-                            <button
-                                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-                                onClick={() => setExpandedMinistry(prev => prev === ministry.id ? null : ministry.id)}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: ministry.headColor }}>
-                                        {ministryDeptName[0]}
+        <div onClick={() => openMenuKey && setOpenMenuKey(null)}>
+            {/* Inline Quick Action Modal */}
+            {modalState && (
+                <>
+                    <div className="fixed inset-0 z-[9998] bg-black/50" onClick={() => setModalState(null)} />
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setModalState(null)}>
+                        <form
+                            data-no-confirm
+                            onSubmit={handleModalSubmit}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full max-w-md bg-white rounded-2xl border border-[#E7E5E4] p-6 shadow-2xl space-y-4"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 className="text-base font-bold text-[#292524]">
+                                        {modalState.kind === 'dept-head' && `Change Department Head`}
+                                        {modalState.kind === 'add-cluster' && `Add Ministry / Cluster`}
+                                        {modalState.kind === 'cluster-head' && `Assign ${modalState.roleLabel}`}
+                                        {modalState.kind === 'cluster-coord' && `Assign C2S Coordinator`}
+                                    </h3>
+                                    <p className="text-xs text-[#6B665F] mt-0.5">
+                                        {'clusterName' in modalState
+                                            ? `Unit: ${modalState.clusterName}`
+                                            : `Department: ${modalState.ministryName}`}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setModalState(null)}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-[#F5F2EC]"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {modalState.kind === 'add-cluster' ? (
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-[#292524] mb-1">Cluster / Ministry Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={newClusterName}
+                                            onChange={(e) => setNewClusterName(e.target.value)}
+                                            placeholder="e.g. Media & Production"
+                                            className="w-full border border-[#E7E5E4] rounded-xl px-3 py-2 text-sm text-[#292524] bg-white focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7]"
+                                        />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-gray-900 text-base">{ministryDeptName}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">Head: {ministry.head}</p>
+                                        <label className="block text-xs font-semibold text-[#292524] mb-1">Cluster / Ministry Head</label>
+                                        <input
+                                            type="text"
+                                            value={newClusterHead}
+                                            onChange={(e) => setNewClusterHead(e.target.value)}
+                                            placeholder="Full name"
+                                            className="w-full border border-[#E7E5E4] rounded-xl px-3 py-2 text-sm text-[#292524] bg-white focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-[#292524] mb-1">C2S Coordinator</label>
+                                        <input
+                                            type="text"
+                                            value={newClusterCoord}
+                                            onChange={(e) => setNewClusterCoord(e.target.value)}
+                                            placeholder="Full name"
+                                            className="w-full border border-[#E7E5E4] rounded-xl px-3 py-2 text-sm text-[#292524] bg-white focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7]"
+                                        />
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-6 shrink-0">
-                                    <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                                        {[
-                                            { label: 'Workers', value: ministry.totalWorkers, color: '#D97706' },
-                                            { label: 'Mentors', value: ministry.totalMentors, color: '#0284C7' },
-                                            { label: 'Mentees', value: ministry.totalMentees, color: '#D97706' },
-                                            { label: 'Groups', value: ministry.totalGroups, color: '#1971c2' },
-                                        ].map(s => (
-                                            <div key={s.label}>
-                                                <p className="text-lg font-black leading-none" style={{ color: s.color }}>{s.value}</p>
-                                                <p className="text-[9px] text-gray-400">{s.label}</p>
-                                            </div>
-                                        ))}
+                            ) : (
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-[#292524] mb-1">Select Existing Worker (optional)</label>
+                                        <CustomSelect
+                                            value=""
+                                            onChange={(e) => {
+                                                if (e.target.value) setDraftPerson(e.target.value);
+                                            }}
+                                            className="w-full text-sm border border-[#E7E5E4] rounded-xl px-3 py-2 bg-white text-[#292524]"
+                                        >
+                                            <option value="">Choose from active C2S workers...</option>
+                                            {workers.map((w) => (
+                                                <option key={w.id} value={w.name}>
+                                                    {w.name} ({w.ministry})
+                                                </option>
+                                            ))}
+                                        </CustomSelect>
                                     </div>
-                                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedMinistry === ministry.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
-                                </div>
-                            </button>
-
-                            {/* Clusters */}
-                            {expandedMinistry === ministry.id && (
-                                <div className="border-t border-gray-100">
-                                    {ministry.clusters.map((cluster, ci) => {
-                                        const clusterMentors = workers.filter(w =>
-                                            w.cluster === cluster.name ||
-                                            (getDepartmentOfWorker(w) === ministryDeptName && w.cluster === cluster.name)
-                                        );
-
-                                        return (
-                                            <div key={cluster.id} className={`${ci > 0 ? 'border-t border-gray-50 dark:border-[#475569]' : ''}`}>
-                                                <button
-                                                    className="w-full flex items-center gap-4 px-6 py-3.5 text-left transition-colors dark:hover:bg-transparent"
-                                                    onClick={() => setExpandedCluster(prev => prev === cluster.id ? null : cluster.id)}
-                                                >
-                                                    <div className="w-1 h-8 rounded-full ml-4 shrink-0" style={{ background: cluster.clusterHeadColor }} />
-                                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                        <div>
-                                                            <p className="text-sm font-bold text-gray-900">{cluster.name}</p>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ width: '28px', height: '28px', fontSize: '11px', background: cluster.clusterHeadColor, boxShadow: `0 0 0 2px ${cluster.clusterHeadColor}26` }}>{cluster.clusterHeadInitials}</div>
-                                                                <span className="text-xs text-gray-500">{cluster.clusterHead} <span className="text-gray-300">·</span> {unitHeadLabel}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ width: '28px', height: '28px', fontSize: '11px', background: cluster.coordinatorColor, boxShadow: `0 0 0 2px ${cluster.coordinatorColor}26` }}>{cluster.coordinatorInitials}</div>
-                                                            <span className="text-xs text-gray-500">{cluster.coordinator} <span className="text-gray-300">·</span> C2S Coordinator</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-4 text-xs">
-                                                            <span className="text-[#0284C7] font-semibold">{clusterMentors.length || cluster.mentorCount} mentors</span>
-                                                            <span className="text-[#D97706] font-semibold">{cluster.menteeCount} mentees</span>
-                                                            <span className="text-[#1971c2] font-semibold">{cluster.groupCount} groups</span>
-                                                        </div>
-                                                    </div>
-                                                    <svg className={`w-4 h-4 text-gray-300 transition-transform shrink-0 ${expandedCluster === cluster.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
-                                                </button>
-                                                {expandedCluster === cluster.id && (
-                                                    <div className="px-4 sm:px-16 pb-5 flex flex-col gap-4">
-                                                        {/* Leaders Row */}
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {[
-                                                                { label: unitHeadLabel, name: cluster.clusterHead, initials: cluster.clusterHeadInitials, color: cluster.clusterHeadColor, role: unitHeadLabel },
-                                                                { label: 'C2S Coordinator', name: cluster.coordinator, initials: cluster.coordinatorInitials, color: cluster.coordinatorColor, role: 'Coordinator' },
-                                                            ].map(person => (
-                                                                <div key={person.label} className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--bg-subtle)' }}>
-                                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: person.color }}>{person.initials}</div>
-                                                                    <div>
-                                                                        <p className="text-xs font-bold text-gray-900">{person.name}</p>
-                                                                        <p className="text-[10px] text-gray-400">{person.role}</p>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* Assigned Mentors / Workers list in this Cluster */}
-                                                        <div className="rounded-xl border border-gray-100 p-3.5 bg-white shadow-2xs">
-                                                            <div className="flex items-center justify-between mb-2.5">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                                                        Assigned Mentors & Workers ({clusterMentors.length})
-                                                                    </p>
-                                                                    <span className="text-[10px] text-gray-400">in {cluster.name}</span>
-                                                                </div>
-                                                            </div>
-
-                                                            {clusterMentors.length > 0 ? (
-                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                                    {clusterMentors.map(m => (
-                                                                        <div key={m.id} className="rounded-lg p-2.5 border border-gray-100 flex items-center justify-between gap-2 hover:bg-gray-50/70 transition-colors" style={{ background: 'var(--bg-subtle)' }}>
-                                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: m.color }}>
-                                                                                    {m.initials}
-                                                                                </div>
-                                                                                <div className="min-w-0">
-                                                                                    <p className="text-xs font-bold text-gray-900 truncate">{m.name}</p>
-                                                                                    <p className="text-[10px] text-gray-400 truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'}</p>
-                                                                                </div>
-                                                                            </div>
-                                                                            {onTransferWorker && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => onTransferWorker(m)}
-                                                                                    className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-md text-[#D97706] bg-[#FEF3C7] hover:bg-[#FDE68A] transition-colors flex items-center gap-1"
-                                                                                >
-                                                                                    <span>⇄</span> Transfer
-                                                                                </button>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-xs text-gray-400 italic py-1">No mentors currently assigned to this cluster.</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-[#292524] mb-1">Assigned Leader Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={draftPerson}
+                                            onChange={(e) => setDraftPerson(e.target.value)}
+                                            placeholder="Enter full name"
+                                            className="w-full border border-[#E7E5E4] rounded-xl px-3 py-2 text-sm text-[#292524] bg-white focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7]"
+                                        />
+                                    </div>
                                 </div>
                             )}
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E7E5E4]">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalState(null)}
+                                    className="px-4 py-2 rounded-xl border border-[#E7E5E4] text-xs font-semibold text-[#292524] hover:bg-[#F5F2EC]"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-semibold shadow-sm"
+                                >
+                                    Save Assignment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </>
+            )}
+
+            {/* Slide-Over Cluster Mentors & C2S Groups Drawer */}
+            {drawerCluster && (() => {
+                const { cluster, ministryName, deptColor, unitHeadLabel } = drawerCluster;
+                const drawerMentors = workers.filter(
+                    (w) =>
+                        w.cluster === cluster.name ||
+                        (getDepartmentOfWorker(w) === ministryName && w.cluster === cluster.name)
+                );
+                const drawerGroups = getClusterGroupsForView(cluster, drawerMentors);
+
+                return (
+                    <>
+                        <div className="fixed inset-0 z-[9998] bg-black/50" onClick={() => setDrawerCluster(null)} />
+                        <div className="fixed top-0 right-0 bottom-0 z-[9999] w-[520px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden border-l border-[#E7E5E4]">
+                            <div className="px-6 py-5 border-b border-[#E7E5E4] flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-2 h-10 rounded-full shrink-0" style={{ background: deptColor }} />
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#6B665F]">{ministryName}</p>
+                                        <h2 className="text-lg font-bold text-[#292524] truncate">{cluster.name}</h2>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setDrawerCluster(null)}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-[#F5F2EC]"
+                                    aria-label="Close drawer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                                {/* Leadership strip */}
+                                <div className="bg-[#F5F2EC] rounded-xl p-4 border border-[#E7E5E4] grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-full bg-[#1B2432] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                                            {cluster.clusterHeadInitials}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B665F]">{unitHeadLabel}</p>
+                                            <p className="text-xs font-semibold text-[#292524] truncate">{cluster.clusterHead}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-full bg-[#D97706] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                                            {cluster.coordinatorInitials}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B665F]">C2S Coordinator</p>
+                                            <p className="text-xs font-semibold text-[#292524] truncate">{cluster.coordinator}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* C2S Groups list */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2.5">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-[#292524]">
+                                            C2S Groups ({drawerGroups.length})
+                                        </p>
+                                        {onNavigate && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setDrawerCluster(null);
+                                                    onNavigate('groups');
+                                                }}
+                                                className="text-xs font-semibold text-[#D97706] hover:underline"
+                                            >
+                                                Open All C2S Groups →
+                                            </button>
+                                        )}
+                                    </div>
+                                    {drawerGroups.length > 0 ? (
+                                        <div className="space-y-2.5">
+                                            {drawerGroups.map((g) => {
+                                                const pct = Math.min(100, Math.round((g.members / g.capacity) * 100));
+                                                return (
+                                                    <div key={g.id} className="bg-[#F5F2EC] rounded-xl p-3.5 border border-[#E7E5E4] space-y-2">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-bold text-[#292524]">{g.name}</p>
+                                                                <p className="text-xs text-[#6B665F] mt-0.5">Mentor: {g.mentorName}</p>
+                                                            </div>
+                                                            <span
+                                                                data-pill="true"
+                                                                className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${
+                                                                    g.status === 'Open'
+                                                                        ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
+                                                                        : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
+                                                                }`}
+                                                            >
+                                                                {g.status}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6B665F]">
+                                                            <span>Location: <span className="font-medium text-[#292524]">{g.location}</span></span>
+                                                            <span>Schedule: <span className="font-medium text-[#292524]">{g.schedule}</span></span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center justify-between text-[11px] font-semibold text-[#6B665F] mb-1">
+                                                                <span>Capacity</span>
+                                                                <span className="text-[#292524]">{g.members} / {g.capacity} Mentees</span>
+                                                            </div>
+                                                            <div className="w-full h-1.5 rounded-full bg-[#E7E5E4] overflow-hidden">
+                                                                <div className="h-full rounded-full bg-[#D97706]" style={{ width: `${pct}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-[#6B665F] bg-[#F5F2EC] rounded-xl p-4 border border-[#E7E5E4] italic">
+                                            No active C2S groups in this unit yet.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Mentors & Workers */}
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-[#292524] mb-2.5">
+                                        Assigned C2S Mentors & Workers ({drawerMentors.length})
+                                    </p>
+                                    {drawerMentors.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {drawerMentors.map((m) => (
+                                                <div key={m.id} className="rounded-xl p-3 border border-[#E7E5E4] bg-[#F5F2EC] flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="w-7 h-7 rounded-full bg-[#1B2432] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                            {m.initials}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-bold text-[#292524] truncate">{m.name}</p>
+                                                            <p className="text-[11px] text-[#6B665F] truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'}</p>
+                                                        </div>
+                                                    </div>
+                                                    {onTransferWorker && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setDrawerCluster(null);
+                                                                onTransferWorker(m);
+                                                            }}
+                                                            className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] hover:bg-[#FDE68A]"
+                                                        >
+                                                            ⇄ Transfer
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-[#6B665F] italic">No mentors currently assigned to this unit.</p>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    );
-                })}
+                    </>
+                );
+            })()}
+
+            <SectionHeader title="Departments" sub="WORDA — all clusters, heads, coordinators, and assigned mentors" />
+
+            {/* Clean Search Input */}
+            <div className="mb-5">
+                <div className="relative w-full sm:w-96">
+                    <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search department, cluster, head, or mentor..."
+                        className="w-full bg-white border border-[#E7E5E4] rounded-xl pl-10 pr-8 py-2.5 text-sm text-[#292524] placeholder:text-gray-400 focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7] transition-colors shadow-sm"
+                    />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            aria-label="Clear search"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700"
+                        >
+                            ✕
+                        </button>
+                    )}
+                </div>
             </div>
+
+            {filteredMinistries.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-[#E7E5E4] p-10 text-center">
+                    <p className="text-sm font-semibold text-[#292524]">No matching departments or clusters</p>
+                    <p className="text-xs text-[#6B665F] mt-1">Try adjusting your search term.</p>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-4">
+                    {filteredMinistries.map(({ ministry, ministryDeptName, matchingClusters, hasDirectClusterMatch }) => {
+                        const deptColor = DEPT_ACCENT_COLORS[ministryDeptName] ?? ministry.headColor;
+                        const unitHeadLabel =
+                            ministryDeptName === 'Administration'
+                                ? 'Section Head'
+                                : ministryDeptName === 'Worship' || ministryDeptName === 'Discipleship'
+                                    ? 'Ministry Head'
+                                    : 'Cluster Head';
+                        const isMinistryOpen =
+                            expandedMinistries.has(ministry.id) ||
+                            (Boolean(q) && hasDirectClusterMatch);
+                        const deptMenuKey = `dept:${ministry.id}`;
+
+                        return (
+                            <div key={ministry.id} className="bg-white rounded-2xl border border-[#E7E5E4] shadow-sm overflow-visible">
+                                {/* Ministry header */}
+                                <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 hover:bg-[#FAF8F5] transition-colors rounded-t-2xl">
+                                    <button
+                                        type="button"
+                                        className="flex-1 flex items-center justify-between gap-4 text-left min-w-0 cursor-pointer"
+                                        onClick={() => toggleMinistry(ministry.id)}
+                                    >
+                                        <div className="flex items-center gap-3.5 min-w-0">
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: deptColor }}>
+                                                {ministryDeptName[0]}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-[#292524] text-base truncate">{ministryDeptName}</p>
+                                                <p className="text-xs text-[#6B665F] mt-0.5 truncate">Head: {ministry.head}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="hidden sm:grid grid-cols-4 gap-4 text-center shrink-0">
+                                            <div>
+                                                <p className="text-lg font-black leading-none" style={{ color: '#D97706' }}>{ministry.totalWorkers}</p>
+                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Workers</p>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onNavigate) onNavigate('workers');
+                                                        else toggleMinistry(ministry.id);
+                                                    }}
+                                                    title="View C2S Workers / Mentors"
+                                                    className="text-lg font-black leading-none text-[#0284C7] hover:underline cursor-pointer"
+                                                >
+                                                    {ministry.totalMentors}
+                                                </button>
+                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Mentors</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-lg font-black leading-none" style={{ color: '#D97706' }}>{ministry.totalMentees}</p>
+                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Mentees</p>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onNavigate) onNavigate('groups');
+                                                        else toggleMinistry(ministry.id);
+                                                    }}
+                                                    title="View C2S Groups"
+                                                    className="text-lg font-black leading-none text-[#1971c2] hover:underline cursor-pointer"
+                                                >
+                                                    {ministry.totalGroups}
+                                                </button>
+                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Groups</p>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        {/* Department Quick Actions (⋮) */}
+                                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                type="button"
+                                                aria-label={`${ministryDeptName} actions`}
+                                                onClick={() => setOpenMenuKey((prev) => (prev === deptMenuKey ? null : deptMenuKey))}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B665F] hover:text-[#292524] hover:bg-[#F5F2EC] transition-colors cursor-pointer"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                    <circle cx="12" cy="5" r="2" />
+                                                    <circle cx="12" cy="12" r="2" />
+                                                    <circle cx="12" cy="19" r="2" />
+                                                </svg>
+                                            </button>
+                                            {openMenuKey === deptMenuKey && (
+                                                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E7E5E4] dark:border-[#334155] p-1.5 shadow-lg shadow-stone-900/5 z-30">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openDeptHeadModal(ministry, ministryDeptName)}
+                                                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
+                                                    >
+                                                        Change Department Head
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openAddClusterModal(ministry, ministryDeptName)}
+                                                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
+                                                    >
+                                                        Add Cluster / Ministry
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleExportMinistry(ministry, ministryDeptName)}
+                                                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#D97706] hover:bg-[#FEF3C7]/60 transition-colors cursor-pointer"
+                                                    >
+                                                        Export Roster (CSV)
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleMinistry(ministry.id)}
+                                            aria-label={`Toggle ${ministryDeptName}`}
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-[#292524] hover:bg-[#F5F2EC] cursor-pointer"
+                                        >
+                                            <svg className={`w-5 h-5 transition-transform ${isMinistryOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Clusters */}
+                                {isMinistryOpen && (
+                                    <div className="border-t border-[#E7E5E4]">
+                                        {matchingClusters.map((cluster, ci) => {
+                                            const clusterMentors = workers.filter(
+                                                (w) =>
+                                                    w.cluster === cluster.name ||
+                                                    (getDepartmentOfWorker(w) === ministryDeptName && w.cluster === cluster.name)
+                                            );
+                                            const clusterGroups = getClusterGroupsForView(cluster, clusterMentors);
+                                            const clusterMatchesQuery =
+                                                Boolean(q) &&
+                                                (cluster.name.toLowerCase().includes(q) ||
+                                                    cluster.clusterHead.toLowerCase().includes(q) ||
+                                                    cluster.coordinator.toLowerCase().includes(q) ||
+                                                    clusterMentors.some((w) => w.name.toLowerCase().includes(q)));
+                                            const isClusterOpen =
+                                                expandedCluster === cluster.id ||
+                                                (Boolean(q) && clusterMentors.some((w) => w.name.toLowerCase().includes(q)));
+                                            const clusterMenuKey = `cluster:${cluster.id}`;
+
+                                            return (
+                                                <div
+                                                    key={cluster.id}
+                                                    className={`${ci > 0 ? 'border-t border-[#EFECE6]' : ''} ${clusterMatchesQuery ? 'bg-[#FFFBEB]' : ''}`}
+                                                >
+                                                    <div className="flex items-center gap-3 px-5 sm:px-6 py-3.5">
+                                                        {/* Consistent Department Signature Vertical Accent Bar */}
+                                                        <div className="w-1.5 h-9 rounded-full shrink-0" style={{ background: deptColor }} />
+
+                                                        <button
+                                                            type="button"
+                                                            className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left items-center min-w-0 cursor-pointer"
+                                                            onClick={() => setExpandedCluster((prev) => (prev === cluster.id ? null : cluster.id))}
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-sm font-bold text-[#292524] truncate">{cluster.name}</p>
+                                                                    {clusterMatchesQuery && (
+                                                                        <span data-pill="true" className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]">
+                                                                            Match
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1 min-w-0">
+                                                                    <div className="w-6 h-6 rounded-full bg-[#1B2432] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                                        {cluster.clusterHeadInitials}
+                                                                    </div>
+                                                                    <span className="text-xs text-[#6B665F] truncate">
+                                                                        {cluster.clusterHead} <span className="text-gray-300">·</span> {unitHeadLabel}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <div className="w-6 h-6 rounded-full bg-[#D97706] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                                    {cluster.coordinatorInitials}
+                                                                </div>
+                                                                <span className="text-xs text-[#6B665F] truncate">
+                                                                    {cluster.coordinator} <span className="text-gray-300">·</span> C2S Coordinator
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="flex flex-wrap items-center gap-3 text-xs">
+                                                                <span className="text-[#0284C7] font-semibold">{clusterMentors.length || cluster.mentorCount} mentors</span>
+                                                                <span className="text-[#D97706] font-semibold">{cluster.menteeCount} mentees</span>
+                                                                <span className="text-[#1971c2] font-semibold">{cluster.groupCount} groups</span>
+                                                            </div>
+                                                        </button>
+
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            {/* Cluster Quick Actions (⋮) */}
+                                                            <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                                                <button
+                                                                    type="button"
+                                                                    aria-label={`${cluster.name} quick actions`}
+                                                                    onClick={() => setOpenMenuKey((prev) => (prev === clusterMenuKey ? null : clusterMenuKey))}
+                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B665F] hover:text-[#292524] hover:bg-[#F5F2EC] transition-colors cursor-pointer"
+                                                                >
+                                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                                        <circle cx="12" cy="5" r="2" />
+                                                                        <circle cx="12" cy="12" r="2" />
+                                                                        <circle cx="12" cy="19" r="2" />
+                                                                    </svg>
+                                                                </button>
+                                                                {openMenuKey === clusterMenuKey && (
+                                                                    <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E7E5E4] dark:border-[#334155] p-1.5 shadow-lg shadow-stone-900/5 z-30">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openClusterLeaderModal('cluster-head', ministry.id, cluster, unitHeadLabel)}
+                                                                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
+                                                                        >
+                                                                            Change {unitHeadLabel}
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openClusterLeaderModal('cluster-coord', ministry.id, cluster, 'C2S Coordinator')}
+                                                                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
+                                                                        >
+                                                                            Assign C2S Coordinator
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setOpenMenuKey(null);
+                                                                                setDrawerCluster({ ministryName: ministryDeptName, deptColor, unitHeadLabel, cluster });
+                                                                            }}
+                                                                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#D97706] hover:bg-[#FEF3C7]/60 transition-colors cursor-pointer"
+                                                                        >
+                                                                            Manage Groups & Mentors
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Expand ${cluster.name}`}
+                                                                onClick={() => setExpandedCluster((prev) => (prev === cluster.id ? null : cluster.id))}
+                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-[#292524] hover:bg-[#F5F2EC] cursor-pointer"
+                                                            >
+                                                                <svg className={`w-4 h-4 transition-transform ${isClusterOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 3rd-Level Drill-Down: Mentors & C2S Groups */}
+                                                    {isClusterOpen && (
+                                                        <div className="px-4 sm:px-14 pb-5 pt-1 flex flex-col gap-4">
+                                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                <p className="text-xs font-semibold text-[#6B665F]">
+                                                                    Drill-down for <span className="font-bold text-[#292524]">{cluster.name}</span>
+                                                                </p>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setDrawerCluster({ ministryName: ministryDeptName, deptColor, unitHeadLabel, cluster })}
+                                                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#D97706] hover:text-[#B45309] cursor-pointer"
+                                                                >
+                                                                    Open Slide-Over View →
+                                                                </button>
+                                                            </div>
+
+                                                            {/* C2S Groups under this Cluster */}
+                                                            <div className="rounded-xl border border-[#E7E5E4] p-4 bg-[#F5F2EC] space-y-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-xs font-bold text-[#292524] uppercase tracking-wider">
+                                                                        C2S Groups ({clusterGroups.length})
+                                                                    </p>
+                                                                    {cluster.groupCount === 0 && (
+                                                                        <span data-pill="true" className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]">
+                                                                            Needs Setup
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {clusterGroups.length > 0 ? (
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                        {clusterGroups.map((grp) => {
+                                                                            const fillPct = Math.min(100, Math.round((grp.members / grp.capacity) * 100));
+                                                                            return (
+                                                                                <div key={grp.id} className="bg-white rounded-xl p-3.5 border border-[#E7E5E4] space-y-2">
+                                                                                    <div className="flex items-start justify-between gap-2">
+                                                                                        <div className="min-w-0">
+                                                                                            <p className="text-xs font-bold text-[#292524] truncate">{grp.name}</p>
+                                                                                            <p className="text-[11px] text-[#6B665F] truncate">Mentor: {grp.mentorName}</p>
+                                                                                        </div>
+                                                                                        <span
+                                                                                            data-pill="true"
+                                                                                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${
+                                                                                                grp.status === 'Open'
+                                                                                                    ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
+                                                                                                    : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
+                                                                                            }`}
+                                                                                        >
+                                                                                            {grp.status}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div className="text-[11px] text-[#6B665F] space-y-0.5">
+                                                                                        <p>Location: <span className="font-medium text-[#292524]">{grp.location}</span></p>
+                                                                                        <p>Schedule: <span className="font-medium text-[#292524]">{grp.schedule}</span></p>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="flex items-center justify-between text-[11px] font-semibold text-[#6B665F] mb-1">
+                                                                                            <span>Mentees</span>
+                                                                                            <span className="text-[#292524]">{grp.members} / {grp.capacity}</span>
+                                                                                        </div>
+                                                                                        <div className="w-full h-1.5 rounded-full bg-[#E7E5E4] overflow-hidden">
+                                                                                            <div className="h-full rounded-full bg-[#D97706]" style={{ width: `${fillPct}%` }} />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-xs text-[#6B665F] italic">
+                                                                        No C2S groups launched in {cluster.name} yet.
+                                                                    </p>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Assigned Mentors / Workers */}
+                                                            <div className="rounded-xl border border-[#E7E5E4] p-3.5 bg-white">
+                                                                <p className="text-xs font-bold text-[#292524] uppercase tracking-wider mb-2.5">
+                                                                    Assigned C2S Mentors & Workers ({clusterMentors.length})
+                                                                </p>
+
+                                                                {clusterMentors.length > 0 ? (
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        {clusterMentors.map((m) => {
+                                                                            const mentorMatched = Boolean(q) && m.name.toLowerCase().includes(q);
+                                                                            return (
+                                                                                <div
+                                                                                    key={m.id}
+                                                                                    className={`rounded-xl p-2.5 border flex items-center justify-between gap-2 transition-colors ${
+                                                                                        mentorMatched
+                                                                                            ? 'bg-[#FFFBEB] border-[#FDE68A]'
+                                                                                            : 'bg-[#F5F2EC] border-[#E7E5E4]'
+                                                                                    }`}
+                                                                                >
+                                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: m.color }}>
+                                                                                            {m.initials}
+                                                                                        </div>
+                                                                                        <div className="min-w-0">
+                                                                                            <p className="text-xs font-bold text-[#292524] truncate">{m.name}</p>
+                                                                                            <p className="text-[10px] text-[#6B665F] truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    {onTransferWorker && (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => onTransferWorker(m)}
+                                                                                            className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg text-[#B45309] bg-[#FEF3C7] hover:bg-[#FDE68A] border border-[#FDE68A] transition-colors flex items-center gap-1 cursor-pointer"
+                                                                                        >
+                                                                                            <span>⇄</span> Transfer
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-xs text-[#6B665F] italic py-1">No mentors currently assigned to this unit.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
@@ -1251,7 +2230,6 @@ function WorkersTab({
     const [search, setSearch] = useState('');
     const [deptFilter, setDeptFilter] = useState('All');
     const [roleFilter, setRoleFilter] = useState('All');
-    const [statusFilter, setStatusFilter] = useState('All');
     const [viewingWorker, setViewingWorker] = useState<AdminWorker | null>(null);
 
     const roleMap: Record<string, string> = {
@@ -1266,12 +2244,11 @@ function WorkersTab({
         const ms = search.toLowerCase();
         const deptMatch = deptFilter === 'All' || getDepartmentOfWorker(w) === deptFilter;
         const roleMatch = roleFilter === 'All' || w.c2sRole === roleMap[roleFilter];
-        const statMatch = statusFilter === 'All' || w.status === statusFilter;
         const textMatch = w.name.toLowerCase().includes(ms) ||
             w.email.toLowerCase().includes(ms) ||
             (w.cluster ?? '').toLowerCase().includes(ms) ||
             getDepartmentOfWorker(w).toLowerCase().includes(ms);
-        return deptMatch && roleMatch && statMatch && textMatch;
+        return deptMatch && roleMatch && textMatch;
     });
 
     function handleSave(updated: AdminWorker) {
@@ -1280,7 +2257,6 @@ function WorkersTab({
     }
 
     const activeCount = workers.filter(w => w.status === 'Active').length;
-    const inactiveCount = workers.filter(w => w.status === 'Inactive').length;
     const pendingId = workers.filter(w => w.workerIdStatus === 'Pending').length;
 
     return (
@@ -1299,10 +2275,9 @@ function WorkersTab({
             <SectionHeader title="Workers" sub="All workers with C2S access across ministries and departments." />
 
             {/* Summary */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <StatCard label="Total Workers" value={workers.length} sub="All C2S workers" color="#D97706" icon="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
                 <StatCard label="Active" value={activeCount} sub="Currently active" color="#0284C7" icon="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                <StatCard label="Inactive" value={inactiveCount} sub="Deactivated" color="#9ca3af" icon="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z" />
                 <StatCard label="Pending ID" value={pendingId} sub="Worker ID requests" color="#e67700" icon="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
             </div>
 
@@ -1328,12 +2303,6 @@ function WorkersTab({
                     <option value="Cluster Head">Cluster Head</option>
                     <option value="Coordinator">Coordinator</option>
                     <option value="Mentor">Mentor</option>
-                </CustomSelect>
-                <CustomSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                    className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-700">
-                    <option value="All">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
                 </CustomSelect>
                 <span className="ml-auto text-xs text-gray-400">{filtered.length} worker{filtered.length !== 1 ? 's' : ''}</span>
             </div>
@@ -2006,23 +2975,22 @@ function ActiveMenteesTab() {
 }
 
 // ─── C2S Home Groups Tab ──────────────────────────────────────────────────────
-function C2SHomeTab() {
-    const [filter, setFilter] = useState<'All' | 'Pending' | 'Approved' | 'Recommended'>('All');
+function C2SHomeTab({
+    homeGroups,
+    onUpdateHomeGroupStatus,
+}: {
+    homeGroups: AdminHomeGroup[];
+    onUpdateHomeGroupStatus: (id: string, status: 'Approved' | 'Rejected') => void;
+}) {
+    const [filter, setFilter] = useState<'All' | HomeGroupStatus>('All');
     const [homeSearch, setHomeSearch] = useState('');
     const [confirmAction, setConfirmAction] = useState<{ id: string; action: 'approve' | 'reject'; name: string } | null>(null);
 
-    const homeGroups = [
-        { id: 'hg1', name: 'Santos Family Home', barangay: 'Burol', schedule: 'Wed 7:00 PM', potential: 6, status: 'Approved' as const, coordinator: 'Rosa Castillo', submitted: 'Jul 15, 2026' },
-        { id: 'hg2', name: 'Villanueva Home Group', barangay: 'Paliparan III', schedule: 'Sat 4:00 PM', potential: 5, status: 'Pending' as const, coordinator: 'Ben Macaraeg', submitted: 'Jul 20, 2026' },
-        { id: 'hg3', name: 'Reyes Household', barangay: 'Sampaloc I', schedule: 'Fri 7:00 PM', potential: 4, status: 'Recommended' as const, coordinator: 'Sofia Aguila', submitted: 'Jul 22, 2026' },
-        { id: 'hg4', name: 'Cruz Home Fellowship', barangay: 'Langkaan I', schedule: 'Thu 7:00 PM', potential: 7, status: 'Approved' as const, coordinator: 'Patricia Bautista', submitted: 'Jul 10, 2026' },
-        { id: 'hg5', name: 'Aquino Family Circle', barangay: 'Salitran III', schedule: 'Sun 4:00 PM', potential: 3, status: 'Pending' as const, coordinator: 'Ferdinand Ramos', submitted: 'Jul 25, 2026' },
-        { id: 'hg6', name: 'Dela Cruz Gatherings', barangay: 'San Agustin I', schedule: 'Tue 7:00 PM', potential: 5, status: 'Approved' as const, coordinator: 'Maricel Santos', submitted: 'Jul 12, 2026' },
-    ];
     const STATUS_STYLE: Record<string, string> = {
         'Pending': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
         'Approved': 'bg-[#16a34a] text-white',
         'Recommended': 'bg-[#D97706] text-white',
+        'Rejected': 'bg-red-100 text-red-700 border border-red-200',
     };
     const filtered = homeGroups.filter(h =>
         (filter === 'All' || h.status === filter) &&
@@ -2063,7 +3031,14 @@ function C2SHomeTab() {
                                     className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
                                     Cancel
                                 </button>
-                                <button onClick={() => setConfirmAction(null)}
+                                <button
+                                    onClick={() => {
+                                        onUpdateHomeGroupStatus(
+                                            confirmAction.id,
+                                            confirmAction.action === 'approve' ? 'Approved' : 'Rejected'
+                                        );
+                                        setConfirmAction(null);
+                                    }}
                                     className={`flex-1 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors ${confirmAction.action === 'approve' ? 'bg-[#0284C7] hover:bg-[#0369A1]' : 'bg-red-600 hover:bg-red-700'}`}>
                                     {confirmAction.action === 'approve' ? 'Yes, Approve' : 'Yes, Reject'}
                                 </button>
@@ -2100,6 +3075,7 @@ function C2SHomeTab() {
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Recommended">Recommended</option>
+                    <option value="Rejected">Rejected</option>
                 </CustomSelect>
                 <span className="ml-auto text-xs text-gray-400">{filtered.length} home group{filtered.length !== 1 ? 's' : ''}</span>
             </div>
@@ -2328,8 +3304,8 @@ function ReportsTab() {
                         <div className="px-6 py-4 border-b border-gray-50">
                             <p className="text-sm font-bold text-gray-800">Ministry Performance Report</p>
                         </div>
-                        <div>
-                            <table className="w-full text-xs">
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[540px] text-xs">
                                 <thead className="bg-[#f8f9fc]">
                                     <tr>{['Ministry', 'Mentors', 'Groups', 'Mentees (F2F)', 'Mentees (Online)', 'Total Mentees'].map(h => (
                                         <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
@@ -2891,25 +3867,28 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <h2 className="text-base font-bold text-gray-900 mb-1">Subdivisions</h2>
-                    <p className="text-sm text-gray-400">Manage subdivisions used for C2S group location mapping. {totalSubs} total entries.</p>
+                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
+                        LOCATIONS
+                    </span>
+                    <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Subdivisions</h2>
+                    <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">Manage subdivisions used for C2S group location mapping. {totalSubs} total entries.</p>
                 </div>
 
                 {/* Add new */}
                 <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2.5">
                         <input
                             type="text"
                             value={newSubName}
                             onChange={e => { setNewSubName(e.target.value); if (addError) setAddError(''); }}
                             placeholder="New subdivision name..."
-                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#D97706]'}`}
+                            className={`w-full bg-transparent border rounded-xl px-4 py-2.5 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-[#E2E8F0] dark:border-[#334155] focus:border-[#0D9488] focus:ring-[#0D9488]/20'}`}
                         />
                         <div className="flex items-center gap-2">
                             <CustomSelect
                                 value={newSubBrgy}
                                 onChange={e => { setNewSubBrgy(e.target.value); if (addError) setAddError(''); }}
-                                className={`flex-1 min-w-0 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700 ${addError && !newSubBrgy ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#D97706]'}`}
+                                className={`flex-1 min-w-0 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700 ${addError && !newSubBrgy ? 'border-red-400 focus:ring-red-300' : 'border-[#E2E8F0] focus:ring-[#0D9488]'}`}
                             >
                                 <option value="">Select Barangay</option>
                                 {Object.entries(mergedBarangayData).map(([city, brgys]) => (
@@ -2918,11 +3897,13 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
                                     </optgroup>
                                 ))}
                             </CustomSelect>
-                            <button type="submit" className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#D97706' }}>Add</button>
+                            <button type="submit" className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] transition-colors shrink-0 shadow-sm">Add</button>
                         </div>
                     </div>
                     {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
                 </form>
+
+                <hr className="my-2 border-[#E2E8F0] dark:border-[#334155]" />
 
                 {/* Browse by barangay */}
                 <div className="flex flex-col gap-3">
@@ -3023,34 +4004,39 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <h2 className="text-base font-bold text-gray-900 mb-1">Barangays</h2>
-                    <p className="text-sm text-gray-400">
+                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
+                        TERRITORIES
+                    </span>
+                    <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Barangays</h2>
+                    <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">
                         {cities.map(c => `${c} (${mergedData[c].length})`).join(' · ')}
                     </p>
                 </div>
 
                 {/* Add new */}
                 <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                         <input
                             type="text"
                             value={newBrgyName}
                             onChange={e => { setNewBrgyName(e.target.value); if (addError) setAddError(''); }}
                             placeholder="New barangay name..."
-                            className={`flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#D97706]'}`}
+                            className={`flex-1 min-w-[180px] bg-transparent border rounded-xl px-4 py-2.5 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-[#E2E8F0] dark:border-[#334155] focus:border-[#0D9488] focus:ring-[#0D9488]/20'}`}
                         />
                         <CustomSelect
                             value={newBrgyCity}
                             onChange={e => { setNewBrgyCity(e.target.value); if (addError) setAddError(''); }}
-                            className={`border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700 ${addError && !newBrgyCity ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#D97706]'}`}
+                            className={`border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700 ${addError && !newBrgyCity ? 'border-red-400 focus:ring-red-300' : 'border-[#E2E8F0] focus:ring-[#0D9488]'}`}
                         >
                             <option value="">Select City / Municipality</option>
                             {cities.map(c => <option key={c} value={c}>{c}</option>)}
                         </CustomSelect>
-                        <button type="submit" className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#D97706' }}>Add</button>
+                        <button type="submit" className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] transition-colors shrink-0 shadow-sm">Add</button>
                     </div>
                     {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
                 </form>
+
+                <hr className="my-2 border-[#E2E8F0] dark:border-[#334155]" />
 
                 {/* One block per city — non-clickable header + dropdown */}
                 <div className="flex flex-col gap-4">
@@ -3347,17 +4333,19 @@ function SatellitesSection({ onSave, saved }: { onSave: () => void; saved: boole
 
             <div className="flex flex-col gap-6">
                 {/* Section Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                     <div>
-                        <h2 className="text-base font-bold text-gray-900 mb-0.5">Satellite Churches</h2>
-                        <p className="text-xs text-gray-400">
+                        <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
+                            SATELLITES
+                        </span>
+                        <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Satellite Churches</h2>
+                        <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">
                             Total ({satellites.length}) · Active ({activeSatellites.length}) · Inactive ({satellites.length - activeSatellites.length})
                         </p>
                     </div>
                     <button
                         onClick={openAdd}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white rounded-xl shadow-sm hover:opacity-90 transition-opacity self-start sm:self-auto"
-                        style={{ background: '#D97706' }}
+                        className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] shadow-sm transition-colors self-start sm:self-auto"
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -3365,6 +4353,8 @@ function SatellitesSection({ onSave, saved }: { onSave: () => void; saved: boole
                         Add Satellite
                     </button>
                 </div>
+
+                <hr className="my-1 border-[#E2E8F0] dark:border-[#334155]" />
 
                 {/* Filter and Search Bar */}
                 <div className="flex flex-wrap items-center gap-3">
@@ -3503,8 +4493,11 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <h2 className="text-base font-bold text-gray-900 mb-1">Ministries</h2>
-                    <p className="text-sm text-gray-400">
+                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
+                        STRUCTURE
+                    </span>
+                    <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Ministries</h2>
+                    <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">
                         Add or remove ministries per department. Total: {Object.values(ministries).reduce((s, a) => s + a.length, 0)} ministries
                     </p>
                 </div>
@@ -3646,8 +4639,11 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <h2 className="text-base font-bold text-gray-900 mb-1">Roles</h2>
-                    <p className="text-sm text-gray-400">Add and manage custom roles. New roles appear in Permissions for configuration.</p>
+                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
+                        AUTHORIZATION
+                    </span>
+                    <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Roles</h2>
+                    <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">Add and manage custom roles. New roles appear in Permissions for configuration.</p>
                 </div>
 
                 <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="flex flex-col gap-1.5">
@@ -3657,14 +4653,16 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
                             value={newRoleName}
                             onChange={e => { setNewRoleName(e.target.value); if (addError) setAddError(''); }}
                             placeholder="New role name (e.g. Zone Leader)..."
-                            className={`flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#D97706]'}`}
+                            className={`flex-1 bg-transparent border rounded-xl px-4 py-2.5 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-[#E2E8F0] dark:border-[#334155] focus:border-[#0D9488] focus:ring-[#0D9488]/20'}`}
                         />
-                        <button type="submit" className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#D97706' }}>
+                        <button type="submit" className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] transition-colors shrink-0 shadow-sm">
                             Add Role
                         </button>
                     </div>
                     {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
                 </form>
+
+                <hr className="my-2 border-[#E2E8F0] dark:border-[#334155]" />
 
                 <div className="flex flex-col gap-3">
                     {roles.map(role => (
@@ -3702,8 +4700,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
     const [activeSection, setActiveSection] = useState<'c2s_config' | 'otp' | 'notifications' | 'capacity' | 'labels' | 'rbac' | 'satellites' | 'subdivisions' | 'barangays' | 'roles' | 'ministries'>(initialSection ?? 'c2s_config');
 
     // Local state for settings forms
+    const [defaultGroupType, setDefaultGroupType] = useState<'Community-based' | 'Church-based'>('Community-based');
     const [otpExpiry, setOtpExpiry] = useState(10);
     const [otpLength, setOtpLength] = useState(6);
+    const [otpDelivery, setOtpDelivery] = useState<'SMS' | 'Email' | 'Both'>('SMS');
     const [otpEnabled, setOtpEnabled] = useState(true);
     const [notifEmail, setNotifEmail] = useState(true);
     const [notifInApp, setNotifInApp] = useState(true);
@@ -3732,252 +4732,501 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
         { key: 'ministries', label: 'Ministries' },
     ] as const;
 
+    function renderSysHeading(badge: string, title: string, desc: string) {
+        return (
+            <div>
+                <span
+                    data-pill="true"
+                    className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3"
+                >
+                    {badge}
+                </span>
+                <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">{title}</h2>
+                <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1 leading-relaxed">{desc}</p>
+            </div>
+        );
+    }
+
     return (
-        <div>
+        <div className="w-full">
             <SectionHeader title="System Settings" sub="Configure C2S system behavior, OTP, notifications, and group rules." />
-            <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex flex-col lg:flex-row items-start gap-6">
                 {/* Left nav */}
-                <aside className="lg:w-52 shrink-0 flex flex-col gap-1">
+                <aside className="w-full lg:w-56 shrink-0 flex flex-row lg:flex-col flex-wrap gap-1">
                     {sections.map(s => (
-                        <button key={s.key} onClick={() => setActiveSection(s.key)}
-                            className={`text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${activeSection === s.key ? 'bg-[#D97706] text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                        <button
+                            key={s.key}
+                            type="button"
+                            onClick={() => setActiveSection(s.key)}
+                            className={`text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                                activeSection === s.key
+                                    ? 'bg-[#0D9488] text-white shadow-sm'
+                                    : 'text-gray-500 hover:bg-white/70 dark:hover:bg-white/5 hover:text-[#0F4C45] dark:hover:text-slate-200'
+                            }`}
+                        >
                             {s.label}
                         </button>
                     ))}
                 </aside>
 
-                {/* Right panel */}
-                <div className="flex-1 bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                {/* Full-Width Elevated Main Card */}
+                <div
+                    className="flex-1 w-full bg-white dark:bg-[#1E293B] rounded-[20px] border border-[#E2E8F0] dark:border-[#334155] p-6 sm:p-8"
+                    style={{ boxShadow: '0 10px 28px -6px rgba(15, 76, 69, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.04)' }}
+                >
 
                     {activeSection === 'c2s_config' && (
-                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900 mb-1">C2S Configuration</h2>
-                                <p className="text-sm text-gray-400">Core settings for the Connect2Souls system.</p>
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="w-full">
+                            {renderSysHeading(
+                                'MINISTRY IDENTITY',
+                                'C2S Configuration',
+                                'Core ministry naming, group onboarding rules, and church-wide system defaults.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+                                {[
+                                    { label: 'Ministry Name', value: 'Connect2Souls Outreach Ministry', type: 'text' },
+                                    { label: 'Church Name', value: 'Church of God Dasmariñas', type: 'text' },
+                                    { label: 'Max Preferred Groups', value: '2', type: 'number' },
+                                    { label: 'Mentee Interview Req.', value: 'Required before acceptance', type: 'text' },
+                                ].map(f => (
+                                    <div key={f.label} className="w-full flex flex-col gap-1.5">
+                                        <label className="text-xs font-semibold text-[#0F4C45] dark:text-slate-200">{f.label}</label>
+                                        <input
+                                            type={f.type}
+                                            defaultValue={f.value}
+                                            className="w-full bg-transparent border border-[#E2E8F0] dark:border-[#334155] rounded-xl px-4 py-2.5 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 transition-colors"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                            {[
-                                { label: 'Ministry Name', value: 'Connect2Souls Outreach Ministry', type: 'text' },
-                                { label: 'Church Name', value: 'Church of God Dasmariñas', type: 'text' },
-                                { label: 'Default Group Type', value: 'Community-based', type: 'select', options: ['Community-based', 'Church-based'] },
-                                { label: 'Max Preferred Groups', value: '2', type: 'number' },
-                                { label: 'Mentee Interview Req.', value: 'Required before acceptance', type: 'text' },
-                            ].map(f => (
-                                <div key={f.label} className="flex flex-col gap-1.5">
-                                    <label className="text-sm font-semibold text-gray-700">{f.label}</label>
-                                    {f.type === 'select' ? (
-                                        <CustomSelect defaultValue={f.value} className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-white">
-                                            {f.options?.map(o => <option key={o}>{o}</option>)}
-                                        </CustomSelect>
-                                    ) : (
-                                        <input type={f.type} defaultValue={f.value}
-                                            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
-                                    )}
-                                </div>
-                            ))}
-                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#D97706' }}>
-                                {saved ? '✓ Saved!' : 'Save Configuration'}
-                            </button>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            {renderSysHeading(
+                                'DEFAULT GROUP MODE',
+                                'Default Fellowship Group Type',
+                                'Choose the primary C2S group structure highlighted when onboarding new mentors and clusters.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+                                {([
+                                    {
+                                        key: 'Community-based' as const,
+                                        desc: 'Neighborhood, subdivision, and barangay outreach groups plotted on interactive maps.',
+                                        barA: 'bg-[#0D9488]/30 w-3/4',
+                                        barB: 'bg-[#0F4C45]/15 w-1/2',
+                                    },
+                                    {
+                                        key: 'Church-based' as const,
+                                        desc: 'Satellite-hosted discipleship fellowships anchored on campus schedules.',
+                                        barA: 'bg-[#0D9488]/30 w-2/3',
+                                        barB: 'bg-[#0F4C45]/15 w-3/5',
+                                    },
+                                ]).map((opt) => {
+                                    const selected = defaultGroupType === opt.key;
+                                    return (
+                                        <button
+                                            key={opt.key}
+                                            type="button"
+                                            onClick={() => setDefaultGroupType(opt.key)}
+                                            className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${
+                                                selected
+                                                    ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                                    : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#F0FDFA] dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#2DD4BF] flex items-center justify-center shrink-0">
+                                                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">{opt.key}</p>
+                                                        <p className="text-xs text-[#6B665F] dark:text-slate-400 mt-0.5">{opt.desc}</p>
+                                                    </div>
+                                                </div>
+                                                <span
+                                                    data-pill="true"
+                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                                        selected ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                    }`}
+                                                >
+                                                    ✓
+                                                </span>
+                                            </div>
+                                            <div className="rounded-xl border border-[#E2E8F0] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#0F172A] p-3 space-y-2">
+                                                <div className={`h-2 rounded-full ${opt.barA}`} />
+                                                <div className={`h-1.5 rounded-full ${opt.barB}`} />
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            <div className="flex justify-end">
+                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                    {saved ? '✓ Saved!' : 'Save Configuration'}
+                                </button>
+                            </div>
                         </form>
                     )}
 
                     {activeSection === 'otp' && (
-                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900 mb-1">OTP Settings</h2>
-                                <p className="text-sm text-gray-400">Configure one-time password behavior for worker access.</p>
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="w-full">
+                            {renderSysHeading(
+                                'VERIFICATION',
+                                'OTP Authentication Policy',
+                                'Control whether worker sign-ins require one-time password verification.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+                                {[
+                                    {
+                                        active: otpEnabled,
+                                        title: 'Require OTP Verification',
+                                        desc: 'Enforce one-time verification codes for worker authentication.',
+                                        onClick: () => setOtpEnabled(true),
+                                    },
+                                    {
+                                        active: !otpEnabled,
+                                        title: 'Standard Password Access',
+                                        desc: 'Allow direct Worker ID and password login without OTP prompts.',
+                                        onClick: () => setOtpEnabled(false),
+                                    },
+                                ].map((mode) => (
+                                    <button
+                                        key={mode.title}
+                                        type="button"
+                                        onClick={mode.onClick}
+                                        className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${
+                                            mode.active
+                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-10 h-10 rounded-xl bg-[#F0FDFA] dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#2DD4BF] flex items-center justify-center shrink-0">
+                                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">{mode.title}</p>
+                                                    <p className="text-xs text-[#6B665F] dark:text-slate-400 mt-0.5">{mode.desc}</p>
+                                                </div>
+                                            </div>
+                                            <span
+                                                data-pill="true"
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                                    mode.active ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                }`}
+                                            >
+                                                ✓
+                                            </span>
+                                        </div>
+                                        <div className="rounded-xl border border-[#E2E8F0] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#0F172A] p-3 flex items-center gap-2">
+                                            <span className="h-2 w-8 rounded-full bg-[#0D9488]/40" />
+                                            <span className="h-2 w-8 rounded-full bg-[#0D9488]/25" />
+                                            <span className="h-2 w-8 rounded-full bg-[#0F4C45]/15 dark:bg-slate-600" />
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
-                            <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
-                                <div>
-                                    <p className="text-sm font-semibold text-gray-900">OTP Authentication</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">Require OTP on worker login</p>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            {renderSysHeading(
+                                'PARAMETERS',
+                                'Token Expiry, Length & Delivery',
+                                'Customize OTP code format, validity duration, and dispatch channel.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-semibold text-[#0F4C45] dark:text-slate-200">OTP Expiry (minutes)</label>
+                                    <input
+                                        type="number"
+                                        value={otpExpiry}
+                                        min={1}
+                                        max={60}
+                                        onChange={e => setOtpExpiry(Number(e.target.value))}
+                                        className="w-full bg-transparent border border-[#E2E8F0] dark:border-[#334155] rounded-xl px-4 py-2.5 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+                                    />
                                 </div>
-                                <button type="button" onClick={() => setOtpEnabled(!otpEnabled)}
-                                    className={`w-12 h-6 rounded-full transition-colors relative ${otpEnabled ? 'bg-[#D97706]' : 'bg-gray-300'}`}>
-                                    <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-transform ${otpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-semibold text-[#0F4C45] dark:text-slate-200">OTP Length</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[4, 6, 8].map(n => (
+                                            <button
+                                                type="button"
+                                                key={n}
+                                                onClick={() => setOtpLength(n)}
+                                                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                                                    otpLength === n
+                                                        ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                                                        : 'bg-white dark:bg-[#0F172A] text-[#0F4C45] dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]'
+                                                }`}
+                                            >
+                                                {n} digits
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-semibold text-[#0F4C45] dark:text-slate-200">Delivery Method</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(['SMS', 'Email', 'Both'] as const).map(m => (
+                                            <button
+                                                type="button"
+                                                key={m}
+                                                onClick={() => setOtpDelivery(m)}
+                                                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                                                    otpDelivery === m
+                                                        ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                                                        : 'bg-white dark:bg-[#0F172A] text-[#0F4C45] dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]'
+                                                }`}
+                                            >
+                                                {m}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            <div className="flex justify-end">
+                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                    {saved ? '✓ Saved!' : 'Save OTP Settings'}
                                 </button>
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-gray-700">OTP Expiry (minutes)</label>
-                                <div className="flex items-center gap-3">
-                                    <input type="number" value={otpExpiry} min={1} max={60} onChange={e => setOtpExpiry(Number(e.target.value))}
-                                        className="w-24 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
-                                    <span className="text-sm text-gray-400">minutes until OTP expires</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-gray-700">OTP Length</label>
-                                <div className="flex gap-2">
-                                    {[4, 6, 8].map(n => (
-                                        <button type="button" key={n} onClick={() => setOtpLength(n)}
-                                            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${otpLength === n ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200'}`}>
-                                            {n} digits
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Delivery Method</label>
-                                <div className="flex gap-2">
-                                    {['SMS', 'Email', 'Both'].map(m => (
-                                        <button type="button" key={m} className="px-4 py-2 rounded-xl text-sm font-semibold border bg-white text-gray-500 border-gray-200 hover:border-[#D97706] hover:text-[#D97706] transition-colors">
-                                            {m}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#D97706' }}>
-                                {saved ? '✓ Saved!' : 'Save OTP Settings'}
-                            </button>
                         </form>
                     )}
 
                     {activeSection === 'notifications' && (
-                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900 mb-1">Notification Settings</h2>
-                                <p className="text-sm text-gray-400">Control when and how the system sends alerts.</p>
-                            </div>
-                            {/* Channels */}
-                            <div>
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">Channels</p>
-                                <div className="flex flex-col gap-3">
-                                    {[
-                                        { label: 'Email Notifications', value: notifEmail, setter: setNotifEmail },
-                                        { label: 'In-App Notifications', value: notifInApp, setter: setNotifInApp },
-                                    ].map(c => (
-                                        <div key={c.label} className="flex items-center justify-between p-3.5 rounded-xl border border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
-                                            <p className="text-sm font-semibold text-gray-800">{c.label}</p>
-                                            <button type="button" onClick={() => c.setter(!c.value)}
-                                                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${c.value ? 'bg-[#D97706]' : 'bg-gray-300'}`}>
-                                                <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-transform ${c.value ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            {/* Events */}
-                            <div>
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">Notify on Events</p>
-                                <div className="flex flex-col gap-3">
-                                    {[
-                                        { label: 'Worker ID Requests', desc: 'When a worker submits a Worker ID request', value: notifWorkerID, setter: setNotifWorkerID },
-                                        { label: 'Mentee Assignments', desc: 'When a mentee is assigned to a mentor', value: notifAssignment, setter: setNotifAssignment },
-                                        { label: 'Capacity Alerts', desc: 'When a group reaches 90% or 100% capacity', value: notifCapacity, setter: setNotifCapacity },
-                                    ].map(e => (
-                                        <div key={e.label} className="flex items-center justify-between p-3.5 rounded-xl border border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
-                                            <div>
-                                                <p className="text-sm font-semibold text-gray-800">{e.label}</p>
-                                                <p className="text-xs text-gray-400 mt-0.5">{e.desc}</p>
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="w-full">
+                            {renderSysHeading(
+                                'DELIVERY CHANNELS',
+                                'Notification Channels',
+                                'Select the active communication channels for ministry updates and system alerts.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+                                {[
+                                    {
+                                        label: 'Email Notifications',
+                                        desc: 'Deliver summary alerts and worker approval notices via email.',
+                                        value: notifEmail,
+                                        setter: setNotifEmail,
+                                    },
+                                    {
+                                        label: 'In-App Notifications',
+                                        desc: 'Display real-time notification badges directly in C2S dashboards.',
+                                        value: notifInApp,
+                                        setter: setNotifInApp,
+                                    },
+                                ].map(c => (
+                                    <button
+                                        key={c.label}
+                                        type="button"
+                                        onClick={() => c.setter(!c.value)}
+                                        className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${
+                                            c.value
+                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">{c.label}</p>
+                                                <p className="text-xs text-[#6B665F] dark:text-slate-400 mt-0.5">{c.desc}</p>
                                             </div>
-                                            <button type="button" onClick={() => e.setter(!e.value)}
-                                                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ml-4 ${e.value ? 'bg-[#D97706]' : 'bg-gray-300'}`}>
-                                                <div className={`w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-transform ${e.value ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                                            </button>
+                                            <span
+                                                data-pill="true"
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                                    c.value ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                }`}
+                                            >
+                                                ✓
+                                            </span>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="rounded-xl border border-[#E2E8F0] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#0F172A] p-3 flex items-center gap-2">
+                                            <span className={`w-2 h-2 rounded-full ${c.value ? 'bg-[#0D9488]' : 'bg-slate-300'}`} />
+                                            <span className="h-2 w-28 rounded-full bg-[#0F4C45]/15 dark:bg-slate-600" />
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
-                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#D97706' }}>
-                                {saved ? '✓ Saved!' : 'Save Notification Settings'}
-                            </button>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            {renderSysHeading(
+                                'EVENT TRIGGERS',
+                                'Notify on System Events',
+                                'Choose which operational milestones trigger notifications to coordinators and leaders.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+                                {[
+                                    { label: 'Worker ID Requests', desc: 'When a worker submits a Worker ID request', value: notifWorkerID, setter: setNotifWorkerID },
+                                    { label: 'Mentee Assignments', desc: 'When a mentee is assigned to a mentor', value: notifAssignment, setter: setNotifAssignment },
+                                    { label: 'Capacity Alerts', desc: 'When a group reaches 90% or 100% capacity', value: notifCapacity, setter: setNotifCapacity },
+                                ].map(e => (
+                                    <button
+                                        key={e.label}
+                                        type="button"
+                                        onClick={() => e.setter(!e.value)}
+                                        className={`relative text-left rounded-2xl p-5 transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                                            e.value
+                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                        }`}
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">{e.label}</p>
+                                            <p className="text-xs text-[#6B665F] dark:text-slate-400 mt-1">{e.desc}</p>
+                                        </div>
+                                        <span
+                                            data-pill="true"
+                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                                e.value ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                            }`}
+                                        >
+                                            ✓
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            <div className="flex justify-end">
+                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                    {saved ? '✓ Saved!' : 'Save Notification Settings'}
+                                </button>
+                            </div>
                         </form>
                     )}
 
                     {activeSection === 'capacity' && (
-                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900 mb-1">Group Capacity Settings</h2>
-                                <p className="text-sm text-gray-400">Define default and hard-maximum capacities per group type.</p>
-                            </div>
-                            <div className="flex flex-col gap-4">
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="w-full">
+                            {renderSysHeading(
+                                'GROUP LIMITS',
+                                'Group Capacity Settings',
+                                'Define default and hard-maximum capacities per group type.'
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
                                 {capacityConfigs.map((cfg, i) => (
-                                    <div key={cfg.id} className="p-4 rounded-xl border border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
-                                        <p className="text-sm font-bold text-gray-900 mb-3">{cfg.label}</p>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    <div key={cfg.id} data-settings-card="true" className="p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#0F172A]">
+                                        <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100 mb-3">{cfg.label}</p>
+                                        <div className="grid grid-cols-1 min-[360px]:grid-cols-3 gap-3">
                                             {[
                                                 { label: 'Min', field: 'defaultMin' as const },
                                                 { label: 'Default', field: 'defaultMax' as const },
                                                 { label: 'Hard Max', field: 'hardMax' as const },
                                             ].map(f => (
                                                 <div key={f.label} className="flex flex-col gap-1">
-                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{f.label}</label>
+                                                    <label className="text-[10px] font-bold text-[#6B665F] dark:text-slate-400 uppercase tracking-widest">{f.label}</label>
                                                     <input type="number" value={cfg[f.field]} min={1}
                                                         onChange={e => {
                                                             const updated = [...capacityConfigs];
                                                             updated[i] = { ...cfg, [f.field]: Number(e.target.value) };
                                                             setCapacityConfigs(updated);
                                                         }}
-                                                        className="border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                                                        className="w-full bg-transparent border border-[#E2E8F0] dark:border-[#334155] rounded-xl px-2.5 py-2 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20" />
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#D97706' }}>
-                                {saved ? '✓ Saved!' : 'Save Capacity Settings'}
-                            </button>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            <div className="flex justify-end">
+                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                    {saved ? '✓ Saved!' : 'Save Capacity Settings'}
+                                </button>
+                            </div>
                         </form>
                     )}
 
                     {activeSection === 'labels' && (
-                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="flex flex-col gap-6">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900 mb-1">Status / Label Settings</h2>
-                                <p className="text-sm text-gray-400">Customize status labels used across the C2S system.</p>
-                            </div>
-                            {[
-                                {
-                                    category: 'Potential Mentee Statuses',
-                                    items: ['New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'],
-                                },
-                                {
-                                    category: 'Group Statuses',
-                                    items: ['Open', 'Full', 'Closed'],
-                                },
-                                {
-                                    category: 'Worker Statuses',
-                                    items: ['Active', 'Inactive'],
-                                },
-                                {
-                                    category: 'Home Group Application Statuses',
-                                    items: ['Pending', 'Approved', 'Recommended', 'Rejected'],
-                                },
-                            ].map(cat => (
-                                <div key={cat.category}>
-                                    <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">{cat.category}</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {cat.items.map(item => (
-                                            <div key={item} className="flex items-center gap-2 border border-gray-100 rounded-xl px-3 py-2" style={{ background: 'var(--bg-subtle)' }}>
-                                                <span className="text-sm font-semibold text-gray-800">{item}</span>
-                                                <button type="button" className="text-gray-300 hover:text-gray-500 transition-colors">
-                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>
-                                                </button>
-                                            </div>
-                                        ))}
-                                        <button type="button" className="flex items-center gap-1 bg-white border border-dashed border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-400 hover:border-[#D97706] hover:text-[#D97706] transition-colors">
-                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
-                                            Add
-                                        </button>
+                        <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="w-full">
+                            {renderSysHeading(
+                                'WORKFLOW TAGS',
+                                'Status & Label Settings',
+                                'Customize workflow status labels used across mentoring, group, and application boards.'
+                            )}
+
+                            <div className="space-y-6 mt-6">
+                                {[
+                                    {
+                                        category: 'Potential Mentee Statuses',
+                                        items: ['New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'],
+                                    },
+                                    {
+                                        category: 'Group Statuses',
+                                        items: ['Open', 'Full', 'Closed'],
+                                    },
+                                    {
+                                        category: 'Worker Statuses',
+                                        items: ['Active', 'Inactive'],
+                                    },
+                                    {
+                                        category: 'Home Group Application Statuses',
+                                        items: ['Pending', 'Approved', 'Recommended', 'Rejected'],
+                                    },
+                                ].map((cat, idx) => (
+                                    <div key={cat.category}>
+                                        {idx > 0 && <hr className="mb-6 border-[#E2E8F0] dark:border-[#334155]" />}
+                                        <p className="text-xs font-bold text-[#6B665F] dark:text-slate-400 uppercase tracking-widest mb-3">{cat.category}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {cat.items.map(item => (
+                                                <div key={item} data-settings-card="true" className="flex items-center gap-2 border border-[#E2E8F0] dark:border-[#334155] rounded-xl px-3.5 py-2 bg-[#F8FAFC] dark:bg-[#0F172A]">
+                                                    <span className="text-sm font-semibold text-[#0F4C45] dark:text-slate-200">{item}</span>
+                                                    <button type="button" className="text-gray-400 hover:text-[#0D9488] transition-colors">
+                                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button type="button" className="flex items-center gap-1 bg-transparent border border-dashed border-[#CBD5E1] dark:border-[#475569] rounded-xl px-3.5 py-2 text-sm text-[#6B665F] hover:border-[#0D9488] hover:text-[#0D9488] transition-colors">
+                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+                                                Add
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                            <button type="submit" className="w-full text-sm font-semibold text-white py-3 rounded-xl transition-colors" style={{ background: saved ? '#22c55e' : '#D97706' }}>
-                                {saved ? '✓ Saved!' : 'Save Label Settings'}
-                            </button>
+                                ))}
+                            </div>
+
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
+                            <div className="flex justify-end">
+                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                    {saved ? '✓ Saved!' : 'Save Label Settings'}
+                                </button>
+                            </div>
                         </form>
                     )}
 
                     {activeSection === 'rbac' && (
-                        <div className="flex flex-col gap-6">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900 mb-1">Permissions</h2>
-                                <p className="text-sm text-gray-400">Role templates and the full permission matrix for all C2S roles.</p>
-                            </div>
+                        <div className="w-full">
+                            {renderSysHeading(
+                                'ACCESS CONTROL',
+                                'Permissions & Role Templates',
+                                'Role templates and the full permission matrix for all C2S roles.'
+                            )}
 
                             {/* Role Templates */}
-                            <div>
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">Role Templates</p>
+                            <div className="mt-6">
+                                <p className="text-xs font-bold text-[#6B665F] dark:text-slate-400 uppercase tracking-widest mb-3">Role Templates</p>
                                 <div className="flex flex-col gap-3">
                                     {ROLE_TEMPLATES.map(rt => (
                                         <RoleTemplateRow key={rt.id} rt={rt} />
@@ -3985,22 +5234,24 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                 </div>
                             </div>
 
+                            <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
+
                             {/* Full permission matrix */}
                             <div>
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">All Permissions</p>
+                                <p className="text-xs font-bold text-[#6B665F] dark:text-slate-400 uppercase tracking-widest mb-3">All Permissions</p>
                                 {[...new Set(C2S_PERMISSIONS.map(p => p.group))].map(group => (
                                     <div key={group} className="mb-4">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">{group}</p>
-                                        <div className="rounded-xl border border-gray-100 overflow-hidden">
+                                        <p className="text-xs font-bold text-[#0F766E] dark:text-[#2DD4BF] uppercase tracking-widest mb-2 px-1">{group}</p>
+                                        <div className="rounded-2xl border border-[#E2E8F0] dark:border-[#334155] overflow-hidden">
                                             {C2S_PERMISSIONS.filter(p => p.group === group).map((p, i, arr) => (
-                                                <div key={p.key} className={`flex items-center justify-between px-4 py-2.5 ${i < arr.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                                <div key={p.key} className={`flex items-center justify-between px-4 py-3 ${i < arr.length - 1 ? 'border-b border-[#E2E8F0] dark:border-[#334155]' : ''}`}>
                                                     <div>
-                                                        <p className="text-xs font-mono font-semibold text-gray-800">{p.label}</p>
-                                                        <p className="text-xs text-gray-400">{p.description}</p>
+                                                        <p className="text-xs font-mono font-semibold text-[#0F4C45] dark:text-slate-100">{p.label}</p>
+                                                        <p className="text-xs text-[#6B665F] dark:text-slate-400">{p.description}</p>
                                                     </div>
                                                     <div className="flex gap-1 ml-3 flex-wrap justify-end">
                                                         {ROLE_TEMPLATES.filter(rt => rt.permissions.includes(p.key)).map(rt => (
-                                                            <span key={rt.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: rt.color + '18', color: rt.color }}>
+                                                            <span key={rt.id} data-pill="true" className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: rt.color + '18', color: rt.color }}>
                                                                 {rt.name.split(' ')[0]}
                                                             </span>
                                                         ))}
@@ -4049,8 +5300,36 @@ export default function AdminDashboard() {
 
     // Shared state across tabs
     const [workers, setWorkers] = useState<AdminWorker[]>(ADMIN_WORKERS);
+    const [homeGroups, setHomeGroups] = useState<AdminHomeGroup[]>(INITIAL_HOME_GROUPS);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>(AUDIT_LOGS);
     const [notifications, setNotifications] = useState<AdminNotification[]>(ADMIN_NOTIFICATIONS);
+
+    function handleHomeGroupStatusUpdate(id: string, status: 'Approved' | 'Rejected') {
+        const target = homeGroups.find(h => h.id === id);
+        setHomeGroups(prev => prev.map(h => (h.id === id ? { ...h, status } : h)));
+        if (target) {
+            setAuditLogs(prev => [
+                {
+                    id: `al-${Date.now()}`,
+                    type: 'rbac_change',
+                    actor: 'C2S Admin',
+                    actorInitials: 'CA',
+                    actorColor: '#D97706',
+                    action: status === 'Approved' ? 'Home Group Approved' : 'Home Group Rejected',
+                    target: target.name,
+                    detail: `${target.name} (${target.barangay}) was marked ${status} by C2S Admin.`,
+                    timestamp: 'Just now',
+                    severity: status === 'Approved' ? 'info' : 'warning',
+                },
+                ...prev,
+            ]);
+            setToast({
+                title: `Application ${status}`,
+                desc: `${target.name} has been ${status.toLowerCase()}.`,
+            });
+            setTimeout(() => setToast(null), 4000);
+        }
+    }
 
     // Transfer department modal & toast state
     const [transferringWorker, setTransferringWorker] = useState<AdminWorker | null>(null);
@@ -4229,13 +5508,51 @@ export default function AdminDashboard() {
                         <SettingsPageView section={settingsSection} />
                     ) : (
                         <>
-                            {activeNav === 'dashboard' && <DashboardTab />}
-                            {activeNav === 'org' && <OrgStructureTab workers={workers} onTransferWorker={w => setTransferringWorker(w)} />}
+                            {activeNav === 'dashboard' && (
+                                <DashboardTab
+                                    homeGroups={homeGroups}
+                                    onUpdateHomeGroupStatus={handleHomeGroupStatusUpdate}
+                                    onOpenHomeGroupsTab={() => setActiveNav('c2s_home')}
+                                />
+                            )}
+                            {activeNav === 'org' && (
+                                <OrgStructureTab
+                                    workers={workers}
+                                    onTransferWorker={w => setTransferringWorker(w)}
+                                    onNavigate={(nav) => setActiveNav(nav)}
+                                    onNotifyAction={(title, desc, auditAction, auditTarget) => {
+                                        if (auditAction && auditTarget) {
+                                            setAuditLogs(prev => [
+                                                {
+                                                    id: `al-${Date.now()}`,
+                                                    type: 'rbac_change',
+                                                    actor: 'C2S Admin',
+                                                    actorInitials: 'CA',
+                                                    actorColor: '#D97706',
+                                                    action: auditAction,
+                                                    target: auditTarget,
+                                                    detail: desc,
+                                                    timestamp: 'Just now',
+                                                    severity: 'info',
+                                                },
+                                                ...prev,
+                                            ]);
+                                        }
+                                        setToast({ title, desc });
+                                        setTimeout(() => setToast(null), 4000);
+                                    }}
+                                />
+                            )}
                             {activeNav === 'workers' && <WorkersTab workers={workers} setWorkers={setWorkers} onTransferWorker={w => setTransferringWorker(w)} />}
                             {activeNav === 'groups' && <GroupsTab />}
                             {activeNav === 'potential_mentees' && <PotentialMenteesTab />}
                             {activeNav === 'active_mentees' && <ActiveMenteesTab />}
-                            {activeNav === 'c2s_home' && <C2SHomeTab />}
+                            {activeNav === 'c2s_home' && (
+                                <C2SHomeTab
+                                    homeGroups={homeGroups}
+                                    onUpdateHomeGroupStatus={handleHomeGroupStatusUpdate}
+                                />
+                            )}
                             {activeNav === 'reports' && <ReportsTab />}
                             {activeNav === 'notifications' && <NotificationsTab notifs={notifications} setNotifs={setNotifications} />}
                             {activeNav === 'audit' && <AuditLogsTab logs={auditLogs} />}

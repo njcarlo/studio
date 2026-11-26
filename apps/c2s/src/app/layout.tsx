@@ -27,12 +27,13 @@ export const viewport: Viewport = {
 };
 
 const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('c2s_theme');if(t==='dark'){document.documentElement.classList.add('dark');}else if(t==='light'){document.documentElement.classList.remove('dark');}}catch(e){}})();`;
+const FONT_SIZE_INIT_SCRIPT = `(function(){try{var s=Number(localStorage.getItem('c2s_font_size_v2'));if(!isNaN(s)&&s>=14&&s<=20){document.documentElement.style.fontSize=(s/16*100)+'%';}}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" className={inter.variable} suppressHydrationWarning>
             <head>
-                <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+                <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT + FONT_SIZE_INIT_SCRIPT }} />
             </head>
             <body className={inter.className}>
                 <AuthProvider>

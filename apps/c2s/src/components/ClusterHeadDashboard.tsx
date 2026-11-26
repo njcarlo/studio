@@ -110,15 +110,15 @@ function CoordinatorPanel({ coord, onClose }: { coord: C2SCoordinator; onClose: 
                             ))}
                         </div>
                     </section>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         {[
                             { label: 'Assigned Potential', value: coord.assignedPotential, color: '#D97706' },
                             { label: 'Pending',            value: coord.pendingAssignments, color: '#e67700' },
                             { label: 'Avg Days',           value: coord.avgAssignmentDays,  color: '#0284C7' },
                         ].map(s => (
-                            <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-3 text-center">
+                            <div key={s.label} className="bg-white rounded-xl border border-gray-100 px-2 py-2.5 sm:p-3 text-center">
                                 <p className="text-2xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                                <p className="text-[10px] text-gray-400">{s.label}</p>
+                                <p className="text-[0.75rem] text-gray-400 whitespace-nowrap">{s.label}</p>
                             </div>
                         ))}
                     </div>
@@ -835,15 +835,15 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-1 min-[360px]:grid-cols-3 gap-2">
                                             {[
                                                 { label: 'Assigned',  value: c.assignedPotential, color: '#D97706' },
                                                 { label: 'Pending',   value: c.pendingAssignments, color: '#e67700' },
                                                 { label: 'Avg Days',  value: `${c.avgAssignmentDays}d`, color: '#0284C7' },
                                             ].map(s => (
-                                                <div key={s.label} className="rounded-xl p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+                                                <div key={s.label} className="rounded-xl px-1.5 py-2.5 sm:p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                                                     <p className="text-lg font-black" style={{ color: s.color }}>{s.value}</p>
-                                                    <p className="text-[10px] text-gray-400">{s.label}</p>
+                                                    <p className="text-[0.75rem] text-gray-400 whitespace-nowrap">{s.label}</p>
                                                 </div>
                                             ))}
                                         </div>

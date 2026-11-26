@@ -533,15 +533,15 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                 {[
                                     { label: 'Active Mentees', value: m.activeMentees, color: '#D97706' },
                                     { label: 'Available Slots', value: m.availableSlots, color: m.availableSlots > 0 ? '#D97706' : '#e67700' },
                                     { label: 'Group Capacity', value: m.groupCapacity, color: '#1971c2' },
                                 ].map(s => (
-                                    <div key={s.label} className="rounded-xl p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+                                    <div key={s.label} className="rounded-xl px-2 py-2.5 sm:p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                                         <p className="text-xl font-black leading-none mb-0.5" style={{ color: s.color }}>{s.value}</p>
-                                        <p className="text-[10px] text-gray-400">{s.label}</p>
+                                        <p className="text-[0.75rem] text-gray-400 whitespace-nowrap">{s.label}</p>
                                     </div>
                                 ))}
                             </div>

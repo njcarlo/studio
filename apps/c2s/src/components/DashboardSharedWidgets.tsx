@@ -210,8 +210,8 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-100">
-                <table className="w-full table-fixed">
+            <div className="rounded-xl border border-gray-100 overflow-x-auto">
+                <table className="w-full min-w-[440px] table-fixed">
                     <colgroup>
                         <col className="w-[40%]" />
                         <col className="w-[20%]" />
