@@ -11,11 +11,11 @@ interface Props {
 
 const STATUS_STYLE: Record<string, string> = {
     'Active':         'bg-[#16a34a] text-white',
-    'Pending Review': 'bg-[#b45309] text-white',
+    'Pending Review': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
     'Inactive':       'bg-gray-400 text-white',
 };
 
-const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
+const AVATAR_COLORS = ['#D97706', '#e91e8c', '#0284C7', '#e67700', '#D97706'];
 function avatarColor(name: string) {
     let h = 0;
     for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
@@ -44,7 +44,7 @@ export default function ViewProfileModal({ member, groupName, onClose }: Props) 
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h2 className="text-xl font-black text-gray-900">{member.name}</h2>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#5b50d6] text-white">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#D97706] text-white">
                                         {groupName}
                                     </span>
                                 </div>
@@ -90,12 +90,12 @@ export default function ViewProfileModal({ member, groupName, onClose }: Props) 
                         {/* Overall progress */}
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs text-gray-500">Overall progress</span>
-                            <span className="text-xs font-bold text-[#5b50d6]">{member.progress}%</span>
+                            <span className="text-xs font-bold text-[#D97706]">{member.progress}%</span>
                         </div>
                         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
                             <div
                                 className="h-full rounded-full"
-                                style={{ width: `${member.progress}%`, background: '#5b50d6' }}
+                                style={{ width: `${member.progress}%`, background: '#D97706' }}
                             />
                         </div>
 

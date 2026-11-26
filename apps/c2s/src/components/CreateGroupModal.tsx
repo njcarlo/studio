@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import { SUBDIVISIONS_BY_BARANGAY, BARANGAYS_BY_SATELLITE } from '@/lib/data';
 import { useSatellites } from '@/lib/satellite-context';
@@ -25,7 +26,7 @@ const CONDUCT_OPTIONS = ['Church base','Community base'];
 const MEETING_FORMATS = ['Face to Face', 'Online'];
 const GENDERS     = ['Female','Male','Both'];
 
-const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-[#f8f9fc] w-full';
+const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-[#f8f9fc] w-full';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -38,15 +39,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
     return (
-        <div className="relative">
-            <select value={value} onChange={(e) => onChange(e.target.value)}
-                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700">
-                {options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 10l5 5 5-5z"/>
-            </svg>
-        </div>
+        <CustomSelect value={value} onChange={(e) => onChange(e.target.value)} className="w-full">
+            {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </CustomSelect>
     );
 }
 
@@ -210,22 +205,17 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                                                     No satellite churches available. Ask a C2S Admin to add an active satellite church first.
                                                 </div>
                                             ) : (
-                                                    <div className="relative">
-                                                        <select
-                                                            value={satellite || (activeSatellites[0]?.name ?? '')}
-                                                            onChange={(e) => setSatellite(e.target.value)}
-                                                            className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
-                                                        >
-                                                            {activeSatellites.map((s) => (
-                                                                <option key={s.id} value={s.name}>
-                                                                    {s.name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M7 10l5 5 5-5z"/>
-                                                        </svg>
-                                                    </div>
+                                                    <CustomSelect
+                                                        value={satellite || (activeSatellites[0]?.name ?? '')}
+                                                        onChange={(e) => setSatellite(e.target.value)}
+                                                        className="w-full"
+                                                    >
+                                                        {activeSatellites.map((s) => (
+                                                            <option key={s.id} value={s.name}>
+                                                                {s.name}
+                                                            </option>
+                                                        ))}
+                                                    </CustomSelect>
                                                 )}
                                             </Field>
                                         </div>
@@ -241,63 +231,50 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                                                             No satellite churches available. Ask a C2S Admin to add an active satellite church first.
                                                         </div>
                                                     ) : (
-                                                        <div className="relative">
-                                                            <select
-                                                                value={communitySatellite || (activeSatellites[0]?.name ?? '')}
-                                                                onChange={(e) => handleCommunitySatelliteChange(e.target.value)}
-                                                                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
-                                                            >
-                                                                {activeSatellites.map((s) => (
-                                                                    <option key={s.id} value={s.name}>
-                                                                        {s.name}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M7 10l5 5 5-5z"/>
-                                                            </svg>
-                                                        </div>
+                                                        <CustomSelect
+                                                            value={communitySatellite || (activeSatellites[0]?.name ?? '')}
+                                                            onChange={(e) => handleCommunitySatelliteChange(e.target.value)}
+                                                            className="w-full"
+                                                        >
+                                                            {activeSatellites.map((s) => (
+                                                                <option key={s.id} value={s.name}>
+                                                                    {s.name}
+                                                                </option>
+                                                            ))}
+                                                        </CustomSelect>
                                                     )}
                                             </Field>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="Barangay">
-                                                <div className="relative">
-                                                    <select
-                                                        value={barangay}
-                                                        onChange={(e) => handleBarangayChange(e.target.value)}
-                                                        className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
-                                                    >
-                                                        <option value="">— Select barangay —</option>
-                                                        {uniqueBarangays.map((b) => (
-                                                            <option key={b} value={b}>{b}</option>
-                                                        ))}
-                                                    </select>
-                                                    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                                </div>
+                                                <CustomSelect
+                                                    value={barangay}
+                                                    onChange={(e) => handleBarangayChange(e.target.value)}
+                                                    className="w-full"
+                                                >
+                                                    <option value="">— Select barangay —</option>
+                                                    {uniqueBarangays.map((b) => (
+                                                        <option key={b} value={b}>{b}</option>
+                                                    ))}
+                                                </CustomSelect>
                                             </Field>
                                         </div>
                                         <Field label="Subdivision/Village">
-                                            <div className="relative">
-                                                <select
-                                                    value={subdivision}
-                                                    onChange={(e) => {
-                                                        setSubdivision(e.target.value);
-                                                        if (e.target.value !== 'Other') setCustomSubdivision('');
-                                                    }}
-                                                    disabled={!barangay}
-                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700 disabled:opacity-50"
-                                                >
-                                                    <option value="">— Select subdivision —</option>
-                                                    {subdivisionOptions.map((s) => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M7 10l5 5 5-5z"/>
-                                                </svg>
-                                            </div>
+                                            <CustomSelect
+                                                value={subdivision}
+                                                onChange={(e) => {
+                                                    setSubdivision(e.target.value);
+                                                    if (e.target.value !== 'Other') setCustomSubdivision('');
+                                                }}
+                                                disabled={!barangay}
+                                                className="w-full"
+                                            >
+                                                <option value="">— Select subdivision —</option>
+                                                {subdivisionOptions.map((s) => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                                <option value="Other">Other</option>
+                                            </CustomSelect>
                                             {isOther && (
                                                 <input
                                                     type="text"
@@ -336,7 +313,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                         </button>
                         <button onClick={handleCreate} disabled={!name.trim() || activeSatellites.length === 0}
                             className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ background: '#5b50d6' }}>
+                            style={{ background: '#D97706' }}>
                             Create Group
                         </button>
                     </div>

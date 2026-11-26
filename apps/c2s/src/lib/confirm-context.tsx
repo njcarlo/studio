@@ -116,8 +116,16 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             const target = event.target;
             if (!(target instanceof HTMLFormElement)) return;
 
-            // Skip opted-out forms or forms rendered inside ConfirmModal itself
-            if (target.hasAttribute('data-no-confirm') || target.closest('[data-confirm-modal="true"]')) {
+            const submitter = event.submitter instanceof HTMLElement ? event.submitter : null;
+            const submitterText =
+                (submitter instanceof HTMLInputElement ? submitter.value : submitter?.textContent)?.trim() || '';
+
+            // Skip opted-out forms, login forms, or forms rendered inside ConfirmModal itself
+            if (
+                target.hasAttribute('data-no-confirm') ||
+                target.closest('[data-confirm-modal="true"]') ||
+                LOGIN_PATTERN.test(submitterText)
+            ) {
                 return;
             }
 
@@ -135,7 +143,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             // Guard against queuing duplicate confirmation dialogs while one is active
             if (activeRef.current) return;
 
-            const submitter = event.submitter instanceof HTMLElement ? event.submitter : null;
             const meta = inferFormMetadata(target, submitter);
 
             setActive({

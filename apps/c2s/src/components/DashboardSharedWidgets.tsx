@@ -438,7 +438,7 @@ export function ChurchInKmiSection({ data }: { data: DashboardData }) {
                 </div>
                 <div className="rounded-2xl p-4 sm:p-5 flex items-start sm:items-center gap-4 min-w-0" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#0b9b8a">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#0284C7">
                             <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
                         </svg>
                     </div>
@@ -533,7 +533,7 @@ export const CHURCH_WIDE_DATA: DashboardData = {
         { dept: 'Outreach',       workers: 640,  mentors: 122, color: '#F5C842' },
         { dept: 'Relationship',   workers: 428,  mentors: 96,  color: '#5CB85C' },
         { dept: 'Discipleship',   workers: 892,  mentors: 205, color: '#E05C5C' },
-        { dept: 'Administration', workers: 384,  mentors: 42,  color: '#C5A3E0' },
+        { dept: 'Administration', workers: 384,  mentors: 42,  color: '#475569' },
     ],
 
     totalF2F: 1842,

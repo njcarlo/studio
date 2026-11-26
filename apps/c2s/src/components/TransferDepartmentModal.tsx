@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import {
     DEPARTMENTS,
@@ -150,7 +151,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                     {/* ── Header ── */}
                     <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50/80 to-white">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[#ede9fe] text-[#5b50d6] flex items-center justify-center font-bold text-lg shrink-0">
+                            <div className="w-10 h-10 rounded-xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center font-bold text-lg shrink-0">
                                 ⇄
                             </div>
                             <div>
@@ -176,20 +177,20 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                     <div className="flex border-b border-gray-100 text-xs font-semibold bg-gray-50/50">
                         <button
                             onClick={() => setStep(1)}
-                            className={`flex-1 py-2.5 px-4 text-center border-b-2 transition-colors flex items-center justify-center gap-2 ${step === 1 ? 'border-[#5b50d6] text-[#5b50d6] bg-white' : 'border-transparent text-gray-400 hover:text-gray-600'
+                            className={`flex-1 py-2.5 px-4 text-center border-b-2 transition-colors flex items-center justify-center gap-2 ${step === 1 ? 'border-[#D97706] text-[#D97706] bg-white' : 'border-transparent text-gray-400 hover:text-gray-600'
                                 }`}
                         >
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === 1 ? 'bg-[#5b50d6] text-white' : 'bg-gray-200 text-gray-600'
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === 1 ? 'bg-[#D97706] text-white' : 'bg-gray-200 text-gray-600'
                                 }`}>1</span>
                             <span>1. Select Target Department</span>
                         </button>
                         <button
                             onClick={() => canProceed && setStep(2)}
                             disabled={!canProceed}
-                            className={`flex-1 py-2.5 px-4 text-center border-b-2 transition-colors flex items-center justify-center gap-2 ${step === 2 ? 'border-[#5b50d6] text-[#5b50d6] bg-white' : 'border-transparent text-gray-400 hover:text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed'
+                            className={`flex-1 py-2.5 px-4 text-center border-b-2 transition-colors flex items-center justify-center gap-2 ${step === 2 ? 'border-[#D97706] text-[#D97706] bg-white' : 'border-transparent text-gray-400 hover:text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed'
                                 }`}
                         >
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === 2 ? 'bg-[#5b50d6] text-white' : 'bg-gray-200 text-gray-600'
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === 2 ? 'bg-[#D97706] text-white' : 'bg-gray-200 text-gray-600'
                                 }`}>2</span>
                             <span>2. Review & Confirmation</span>
                         </button>
@@ -209,7 +210,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <p className="font-bold text-gray-900 text-sm truncate">{worker.name}</p>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ede9fe] text-[#5b50d6]">
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#D97706]">
                                             {worker.c2sRole ? worker.c2sRole.replace('_', ' ').toUpperCase() : 'WORKER'}
                                         </span>
                                     </div>
@@ -251,7 +252,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                                     onClick={() => handleDeptChange(dept)}
                                                     style={{ backgroundColor: meta.bg }}
                                                     className={`p-4 rounded-2xl text-left transition-all relative flex flex-col justify-between text-white shadow-sm min-h-[96px] ${isSelected
-                                                        ? 'ring-4 ring-[#5b50d6]/40 ring-offset-2 shadow-lg scale-[1.02]'
+                                                        ? 'ring-4 ring-[#D97706]/40 ring-offset-2 shadow-lg scale-[1.02]'
                                                         : 'opacity-85 hover:opacity-100 hover:shadow-md'
                                                         }`}
                                                 >
@@ -264,7 +265,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                                                 </span>
                                                             )}
                                                             {isSelected && (
-                                                                <div className="w-5 h-5 rounded-full bg-white text-[#5b50d6] flex items-center justify-center font-black text-xs shadow-sm shrink-0">
+                                                                <div className="w-5 h-5 rounded-full bg-white text-[#D97706] flex items-center justify-center font-black text-xs shadow-sm shrink-0">
                                                                     ✓
                                                                 </div>
                                                             )}
@@ -286,24 +287,17 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                             Target Ministry / Cluster <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <select
+                                            <CustomSelect
                                                 value={targetCluster}
                                                 onChange={e => setTargetCluster(e.target.value)}
-                                                className="w-full appearance-none border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-800 font-medium"
+                                                className="w-full"
                                             >
                                                 {availableClusters.map(c => (
                                                     <option key={c} value={c}>
                                                         {c} {c === currentCluster && targetDept === currentDept ? '(Current)' : ''}
                                                     </option>
                                                 ))}
-                                            </select>
-                                            <svg
-                                                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                                                viewBox="0 0 24 24"
-                                                fill="currentColor"
-                                            >
-                                                <path d="M7 10l5 5 5-5z" />
-                                            </svg>
+                                            </CustomSelect>
                                         </div>
                                     </div>
 
@@ -316,7 +310,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                             type="date"
                                             value={effectiveDate}
                                             onChange={e => setEffectiveDate(e.target.value)}
-                                            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-800 font-medium"
+                                            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-800 font-medium"
                                         />
                                     </div>
                                 </div>
@@ -346,7 +340,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <label
                                             className={`p-3 rounded-xl border-2 flex items-start gap-3 cursor-pointer transition-colors ${menteeAction === 'reassign'
-                                                ? 'border-[#5b50d6] bg-[#f5f3ff]'
+                                                ? 'border-[#D97706] bg-[#FEF3C7]'
                                                 : 'border-gray-200 bg-white hover:border-gray-300'
                                                 }`}
                                         >
@@ -355,7 +349,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                                 name="menteeAction"
                                                 checked={menteeAction === 'reassign'}
                                                 onChange={() => setMenteeAction('reassign')}
-                                                className="mt-0.5 text-[#5b50d6] focus:ring-[#5b50d6]"
+                                                className="mt-0.5 text-[#D97706] focus:ring-[#D97706]"
                                             />
                                             <div>
                                                 <p className="text-xs font-bold text-gray-900">Reassign to Cluster Pool</p>
@@ -367,7 +361,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
 
                                         <label
                                             className={`p-3 rounded-xl border-2 flex items-start gap-3 cursor-pointer transition-colors ${menteeAction === 'retain'
-                                                ? 'border-[#5b50d6] bg-[#f5f3ff]'
+                                                ? 'border-[#D97706] bg-[#FEF3C7]'
                                                 : 'border-gray-200 bg-white hover:border-gray-300'
                                                 }`}
                                         >
@@ -376,7 +370,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                                 name="menteeAction"
                                                 checked={menteeAction === 'retain'}
                                                 onChange={() => setMenteeAction('retain')}
-                                                className="mt-0.5 text-[#5b50d6] focus:ring-[#5b50d6]"
+                                                className="mt-0.5 text-[#D97706] focus:ring-[#D97706]"
                                             />
                                             <div>
                                                 <p className="text-xs font-bold text-gray-900">Transfer with Mentor</p>
@@ -404,7 +398,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                         placeholder="Enter the specific reason for transferring this mentor/worker to another department (e.g. ministry reassignment, relocation, leadership deployment)..."
                                         className={`w-full text-xs border rounded-xl p-3 focus:outline-none focus:ring-2 text-gray-800 transition-colors ${touchedReason && !isReasonValid
                                             ? 'border-red-300 bg-red-50/20 focus:ring-red-400'
-                                            : 'border-gray-200 focus:ring-[#5b50d6]'
+                                            : 'border-gray-200 focus:ring-[#D97706]'
                                             }`}
                                     />
                                     {touchedReason && !isReasonValid && (
@@ -423,7 +417,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                         {step === 2 && (
                             <div className="flex flex-col gap-5">
                                 {/* Visual Transfer Path Card */}
-                                <div className="rounded-2xl border border-gray-200 p-5 bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/40">
+                                <div className="rounded-2xl border border-gray-200 p-5 bg-gradient-to-br from-sky-50/50 via-white to-amber-50/40">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center mb-4">
                                         Department Transfer Route
                                     </p>
@@ -441,7 +435,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
 
                                         {/* Arrow indicator */}
                                         <div className="sm:col-span-1 flex items-center justify-center">
-                                            <div className="w-10 h-10 rounded-full bg-[#5b50d6] text-white flex items-center justify-center shadow-md">
+                                            <div className="w-10 h-10 rounded-full bg-[#D97706] text-white flex items-center justify-center shadow-md">
                                                 <svg className="w-5 h-5 rotate-90 sm:rotate-0" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                                                 </svg>
@@ -472,7 +466,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                     </div>
                                     <div className="flex justify-between px-4 py-2.5">
                                         <span className="font-medium text-gray-500">Target Cluster / Ministry</span>
-                                        <span className="font-bold text-[#5b50d6]">{targetCluster}</span>
+                                        <span className="font-bold text-[#D97706]">{targetCluster}</span>
                                     </div>
                                     <div className="flex justify-between px-4 py-2.5">
                                         <span className="font-medium text-gray-500">Mentee Disposition</span>
@@ -521,7 +515,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                     type="button"
                                     onClick={handleNext}
                                     disabled={!canProceed}
-                                    className="px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-[#5b50d6] hover:bg-[#4d42c4]"
+                                    className="px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-[#D97706] hover:bg-[#B45309]"
                                 >
                                     Next: Review Transfer →
                                 </button>
@@ -539,7 +533,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                     type="button"
                                     onClick={handleFinalSubmit}
                                     disabled={isSubmitting}
-                                    className="px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-md transition-all bg-[#0b9b8a] hover:bg-[#098375] flex items-center gap-2"
+                                    className="px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-md transition-all bg-[#0284C7] hover:bg-[#098375] flex items-center gap-2"
                                 >
                                     {isSubmitting ? (
                                         <>

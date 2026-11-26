@@ -115,11 +115,11 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                                 <div key={b.label}>
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-[11px] text-gray-500">{b.label}</span>
-                                        <span className="text-[11px] font-semibold text-[#5b50d6]">{b.pct}%</span>
+                                        <span className="text-[11px] font-semibold text-[#D97706]">{b.pct}%</span>
                                     </div>
                                     <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                         <div className="h-full rounded-full transition-all"
-                                            style={{ width: `${b.pct}%`, background: '#5b50d6' }} />
+                                            style={{ width: `${b.pct}%`, background: '#D97706' }} />
                                     </div>
                                 </div>
                             ))}

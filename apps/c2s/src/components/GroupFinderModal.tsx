@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { C2S_GROUPS, AGE_GROUPS, MEETUP_DAYS, BARANGAYS, type C2SGroup } from '@/lib/data';
@@ -44,14 +45,6 @@ function PeopleIcon() {
     );
 }
 
-function ChevronDown() {
-    return (
-        <svg className="w-4 h-4 text-gray-400 pointer-events-none shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-        </svg>
-    );
-}
-
 function Select({ label, value, onChange, options, className = '' }: {
     label: string; value: string;
     onChange: (v: string) => void; options: string[]; className?: string;
@@ -59,17 +52,13 @@ function Select({ label, value, onChange, options, className = '' }: {
     return (
         <div className={`flex flex-col gap-1 min-w-0 ${className}`}>
             <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold truncate">{label}</label>
-            <div className="relative">
-                <select
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    style={{ backgroundImage: 'none' }}
-                    className="w-full appearance-none bg-none border border-gray-200 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2dc7be] !pr-8 truncate"
-                >
-                    {options.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"><ChevronDown /></div>
-            </div>
+            <CustomSelect
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full"
+            >
+                {options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </CustomSelect>
         </div>
     );
 }
@@ -79,7 +68,7 @@ function GroupCard({ group, selected, onSelect }: { group: C2SGroup; selected: b
         <div
             onClick={onSelect}
             className={`bg-white rounded-2xl border-2 p-4 flex flex-col gap-2 cursor-pointer transition-all ${
-                selected ? 'border-[#2dc7be] shadow-md' : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                selected ? 'border-[#D97706] shadow-md' : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
             }`}
         >
             {/* Tags + status */}
@@ -93,7 +82,7 @@ function GroupCard({ group, selected, onSelect }: { group: C2SGroup; selected: b
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                     group.status === 'Open'
-                        ? 'border-[#2dc7be] text-[#0b9b8a]'
+                        ? 'border-[#D97706] text-[#D97706]'
                         : 'border-gray-300 text-gray-400'
                 }`}>
                     {group.status}
@@ -168,7 +157,7 @@ export default function GroupFinderModal({ onClose }: Props) {
                 {/* ── Header ── */}
                 <div className="bg-white px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 pr-12 border-b border-gray-100 shrink-0">
                     {/* "Find your community" pill */}
-                    <div className="inline-flex items-center bg-[#0b9b8a] text-white text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full mb-2 sm:mb-3">
+                    <div className="inline-flex items-center bg-[#D97706] text-white text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full mb-2 sm:mb-3">
                         Find your community
                     </div>
 
@@ -199,7 +188,7 @@ export default function GroupFinderModal({ onClose }: Props) {
                                     placeholder="Search C2S Group, Barangay, or Subdivision"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white"
+                                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-white"
                                 />
                             </div>
 
@@ -239,8 +228,8 @@ export default function GroupFinderModal({ onClose }: Props) {
                                 <p className="font-bold text-gray-900 text-sm">Dasmariñas City</p>
                                 <p className="text-xs text-gray-400">{filtered.length} C2S groups nearby</p>
                             </div>
-                            <span className="flex items-center gap-1.5 text-xs text-[#0b9b8a] font-semibold">
-                                <span className="w-2 h-2 rounded-full bg-[#0b9b8a] inline-block" />
+                            <span className="flex items-center gap-1.5 text-xs text-[#D97706] font-semibold">
+                                <span className="w-2 h-2 rounded-full bg-[#D97706] inline-block" />
                                 Live Map
                             </span>
                         </div>
@@ -257,11 +246,11 @@ export default function GroupFinderModal({ onClose }: Props) {
                         {/* Legend */}
                         <div className="bg-white px-4 py-2 border-t border-gray-100 flex items-center gap-6 text-xs text-gray-500 shrink-0">
                             <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#047857' }} />
+                                <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#1E293B' }} />
                                 Available
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#0b9b8a' }} />
+                                <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#D97706' }} />
                                 Selected
                             </span>
                         </div>

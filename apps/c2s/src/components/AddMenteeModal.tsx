@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import type { Mentee } from '@/lib/data';
 
@@ -197,7 +198,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                First Name <span className="text-[#5b50d6]">*</span>
+                                First Name <span className="text-[#D97706]">*</span>
                             </label>
                             <input
                                 type="text"
@@ -208,7 +209,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.firstName && !isFirstNameValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#5b50d6]'
+                                        : 'border-gray-200 focus:ring-[#D97706]'
                                 }`}
                             />
                             {touched.firstName && !isFirstNameValid && (
@@ -217,7 +218,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Last Name <span className="text-[#5b50d6]">*</span>
+                                Last Name <span className="text-[#D97706]">*</span>
                             </label>
                             <input
                                 type="text"
@@ -228,7 +229,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.lastName && !isLastNameValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#5b50d6]'
+                                        : 'border-gray-200 focus:ring-[#D97706]'
                                 }`}
                             />
                             {touched.lastName && !isLastNameValid && (
@@ -241,7 +242,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email Address <span className="text-[#5b50d6]">*</span>
+                                Email Address <span className="text-[#D97706]">*</span>
                             </label>
                             <input
                                 type="email"
@@ -252,7 +253,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.email && !isEmailFieldValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#5b50d6]'
+                                        : 'border-gray-200 focus:ring-[#D97706]'
                                 }`}
                             />
                             {touched.email && !isEmailFieldValid && (
@@ -263,7 +264,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone Number <span className="text-[#5b50d6]">*</span>
+                                Phone Number <span className="text-[#D97706]">*</span>
                             </label>
                             <input
                                 type="tel"
@@ -274,7 +275,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.phone && !isPhoneValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#5b50d6]'
+                                        : 'border-gray-200 focus:ring-[#D97706]'
                                 }`}
                             />
                             {touched.phone && !isPhoneValid && (
@@ -287,7 +288,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Birthday <span className="text-[#5b50d6]">*</span>
+                                Birthday <span className="text-[#D97706]">*</span>
                             </label>
                             <input
                                 type="date"
@@ -298,7 +299,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.birthday && !isBirthdayValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20 text-gray-700'
-                                        : 'border-gray-200 focus:ring-[#5b50d6] text-gray-700'
+                                        : 'border-gray-200 focus:ring-[#D97706] text-gray-700'
                                 }`}
                             />
                             {touched.birthday && !isBirthdayValid && (
@@ -307,33 +308,18 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Gender <span className="text-[#5b50d6]">*</span>
+                                Gender <span className="text-[#D97706]">*</span>
                             </label>
-                            <div className="relative">
-                                <select
-                                    value={gender}
-                                    onChange={(e) => setGender(e.target.value)}
-                                    onBlur={() => markTouched('gender')}
-                                    className={`w-full appearance-none border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white pr-8 transition-colors ${
-                                        touched.gender && !isGenderValid
-                                            ? 'border-red-400 focus:ring-red-400 bg-red-50/20 text-gray-500'
-                                            : 'border-gray-200 focus:ring-[#5b50d6] text-gray-700'
-                                    } ${gender === '' ? 'text-gray-400' : 'text-gray-800'}`}
-                                >
-                                    <option value="" disabled>Select</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                </select>
-                                <svg
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
+                            <CustomSelect
+                                value={gender}
+                                onChange={(e) => setGender(e.target.value)}
+                                onBlur={() => markTouched('gender')}
+                                className="w-full"
+                            >
+                                <option value="" disabled>Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </CustomSelect>
                             {touched.gender && !isGenderValid && (
                                 <p className="text-xs text-red-500 mt-1">Please select a gender.</p>
                             )}
@@ -350,68 +336,38 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                             placeholder="Facebook URL"
                             value={facebook}
                             onChange={(e) => setFacebook(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] placeholder:text-gray-400 text-gray-800"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-400 text-gray-800"
                         />
                     </div>
 
                     {/* First Time Attended Church Of God (Month & Year) */}
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            First Time Attended Church Of God (Month &amp; Year) <span className="text-[#5b50d6]">*</span>
+                            First Time Attended Church Of God (Month &amp; Year) <span className="text-[#D97706]">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="relative">
-                                <select
-                                    value={attendedMonth}
-                                    onChange={(e) => setAttendedMonth(e.target.value)}
-                                    onBlur={() => markTouched('attendedMonth')}
-                                    className={`w-full appearance-none border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white pr-8 transition-colors ${
-                                        touched.attendedMonth && !isAttendedMonthValid
-                                            ? 'border-red-400 focus:ring-red-400 bg-red-50/20 text-gray-500'
-                                            : 'border-gray-200 focus:ring-[#5b50d6] text-gray-700'
-                                    } ${attendedMonth === '' ? 'text-gray-400' : 'text-gray-800'}`}
-                                >
-                                    <option value="">Select Month</option>
-                                    {MONTHS.map((m) => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
-                                </select>
-                                <svg
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            <div className="relative">
-                                <select
-                                    value={attendedYear}
-                                    onChange={(e) => setAttendedYear(e.target.value)}
-                                    onBlur={() => markTouched('attendedYear')}
-                                    className={`w-full appearance-none border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white pr-8 transition-colors ${
-                                        touched.attendedYear && !isAttendedYearValid
-                                            ? 'border-red-400 focus:ring-red-400 bg-red-50/20 text-gray-500'
-                                            : 'border-gray-200 focus:ring-[#5b50d6] text-gray-700'
-                                    } ${attendedYear === '' ? 'text-gray-400' : 'text-gray-800'}`}
-                                >
-                                    <option value="">Select Year</option>
-                                    {YEARS.map((y) => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </select>
-                                <svg
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
+                            <CustomSelect
+                                value={attendedMonth}
+                                onChange={(e) => setAttendedMonth(e.target.value)}
+                                onBlur={() => markTouched('attendedMonth')}
+                                className="w-full"
+                            >
+                                <option value="">Select Month</option>
+                                {MONTHS.map((m) => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                            </CustomSelect>
+                            <CustomSelect
+                                value={attendedYear}
+                                onChange={(e) => setAttendedYear(e.target.value)}
+                                onBlur={() => markTouched('attendedYear')}
+                                className="w-full"
+                            >
+                                <option value="">Select Year</option>
+                                {YEARS.map((y) => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </CustomSelect>
                         </div>
                         {((touched.attendedMonth && !isAttendedMonthValid) || (touched.attendedYear && !isAttendedYearValid)) && (
                             <p className="text-xs text-red-500 mt-1">Please select a month and year.</p>
@@ -428,7 +384,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Add any initial notes or questions about this mentee..."
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] resize-none text-gray-800 placeholder:text-gray-400"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none text-gray-800 placeholder:text-gray-400"
                         />
                     </div>
 
@@ -443,7 +399,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                     setAgreed(e.target.checked);
                                     markTouched('agreed');
                                 }}
-                                className="mt-0.5 w-4 h-4 accent-[#5b50d6] cursor-pointer shrink-0 rounded"
+                                className="mt-0.5 w-4 h-4 accent-[#D97706] cursor-pointer shrink-0 rounded"
                             />
                             <label htmlFor="add-mentee-privacy" className="text-xs text-gray-600 cursor-pointer select-none leading-relaxed">
                                 I agree to the{' '}
@@ -453,7 +409,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                         e.preventDefault();
                                         setShowPrivacyPolicy(true);
                                     }}
-                                    className="text-[#5b50d6] font-semibold underline hover:opacity-80 transition-opacity"
+                                    className="text-[#D97706] font-semibold underline hover:opacity-80 transition-opacity"
                                 >
                                     Data privacy Policy
                                 </button>
@@ -535,7 +491,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                     setAgreed(true);
                                     setShowPrivacyPolicy(false);
                                 }}
-                                className="px-5 py-2 rounded-full text-xs font-bold text-white bg-[#5b50d6] hover:bg-[#4a41c0] transition-colors"
+                                className="px-5 py-2 rounded-full text-xs font-bold text-white bg-[#D97706] hover:bg-[#B45309] transition-colors"
                             >
                                 I Understand &amp; Agree
                             </button>

@@ -41,7 +41,7 @@ export default async function GroupDetailPage({ params }: Props) {
 
                     <div className="space-y-3 text-sm text-gray-600 mb-8">
                         <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 shrink-0 text-[#2dc7be]" viewBox="0 0 24 24" fill="currentColor">
+                            <svg className="w-4 h-4 shrink-0 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                             </svg>
                             <span>{group.location}</span>
@@ -66,7 +66,7 @@ export default async function GroupDetailPage({ params }: Props) {
                         </button>
                         <Link
                             href="/c2s-finder"
-                            className="flex-1 text-center border-2 border-[#2dc7be] text-[#2dc7be] hover:bg-[#2dc7be] hover:text-white font-bold py-3 rounded-full text-sm transition-colors"
+                            className="flex-1 text-center border-2 border-[#D97706] text-[#D97706] hover:bg-[#D97706] hover:text-white font-bold py-3 rounded-full text-sm transition-colors"
                         >
                             Browse Other Groups
                         </Link>

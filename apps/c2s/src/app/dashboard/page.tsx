@@ -1,9 +1,11 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { C2S_GROUPS, type C2SGroup, POTENTIAL_MENTEES, type PotentialMentee, ACTIVE_MENTEES, INACTIVE_MENTEES, ENDORSED_GROUPS, ENDORSED_WORKERS } from '@/lib/data';
+import { useConfirm } from '@/lib/confirm-context';
+import { C2S_GROUPS, type C2SGroup, GROUP_MEMBERS, POTENTIAL_MENTEES, type PotentialMentee, ACTIVE_MENTEES, INACTIVE_MENTEES, ENDORSED_GROUPS, ENDORSED_WORKERS } from '@/lib/data';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -20,6 +22,7 @@ import EndorsedEditGroupModal from '@/components/EndorsedEditGroupModal';
 import EndorsedCreateGroupModal from '@/components/EndorsedCreateGroupModal';
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
+import { SidebarBrandHeader, DashboardTopHeader } from '@/components/DashboardHeader';
 import AddMenteeModal from '@/components/AddMenteeModal';
 import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
 import { CH_MENTOR_REPORT_DATA, CH_COORD_REPORT_DATA, CH_BARANGAY_DATA, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
@@ -33,117 +36,17 @@ const DEPT_WORKERS = [
     { name: 'Outreach', value: 640, color: '#F5C842' },
     { name: 'Relationship', value: 428, color: '#5CB85C' },
     { name: 'Discipleship', value: 892, color: '#E05C5C' },
-    { name: 'Administration', value: 384, color: '#C5A3E0' },
+    { name: 'Administration', value: 384, color: '#475569' },
 ];
 const DEPT_MENTORS = [
     { name: 'Worship', value: 84, color: '#4DA6F5' },
     { name: 'Outreach', value: 122, color: '#F5C842' },
     { name: 'Relationship', value: 96, color: '#5CB85C' },
     { name: 'Discipleship', value: 205, color: '#E05C5C' },
-    { name: 'Administration', value: 42, color: '#C5A3E0' },
+    { name: 'Administration', value: 42, color: '#475569' },
 ];
 const TOTAL_WORKERS = DEPT_WORKERS.reduce((s, d) => s + d.value, 0);
 const TOTAL_MENTORS = DEPT_MENTORS.reduce((s, d) => s + d.value, 0);
-
-/* â”€â”€ Shared Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function DashNav({ onLogout }: { onLogout: () => void }) {
-    const { user } = useAuth();
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    if (!user) return null;
-    const isHead = user.role === 'ministry_head';
-    const isCluster = user.role === 'cluster_head';
-    const isCoord = user.role === 'c2s_coordinator';
-    const isAdmin = user.role === 'admin';
-    const roleColor = isAdmin ? '#4f46e5' : isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#5b50d6';
-    return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm" style={{ backgroundColor: 'var(--nav-bg)', borderBottom: '1px solid var(--border)' }}>
-            <div className="w-full px-4 sm:px-6 flex items-center justify-between gap-3 nav-fixed-h">
-                <Link href="/" className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 relative shrink-0">
-                        <Image src="/logo.png" alt="COG" fill className="object-contain" priority />
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-snug min-w-0">
-                        <p className="text-[13px] font-bold text-gray-800 truncate leading-snug">Church of God Dasmariñas</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest truncate leading-snug">CONNECT2SOULS</p>
-                    </div>
-                </Link>
-
-                {/* Account dropdown trigger (fixed 16px-scale sizing so header stays compact across all accounts) */}
-                <div className="relative shrink-0" style={{ fontSize: '16px' }}>
-                    <button
-                        type="button"
-                        onClick={() => setDropdownOpen(o => !o)}
-                        style={{ padding: '4px 10px 4px 5px', gap: '8px' }}
-                        className="flex items-center rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 border border-gray-200/70 dark:border-white/10 transition-colors"
-                    >
-                        <div
-                            className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
-                            style={{
-                                width: '28px',
-                                height: '28px',
-                                fontSize: '11px',
-                                background: roleColor,
-                                boxShadow: `0 0 0 2px ${roleColor}26`,
-                            }}
-                        >
-                            {user.avatar}
-                        </div>
-                        <span
-                            className="hidden sm:inline font-semibold text-gray-800 dark:text-gray-100 truncate"
-                            style={{ fontSize: '14px', lineHeight: '1.25', maxWidth: '150px' }}
-                        >
-                            {user.name}
-                        </span>
-                        <svg
-                            className={`text-gray-500 shrink-0 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
-                            style={{ width: '14px', height: '14px' }}
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M6 9l6 6 6-6" />
-                        </svg>
-                    </button>
-
-                    {/* Dropdown menu */}
-                    {dropdownOpen && (
-                        <>
-                            {/* Backdrop */}
-                            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-                            <div
-                                className="absolute right-0 top-full mt-2 bg-white rounded-xl border border-gray-200/80 overflow-hidden z-20"
-                                style={{
-                                    width: '152px',
-                                    maxWidth: 'calc(100vw - 32px)',
-                                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.12)',
-                                    backgroundColor: 'var(--surface)',
-                                    borderColor: 'var(--border)',
-                                }}
-                            >
-                                <button
-                                    type="button"
-                                    onClick={() => { setDropdownOpen(false); onLogout(); }}
-                                    style={{ padding: '10px 14px', gap: '10px', fontSize: '14px', lineHeight: '1.25' }}
-                                    className="w-full flex items-center font-medium text-red-500 hover:bg-red-50/80 dark:hover:bg-red-950/30 transition-colors text-left"
-                                >
-                                    <svg style={{ width: '15px', height: '15px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                        <polyline points="16 17 21 12 16 7" />
-                                        <line x1="21" y1="12" x2="9" y2="12" />
-                                    </svg>
-                                    <span>Log out</span>
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-        </nav>
-    );
-}
 
 
 import { type Mentee, CH_COORDINATORS, CH_MENTORS, CH_POTENTIAL_MENTEES, CH_ACTIVE_MENTEES, CH_CLUSTER_GROUPS, CH_NOTIFICATIONS, type C2SCoordinator, type ClusterMentor, type ClusterPotentialMentee } from '@/lib/data';
@@ -206,7 +109,7 @@ const DEPT_COMBINED = [
     { dept: 'Outreach', workers: DEPT_WORKERS[1].value, mentors: DEPT_MENTORS[1].value, color: '#F5C842' },
     { dept: 'Relationship', workers: DEPT_WORKERS[2].value, mentors: DEPT_MENTORS[2].value, color: '#5CB85C' },
     { dept: 'Discipleship', workers: DEPT_WORKERS[3].value, mentors: DEPT_MENTORS[3].value, color: '#E05C5C' },
-    { dept: 'Administration', workers: DEPT_WORKERS[4].value, mentors: DEPT_MENTORS[4].value, color: '#C5A3E0' },
+    { dept: 'Administration', workers: DEPT_WORKERS[4].value, mentors: DEPT_MENTORS[4].value, color: '#475569' },
 ];
 const COMBINED_TOTAL_WORKERS = DEPT_COMBINED.reduce((s, d) => s + d.workers, 0);
 const COMBINED_TOTAL_MENTORS = DEPT_COMBINED.reduce((s, d) => s + d.mentors, 0);
@@ -341,6 +244,12 @@ function WorkersMentorsChart() {
 }
 
 /* -- PotentialMenteeCard ------------------------------------------------------- */
+const PM_REQUEST_TIMESTAMPS: Record<string, string> = {
+    pm1: 'Requested 2 hrs ago',
+    pm2: 'Requested yesterday',
+    pm3: 'Requested 2 days ago',
+};
+
 function PotentialMenteeCard({ mentee, onAccepted }: {
     mentee: PotentialMentee;
     onAccepted: (pm: PotentialMentee) => void;
@@ -348,6 +257,20 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
     const [showAccept, setShowAccept] = useState(false);
     const [showRecommend, setShowRecommend] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
+    const [copiedPhone, setCopiedPhone] = useState(false);
+
+    const requestedGroupInfo = C2S_GROUPS.find(
+        (g) => g.name.trim().toLowerCase() === mentee.requestedGroup.trim().toLowerCase()
+    );
+    const requestTimestamp = PM_REQUEST_TIMESTAMPS[mentee.id] ?? 'Requested recently';
+
+    function handleCopyPhone() {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(mentee.phone).catch(() => { /* ignore */ });
+        }
+        setCopiedPhone(true);
+        setTimeout(() => setCopiedPhone(false), 1800);
+    }
 
     return (
         <>
@@ -375,78 +298,138 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                 />
             )}
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-4">
-
-                {/* Row 1: Avatar + name/info + Pending badge */}
-                <div className="flex items-start gap-3">
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
-                        style={{ background: '#5b50d6' }}>
-                        {mentee.initials}
+            <div className="h-full bg-white rounded-2xl border border-[#E7E5E4] p-5 sm:p-6 flex flex-col justify-between gap-4 shadow-sm">
+                <div className="flex flex-col gap-4">
+                    {/* Row 1: Avatar + name/info + clickable copy-phone + Pending badge */}
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
+                            style={{ background: '#D97706' }}>
+                            {mentee.initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-bold text-[#292524] leading-tight truncate">{mentee.name}</p>
+                            <p className="text-xs text-[#6B665F] mt-0.5 leading-snug">{mentee.age} · {mentee.gender}</p>
+                            <button
+                                type="button"
+                                onClick={handleCopyPhone}
+                                title="Copy phone number"
+                                className="inline-flex items-center gap-1.5 text-xs text-[#6B665F] hover:text-[#D97706] transition-colors whitespace-nowrap leading-snug mt-0.5 cursor-pointer"
+                            >
+                                <span>{mentee.phone}</span>
+                                {copiedPhone ? (
+                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#15803D]">
+                                        <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                        Copied
+                                    </span>
+                                ) : (
+                                    <svg className="w-3 h-3 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+                        <span
+                            data-pill="true"
+                            className="inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] shrink-0 border border-[#FDE68A] whitespace-nowrap"
+                        >
+                            Pending
+                        </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900 leading-tight">{mentee.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{mentee.age} · {mentee.gender} · {mentee.phone}</p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#b45309] text-white shrink-0 border border-[#fde68a]">
-                        Pending
-                    </span>
-                </div>
 
-                {/* Row 2: Source badge */}
-                <div>
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${mentee.sourceColor}`}>
-                        {mentee.source === 'Recommended' ? (
-                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" /></svg>
-                        ) : (
-                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+                    {/* Row 2: Source badge + request timestamp */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span
+                            data-pill="true"
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full whitespace-nowrap ${
+                                mentee.source === 'Recommended'
+                                    ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
+                                    : 'bg-[#E0F2FE] text-[#0369A1] border border-[#BAE6FD]'
+                            }`}
+                        >
+                            {mentee.source === 'Recommended' ? (
+                                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" /></svg>
+                            ) : (
+                                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+                            )}
+                            {mentee.source}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#6B665F] whitespace-nowrap">
+                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            {requestTimestamp}
+                        </span>
+                    </div>
+
+                    {/* Row 3: Unified Warm Sand Details Box (Requested Group + Notes) */}
+                    <div className="bg-[#F5F2EC] rounded-xl p-4 border border-[#E7E5E4] space-y-3">
+                        <div>
+                            <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-widest mb-1">Requested Group</p>
+                            <p className="font-bold text-[#292524] text-base leading-snug">{mentee.requestedGroup}</p>
+                            {requestedGroupInfo && (
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#6B665F] mt-1.5">
+                                    <span className="inline-flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5 text-[#D97706] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                            <circle cx="12" cy="10" r="3" />
+                                        </svg>
+                                        {requestedGroupInfo.location}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5 text-[#D97706] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                            <line x1="16" y1="2" x2="16" y2="6" />
+                                            <line x1="8" y1="2" x2="8" y2="6" />
+                                            <line x1="3" y1="10" x2="21" y2="10" />
+                                        </svg>
+                                        {requestedGroupInfo.schedule}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {mentee.notes && (
+                            <div className="border-t border-[#E7E5E4] pt-3">
+                                <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-widest mb-1">Notes</p>
+                                <p className="text-xs text-[#292524] leading-relaxed">{mentee.notes}</p>
+                            </div>
                         )}
-                        {mentee.source}
-                    </span>
-                </div>
-
-                {/* Row 3: Requested Group */}
-                <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Requested Group</p>
-                    <p className="font-bold text-gray-900 text-base">{mentee.requestedGroup}</p>
-                </div>
-
-                {/* Row 4: Notes box */}
-                {mentee.notes && (
-                    <div className="rounded-xl px-4 py-3" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Notes</p>
-                        <p className="text-xs text-gray-600 leading-relaxed">{mentee.notes}</p>
                     </div>
-                )}
+                </div>
 
-                {/* Row 5: Action buttons */}
-                <div className="flex items-center gap-2 pt-1">
-                    {/* Accept — purple filled, takes most space */}
+                {/* Row 4: Action buttons */}
+                <div className="pt-1">
+                    {/* Accept — full-width primary CTA on top row */}
                     <button
                         onClick={() => setShowAccept(true)}
-                        className="flex items-center justify-center gap-1.5 flex-1 text-xs font-bold text-white py-2 rounded-lg transition-colors"
-                        style={{ background: '#5b50d6' }}
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-bold text-white whitespace-nowrap rounded-xl bg-[#D97706] hover:bg-[#B45309] transition-colors shadow-sm"
                     >
-                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
                         Accept
                     </button>
 
-                    {/* Recommend — outlined */}
-                    <button
-                        onClick={() => setShowRecommend(true)}
-                        className="flex items-center justify-center gap-1.5 flex-1 text-xs font-semibold text-gray-700 py-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
-                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
-                        Recommend
-                    </button>
+                    {/* Secondary actions — 2-column row underneath */}
+                    <div className="grid grid-cols-2 gap-2.5 w-full mt-2.5">
+                        <button
+                            onClick={() => setShowRecommend(true)}
+                            className="flex items-center justify-center gap-1.5 min-w-0 px-3 py-2 text-xs font-semibold text-[#292524] whitespace-nowrap rounded-xl border border-[#E7E5E4] bg-white hover:bg-[#F5F2EC] transition-colors"
+                        >
+                            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+                            Recommend
+                        </button>
 
-                    {/* Details — outlined with eye icon */}
-                    <button
-                        onClick={() => setShowDetails(true)}
-                        className="flex items-center justify-center gap-1.5 flex-1 text-xs font-semibold text-gray-700 py-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
-                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg>
-                        Details
-                    </button>
+                        <button
+                            onClick={() => setShowDetails(true)}
+                            className="flex items-center justify-center gap-1.5 min-w-0 px-3 py-2 text-xs font-semibold text-[#292524] whitespace-nowrap rounded-xl border border-[#E7E5E4] bg-white hover:bg-[#F5F2EC] transition-colors"
+                        >
+                            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg>
+                            Details
+                        </button>
+                    </div>
                 </div>
             </div>
         </>
@@ -454,7 +437,7 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
 }
 
 /* -- Avatar color helper (shared with MenteesTab) ------------------------------ */
-const MENTOR_AVATAR_COLORS = ['#5b50d6', '#5b50d6', '#0b9b8a', '#e67700', '#6741d9'];
+const MENTOR_AVATAR_COLORS = ['#D97706', '#D97706', '#0284C7', '#e67700', '#D97706'];
 function mentorAvatarColor(id: string) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
@@ -490,7 +473,7 @@ function MenteesTab({
 
     const reasonBadge = (r: string) => {
         if (r === 'Completed') return 'bg-[#16a34a] text-white';
-        if (r === 'Transferred') return 'bg-[#6741d9] text-white';
+        if (r === 'Transferred') return 'bg-[#D97706] text-white';
         return 'bg-gray-400 text-white';
     };
 
@@ -548,7 +531,7 @@ function MenteesTab({
                     </div>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 bg-[#5b50d6] hover:bg-[#4a41c0] text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95"
+                        className="flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95"
                     >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -598,10 +581,10 @@ function MenteesTab({
                     {/* Stat cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-1 sm:flex sm:flex-1 gap-4 sm:gap-4">
                         {[
-                            { label: 'Total Mentees', value: totalMentees, color: '#6741d9' },
+                            { label: 'Total Mentees', value: totalMentees, color: '#D97706' },
                             { label: 'Active', value: activeCnt, color: '#ef4444' },
                             { label: 'Inactive', value: inactiveCnt, color: '#3b82f6' },
-                            { label: 'Transferred', value: transferredCnt, color: '#0b9b8a' },
+                            { label: 'Transferred', value: transferredCnt, color: '#0284C7' },
                         ].map(s => (
                             <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 sm:px-7 py-5 flex flex-col justify-center sm:flex-1 dark:bg-gray-800 dark:border-gray-700">
                                 <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2 dark:text-gray-300">{s.label}</p>
@@ -618,7 +601,7 @@ function MenteesTab({
                         <div className="relative">
                             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                             <input type="text" placeholder="Search mentees..." value={activeSearch} onChange={e => setActiveSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white w-full sm:w-52" />
+                                className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-white w-full sm:w-52" />
                         </div>
                     </div>
                     <div className="bg-white rounded-2xl border border-gray-200">
@@ -648,7 +631,7 @@ function MenteesTab({
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} />
                                                     </div>
                                                     <span className="text-xs font-semibold text-gray-600">{m.progress}%</span>
                                                 </div>
@@ -661,7 +644,7 @@ function MenteesTab({
                                                 </button>
                                                 <button onClick={() => setShowDevotional(m)}
                                                     className="flex-1 text-xs font-bold text-white py-2 rounded-lg transition-colors"
-                                                    style={{ background: '#5b50d6' }}>
+                                                    style={{ background: '#D97706' }}>
                                                     Update
                                                 </button>
                                             </div>
@@ -694,7 +677,7 @@ function MenteesTab({
                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[60px]">
-                                                            <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                                                            <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} />
                                                         </div>
                                                         <span className="text-xs font-semibold text-gray-600 shrink-0">{m.progress}%</span>
                                                     </div>
@@ -704,7 +687,7 @@ function MenteesTab({
                                                         <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 hover:underline transition-colors">View Profile</button>
                                                         <button onClick={() => setShowDevotional(m)}
                                                             className="text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-colors"
-                                                            style={{ background: '#5b50d6' }}>
+                                                            style={{ background: '#D97706' }}>
                                                             Update
                                                         </button>
                                                     </div>
@@ -759,7 +742,7 @@ function MenteesTab({
                                             };
                                             setViewing(fake);
                                         }}
-                                        className="self-start text-xs font-semibold text-[#5b50d6] hover:underline"
+                                        className="self-start text-xs font-semibold text-[#D97706] hover:underline"
                                     >View Profile</button>
                                 </div>
                             ))}
@@ -848,7 +831,7 @@ function EndorsedTab() {
                         <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Endorsed</h1>
                         <p className="text-sm text-gray-400 mt-1">Workers and groups you have endorsed for ministry.</p>
                     </div>
-                    <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 bg-[#5b50d6] hover:bg-[#4a41c0] text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors">
+                    <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 bg-[#D97706] hover:bg-[#B45309] text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
                         New Group
                     </button>
@@ -872,22 +855,22 @@ function EndorsedTab() {
 
                 {/* Groups */}
                 <h2 className="text-sm font-bold text-gray-700 mb-3">Endorsed Groups <span className="text-gray-400 font-normal">({ENDORSED_GROUPS.length})</span></h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <div className="grid gap-4 mb-8 items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>
                     {ENDORSED_GROUPS.map((g) => (
-                        <div key={g.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
+                        <div key={g.id} className="h-full bg-white rounded-2xl border border-gray-200 p-5 flex flex-col justify-between gap-3">
                             <p className="font-bold text-gray-900 text-lg">{g.name}</p>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                                    <p className="text-lg font-black text-[#5b50d6]">{g.members}</p>
+                                    <p className="text-lg font-black text-[#D97706]">{g.members}</p>
                                     <p className="text-gray-400 text-[10px]">Members</p>
                                 </div>
                                 <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                                    <p className="text-lg font-black text-[#0b9b8a]">{g.progress}%</p>
+                                    <p className="text-lg font-black text-[#0284C7]">{g.progress}%</p>
                                     <p className="text-gray-400 text-[10px]">Progress</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => setViewingMembers(g)} className="flex-1 text-xs font-semibold text-white px-3 py-2 rounded-lg" style={{ background: '#5b50d6' }}>View Members</button>
+                            <div className="mt-auto flex flex-wrap items-center gap-2">
+                                <button onClick={() => setViewingMembers(g)} className="flex-1 px-3 text-xs font-semibold text-white py-2 rounded-lg bg-[#D97706] hover:bg-[#B45309] transition-colors">View Members</button>
                                 <button onClick={() => setEditingGroup(g)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:border-gray-300">Edit</button>
                             </div>
                         </div>
@@ -900,7 +883,7 @@ function EndorsedTab() {
                     {ENDORSED_WORKERS.map((w) => (
                         <div key={w.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: '#5b50d6' }}>{w.initials}</div>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: '#D97706' }}>{w.initials}</div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-gray-900 truncate">{w.name}</p>
                                     <p className="text-xs text-gray-400">{w.assignedGroup} · Since {w.endorsedSince}</p>
@@ -912,7 +895,7 @@ function EndorsedTab() {
                                     <span className="text-[11px] font-semibold text-gray-700">{w.progress}%</span>
                                 </div>
                                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${w.progress}%`, background: '#5b50d6' }} />
+                                    <div className="h-full rounded-full" style={{ width: `${w.progress}%`, background: '#D97706' }} />
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -941,7 +924,7 @@ interface MentorHubApplication {
 }
 
 const HUB_STATUS_STYLE_MENTOR: Record<string, string> = {
-    'Pending': 'bg-[#b45309] text-white',
+    'Pending': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
     'Approved': 'bg-[#16a34a] text-white',
     'Rejected': 'bg-[#dc2626] text-white',
 };
@@ -990,7 +973,7 @@ function MentorPotentialC2STab() {
                         </div>
                         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] font-black text-lg shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] font-black text-lg shrink-0">
                                     {viewing.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                                 </div>
                                 <div>
@@ -1031,18 +1014,18 @@ function MentorPotentialC2STab() {
                 <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-full bg-white" />
                 </div>
-                <select
+                <CustomSelect
                     value={filter}
                     onChange={e => setFilter(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[140px]"
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[140px]"
                 >
                     <option value="All">All Status</option>
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
-                </select>
+                </CustomSelect>
                 <span className="text-xs text-gray-400 sm:ml-auto">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
@@ -1061,7 +1044,7 @@ function MentorPotentialC2STab() {
                             <div key={a.id} className="p-4 flex flex-col gap-2">
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
                                             {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                                         </div>
                                         <div>
@@ -1077,7 +1060,7 @@ function MentorPotentialC2STab() {
                                     <span><span className="font-semibold text-gray-400">Potential: </span>{a.potential}</span>
                                     <span><span className="font-semibold text-gray-400">Date: </span>{a.submitted}</span>
                                 </div>
-                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#5b50d6] hover:underline">View Details</button>
+                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#D97706] hover:underline">View Details</button>
                             </div>
                         ))}
                     </div>
@@ -1097,7 +1080,7 @@ function MentorPotentialC2STab() {
                                     <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
                                         <td className="pl-6 pr-4 py-3.5">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                                <div className="w-7 h-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
                                                     {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                                                 </div>
                                                 <div>
@@ -1114,7 +1097,7 @@ function MentorPotentialC2STab() {
                                             <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
                                         </td>
                                         <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                            <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
+                                            <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#D97706] hover:underline">View</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -1130,7 +1113,11 @@ function MentorPotentialC2STab() {
 
 function MentorDashboard() {
     const { user } = useAuth();
+    const { confirm } = useConfirm();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed' | 'potential-c2s-groups'>('dashboard');
+    const [pmSearch, setPmSearch] = useState('');
+    const [pmSourceFilter, setPmSourceFilter] = useState<'All' | 'Group Finder' | 'Recommended'>('All');
+    const [pmReminderDismissed, setPmReminderDismissed] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [settingsSection, setSettingsSection] = useState<MySettingsSection | null>(null);
@@ -1213,6 +1200,14 @@ function MentorDashboard() {
         } catch { /* ignore */ }
         return [];
     });
+    const [deletedGroupIds, setDeletedGroupIds] = useState<string[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const stored = localStorage.getItem('c2s_mentor_deleted_groups');
+            if (stored) return JSON.parse(stored);
+        } catch { /* ignore */ }
+        return [];
+    });
     const [groupToast, setGroupToast] = useState<string | null>(null);
 
     function handleCreateGroup(newGrp: any) {
@@ -1221,7 +1216,7 @@ function MentorDashboard() {
             name: newGrp.name,
             description: newGrp.description || 'Discipleship & Fellowship Group',
             tags: [
-                { label: newGrp.groupType || 'Young Adults', color: 'bg-[#ede9fe] text-[#6741d9]' },
+                { label: newGrp.groupType || 'Young Adults', color: 'bg-[#FEF3C7] text-[#D97706]' },
                 { label: newGrp.conduct || 'Church base', color: 'bg-green-100 text-green-700' },
             ],
             ageGroup: 'Young Adults',
@@ -1267,12 +1262,37 @@ function MentorDashboard() {
         setTimeout(() => setGroupToast(null), 3000);
     }
 
-    // Groups this mentor leads (matched by group name + created groups)
+    async function handleDeleteGroup(group: C2SGroup) {
+        const ok = await confirm({
+            title: 'Delete Group?',
+            description: `Are you sure you want to delete "${group.name}"? This will remove the group from your active list.`,
+            confirmLabel: 'Delete Group',
+            cancelLabel: 'Cancel',
+            variant: 'danger',
+        });
+        if (!ok) return;
+
+        setSessionCreatedGroups((prev) => {
+            const filtered = prev.filter((g) => g.id !== group.id);
+            try { localStorage.setItem('c2s_mentor_created_groups', JSON.stringify(filtered)); } catch { /* ignore */ }
+            return filtered;
+        });
+        setDeletedGroupIds((prev) => {
+            if (prev.includes(group.id)) return prev;
+            const updated = [...prev, group.id];
+            try { localStorage.setItem('c2s_mentor_deleted_groups', JSON.stringify(updated)); } catch { /* ignore */ }
+            return updated;
+        });
+        setGroupToast('Group deleted successfully.');
+        setTimeout(() => setGroupToast(null), 3000);
+    }
+
+    // Groups this mentor leads (matched by group name + created groups, excluding deleted ones)
     const baseMyGroups = C2S_GROUPS.filter((g) => g.name === user?.group);
     const myGroups = [
         ...sessionCreatedGroups,
         ...baseMyGroups.filter((bg) => !sessionCreatedGroups.some((cg) => cg.id === bg.id || cg.name === bg.name)),
-    ];
+    ].filter((g) => !deletedGroupIds.includes(g.id));
 
     return (
         <div className="min-h-screen dashboard-shell overflow-x-hidden" style={{ background: 'var(--bg-page)' }}>
@@ -1288,6 +1308,11 @@ function MentorDashboard() {
                     group={editingGroup}
                     onClose={() => setEditingGroup(null)}
                     onSave={handleSaveEditedGroup}
+                    onDelete={() => {
+                        const targetGroup = editingGroup;
+                        setEditingGroup(null);
+                        void handleDeleteGroup(targetGroup);
+                    }}
                 />
             )}
 
@@ -1307,10 +1332,12 @@ function MentorDashboard() {
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
-            {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-56 md:w-[68px]' : 'w-56'} border-r border-gray-200 flex flex-col pt-4 md:pt-4 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+            {/* ── Left Sidebar (full viewport height with brand header) ── */}
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-72 md:w-[68px]' : 'w-72'} border-r border-gray-200 flex flex-col pt-0 pb-4 fixed top-0 bottom-0 left-0 ${sidebarOpen ? 'z-50 translate-x-0' : 'z-40 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+                <SidebarBrandHeader collapsed={sidebarCollapsed} />
+
                 {/* MENU label + collapse toggle */}
-                <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
+                <div className={`flex items-center pt-4 mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
                     <p className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${sidebarCollapsed ? 'md:hidden' : ''}`}>Menu</p>
                     <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
                 </div>
@@ -1327,24 +1354,20 @@ function MentorDashboard() {
                             },
                         },
                         {
-                            kind: 'group',
-                            group: {
-                                id: 'groups',
-                                label: 'Groups',
+                            kind: 'item',
+                            item: {
+                                key: 'my-groups',
+                                label: 'My Groups',
+                                icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+                                badge: myGroups.length,
+                            },
+                        },
+                        {
+                            kind: 'item',
+                            item: {
+                                key: 'potential-c2s-groups',
+                                label: 'Potential C2S Groups',
                                 icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
-                                items: [
-                                    {
-                                        key: 'my-groups',
-                                        label: 'My Groups',
-                                        icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
-                                        badge: myGroups.length,
-                                    },
-                                    {
-                                        key: 'potential-c2s-groups',
-                                        label: 'Potential C2S Groups',
-                                        icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
-                                    },
-                                ],
                             },
                         },
                         {
@@ -1395,23 +1418,12 @@ function MentorDashboard() {
             </aside>
 
             {/* â”€â”€ Main content â”€â”€ */}
-            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-56'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
+            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
 
-                {/* Mobile sticky menu bar */}
-                <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
-                    <button
-                        className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-                        onClick={() => setSidebarOpen(true)}
-                        aria-label="Open menu"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-                        </svg>
-                    </button>
-                    <span className="text-xs text-gray-400 ml-1">
-                        {settingsSection ? 'Settings' : activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
-                    </span>
-                </div>
+                <DashboardTopHeader
+                    pageTitle={settingsSection ? 'Settings' : activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
+                    onOpenMenu={() => setSidebarOpen(true)}
+                />
 
                 {/* Content with padding */}
                 <div className="pt-4 md:pt-6 px-4 sm:px-6">
@@ -1431,7 +1443,7 @@ function MentorDashboard() {
 
                             {/* ── My Groups Tab ── */}
                             {activeTab === 'my-groups' && (
-                                <div>
+                                <div className="w-full max-w-full overflow-x-hidden">
                                     {/* Toast Notification */}
                                     {groupToast && (
                                         <div
@@ -1460,151 +1472,310 @@ function MentorDashboard() {
                                     )}
 
                                     {/* Header row */}
-                                    <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
-                                        <div>
-                                            <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Connect 2 Souls</h1>
-                                            <p className="text-sm text-gray-400 mt-1">
+                                    <div className="flex flex-wrap items-start justify-between gap-4 mb-8 w-full max-w-full">
+                                        <div className="min-w-0 flex-1">
+                                            <h1 className="text-[1.6rem] font-semibold text-[#292524] leading-tight">Connect 2 Souls</h1>
+                                            <p className="text-sm text-[#6B665F] mt-1 whitespace-normal break-words">
                                                 Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => setShowCreateGroup(true)}
-                                            className="flex items-center gap-1.5 bg-[#e53e3e] hover:bg-[#c53030] text-white font-bold px-4 py-2 rounded-md text-sm transition-colors shadow-sm shrink-0"
+                                            className="inline-flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm shrink-0 whitespace-nowrap"
                                         >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
                                             Create Group
                                         </button>
                                     </div>
 
                                     {myGroups.length === 0 ? (
-                                        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                                            <div className="text-4xl mb-3">👥</div>
-                                            <p className="font-semibold text-gray-700 text-sm">No groups assigned yet</p>
-                                            <p className="text-xs text-gray-400 mt-1">Contact the department head to get assigned to a group.</p>
+                                        <div className="bg-white rounded-2xl border border-[#E7E5E4] p-12 text-center shadow-sm">
+                                            <p className="font-semibold text-[#292524] text-sm">No groups assigned yet</p>
+                                            <p className="text-xs text-[#6B665F] mt-1">Contact the department head to get assigned to a group.</p>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                                            {myGroups.map((group) => (
-                                                <div key={group.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-4">
-                                                    {/* Tags row + Open status */}
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        {group.tags.map((t) => (
-                                                            <span key={t.label} className={`text-xs font-semibold px-3 py-1 rounded-full ${t.color}`}>
-                                                                {t.label}
-                                                            </span>
-                                                        ))}
-                                                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ml-auto ${group.status === 'Open'
-                                                            ? 'bg-[#16a34a] text-white'
-                                                            : 'bg-gray-400 text-white'
-                                                            }`}>
-                                                            {group.status}
-                                                        </span>
-                                                    </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+                                            {myGroups.map((group) => {
+                                                // Merge group members from active mentees & seeded GROUP_MEMBERS (deduplicated by name)
+                                                const activeForGroup = allActiveMentees.filter((m) => m.assignedGroup === group.name);
+                                                const staticMembers = GROUP_MEMBERS[group.name] ?? [];
+                                                const seenNames = new Set<string>();
+                                                const memberRoster: { id: string; initials: string; name: string }[] = [];
+                                                for (const m of activeForGroup) {
+                                                    const key = m.name.trim().toLowerCase();
+                                                    if (!seenNames.has(key)) {
+                                                        seenNames.add(key);
+                                                        memberRoster.push({ id: m.id, initials: m.initials, name: m.name });
+                                                    }
+                                                }
+                                                for (const m of staticMembers) {
+                                                    const key = m.name.trim().toLowerCase();
+                                                    if (!seenNames.has(key)) {
+                                                        seenNames.add(key);
+                                                        memberRoster.push({ id: m.id, initials: m.initials, name: m.name });
+                                                    }
+                                                }
+                                                const memberCount = memberRoster.length;
+                                                const capacity = 10;
+                                                const progressPct = Math.min(100, Math.round((memberCount / capacity) * 100));
+                                                const visibleAvatars = memberRoster.slice(0, 4);
+                                                const overflowCount = Math.max(0, memberCount - 4);
 
-                                                    {/* Name */}
-                                                    <h3 className="font-semibold text-gray-900 leading-tight text-3xl">{group.name}</h3>
+                                                return (
+                                                    <div key={group.id} className="h-full bg-white rounded-2xl border border-[#E7E5E4] p-6 flex flex-col justify-between gap-5 shadow-sm transition-colors">
+                                                        <div className="space-y-4">
+                                                            {/* Top row: Category pills + Open badge */}
+                                                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                                                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                                                                    {group.tags.map((t, idx) => {
+                                                                        const pillClass = idx === 0
+                                                                            ? 'bg-[#E0F2FE] text-[#0369A1] border border-[#BAE6FD]'
+                                                                            : t.color.includes('FEF3C7') || t.color.includes('D97706')
+                                                                                ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
+                                                                                : 'bg-[#FCE7F3] text-[#9D174D] border border-[#FBCFE8]';
+                                                                        return (
+                                                                            <span
+                                                                                key={t.label}
+                                                                                data-pill="true"
+                                                                                className={`inline-flex items-center whitespace-nowrap text-xs font-semibold px-3 py-1 rounded-full ${pillClass}`}
+                                                                            >
+                                                                                {t.label}
+                                                                            </span>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                <span
+                                                                    data-pill="true"
+                                                                    className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${
+                                                                        group.status === 'Open'
+                                                                            ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
+                                                                            : 'bg-[#F5F2EC] text-[#6B665F] border border-[#E7E5E4]'
+                                                                    }`}
+                                                                >
+                                                                    <span className={`w-1.5 h-1.5 rounded-full ${group.status === 'Open' ? 'bg-[#16A34A]' : 'bg-[#6B665F]'}`} />
+                                                                    {group.status}
+                                                                </span>
+                                                            </div>
 
-                                                    {/* Description */}
-                                                    <p className="text-sm text-gray-400 leading-relaxed">{group.description}</p>
+                                                            {/* Title & 2-line Description */}
+                                                            <div>
+                                                                <h3 className="text-xl font-bold text-[#292524] leading-snug">{group.name}</h3>
+                                                                <p className="text-sm text-[#6B665F] leading-relaxed line-clamp-2 mt-1.5">{group.description}</p>
+                                                            </div>
 
-                                                    {/* Satellite Church Info */}
-                                                    {(group.satelliteName || group.satellite) && (
-                                                        <div className="flex items-center gap-2 text-xs font-semibold text-[#5b50d6] bg-[#f5f3ff] px-3 py-2 rounded-xl border border-[#ede9fe]">
-                                                            <svg className="w-4 h-4 shrink-0 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                                                            </svg>
-                                                            <span className="truncate">
-                                                                Satellite: <span className="text-gray-900 font-bold">{group.satelliteName || group.satellite}</span>
-                                                            </span>
+                                                            {/* Satellite Church Info */}
+                                                            {(group.satelliteName || group.satellite) && (
+                                                                <div className="flex items-center gap-2 text-xs font-semibold text-[#92400E] bg-[#FEF3C7] px-3 py-2 rounded-xl border border-[#FDE68A]">
+                                                                    <svg className="w-4 h-4 shrink-0 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                                                                    </svg>
+                                                                    <span>
+                                                                        Satellite: <span className="font-bold">{group.satelliteName || group.satellite}</span>
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Warm Sand Details & Capacity Strip */}
+                                                            <div className="bg-[#F5F2EC] rounded-xl p-4 space-y-3 border border-[#E7E5E4]">
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                        <div className="w-8 h-8 rounded-lg bg-white border border-[#E7E5E4] flex items-center justify-center text-[#D97706] shrink-0">
+                                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                                                                <circle cx="12" cy="10" r="3" />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6B665F]">Location</p>
+                                                                            <p className="text-sm font-semibold text-[#292524] break-words">{group.location}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                        <div className="w-8 h-8 rounded-lg bg-white border border-[#E7E5E4] flex items-center justify-center text-[#D97706] shrink-0">
+                                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                                                                <line x1="16" y1="2" x2="16" y2="6" />
+                                                                                <line x1="8" y1="2" x2="8" y2="6" />
+                                                                                <line x1="3" y1="10" x2="21" y2="10" />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6B665F]">Schedule</p>
+                                                                            <p className="text-sm font-semibold text-[#292524] break-words">{group.schedule}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="border-t border-[#E7E5E4] pt-3 space-y-2.5">
+                                                                    <div className="flex items-center justify-between gap-3">
+                                                                        {memberCount > 0 ? (
+                                                                            <div className="flex items-center -space-x-2 shrink-0">
+                                                                                {visibleAvatars.map((m) => (
+                                                                                    <div
+                                                                                        key={m.id}
+                                                                                        title={m.name}
+                                                                                        className="w-6 h-6 rounded-full bg-[#D97706] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[#F5F2EC]"
+                                                                                    >
+                                                                                        {m.initials}
+                                                                                    </div>
+                                                                                ))}
+                                                                                {overflowCount > 0 && (
+                                                                                    <div className="w-6 h-6 rounded-full bg-[#1B2432] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[#F5F2EC]">
+                                                                                        +{overflowCount}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-xs font-medium text-[#6B665F]">No active mentees yet</span>
+                                                                        )}
+                                                                        <span className="text-xs font-bold text-[#292524] whitespace-nowrap shrink-0">
+                                                                            {memberCount} / {capacity} Members
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <p className="text-xs font-medium text-[#6B665F]">Active Mentees</p>
+                                                                        <div className="w-full h-2 rounded-full bg-[#E7E5E4] overflow-hidden">
+                                                                            <div
+                                                                                className="h-full rounded-full bg-[#D97706] transition-all duration-300"
+                                                                                style={{ width: `${progressPct}%` }}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    )}
 
-                                                    {/* Location */}
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <svg className="w-4 h-4 shrink-0 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                                                        </svg>
-                                                        {group.location}
+                                                        {/* Card Footer Actions */}
+                                                        <div className="mt-auto flex items-center gap-2.5 pt-1">
+                                                            <button
+                                                                onClick={() => setViewingGroup(group)}
+                                                                className="flex-1 inline-flex items-center justify-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white rounded-xl py-2.5 px-4 font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+                                                            >
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                                    <circle cx="12" cy="12" r="3" />
+                                                                </svg>
+                                                                View Members
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setEditingGroup(group)}
+                                                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#E7E5E4] text-[#292524] hover:bg-[#F5F2EC] font-medium text-sm transition-colors shrink-0 whitespace-nowrap"
+                                                            >
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                                </svg>
+                                                                Edit
+                                                            </button>
+                                                        </div>
                                                     </div>
-
-                                                    {/* Schedule */}
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <svg className="w-4 h-4 shrink-0 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" />
-                                                        </svg>
-                                                        {group.schedule}
-                                                    </div>
-
-                                                    {/* Divider */}
-                                                    <hr className="border-gray-200 mt-1" />
-
-                                                    {/* Actions footer */}
-                                                    <div className="flex items-center gap-2">
-                                                        {/* View Members — wide rounded-lg rectangle */}
-                                                        <button
-                                                            onClick={() => setViewingGroup(group)}
-                                                            className="flex items-center justify-center gap-2 font-bold text-white text-sm px-5 py-2.5 rounded-lg transition-colors" style={{ background: '#5b50d6', minWidth: 0, flex: '0 0 auto', width: '62%' }}>
-                                                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                                                            </svg>
-                                                            View Members
-                                                        </button>
-                                                        {/* Edit — bordered rectangle */}
-                                                        <button
-                                                            onClick={() => setEditingGroup(group)}
-                                                            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                                                        >
-                                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-                                                            </svg>
-                                                            Edit
-                                                        </button>
-                                                        {/* Delete — icon only, no border */}
-                                                        <button className="p-2.5 text-gray-400 hover:text-red-500 transition-colors ml-auto">
-                                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
                             )}
 
                             {/* â”€â”€ Potential Mentees Tab â”€â”€ */}
-                            {activeTab === 'potential-mentees' && (
-                                <div>
-                                    {/* Header */}
-                                    <div className="mb-6">
-                                        <h1 className="text-[1.6rem] font-black text-gray-900 leading-tight">Connect 2 Souls</h1>
-                                        <p className="text-sm text-gray-400 mt-1">
-                                            Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
-                                        </p>
-                                    </div>
+                            {activeTab === 'potential-mentees' && (() => {
+                                const q = pmSearch.trim().toLowerCase();
+                                const filteredPotentialMentees = allPotentialMentees.filter((m) => {
+                                    const matchesSource =
+                                        pmSourceFilter === 'All' ||
+                                        (pmSourceFilter === 'Group Finder' && m.source === 'From C2S Group Finder') ||
+                                        (pmSourceFilter === 'Recommended' && m.source === 'Recommended');
+                                    const matchesSearch =
+                                        !q ||
+                                        m.name.toLowerCase().includes(q) ||
+                                        m.requestedGroup.toLowerCase().includes(q) ||
+                                        m.phone.toLowerCase().includes(q) ||
+                                        m.notes.toLowerCase().includes(q);
+                                    return matchesSource && matchesSearch;
+                                });
 
-                                    {/* Reminder banner */}
-                                    <div className="flex items-start gap-3 bg-[#b45309] border border-[#92400e] rounded-xl px-5 py-4 mb-7">
-                                        <svg className="w-5 h-5 text-white shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
-                                        </svg>
-                                        <div>
-                                            <p className="text-xs font-bold text-white mb-0.5">Reminder</p>
-                                            <p className="text-xs text-white/90 leading-relaxed">
-                                                Mentors should personally meet the potential mentee before accepting the mentoring request. This helps ensure both mentor and mentee are ready for discipleship.
+                                return (
+                                    <div className="w-full max-w-full overflow-x-hidden">
+                                        {/* Header */}
+                                        <div className="mb-5">
+                                            <h1 className="text-[1.6rem] font-black text-[#292524] leading-tight">Connect 2 Souls</h1>
+                                            <p className="text-sm text-[#6B665F] mt-1">
+                                                Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
                                             </p>
                                         </div>
-                                    </div>
 
-                                    {/* Cards grid */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                                        {allPotentialMentees.map((mentee) => (
-                                            <PotentialMenteeCard key={mentee.id} mentee={mentee} onAccepted={handleMenteeAccepted} />
-                                        ))}
+                                        {/* Slim Reminder banner with Got it dismiss */}
+                                        {!pmReminderDismissed && (
+                                            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 bg-[#FEF3C7] border border-[#F59E0B] rounded-xl px-4 py-2.5 mb-5">
+                                                <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                                                    <svg className="w-4 h-4 text-[#92400E] shrink-0 mt-0.5 sm:mt-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+                                                    </svg>
+                                                    <p className="text-xs text-[#92400E] leading-snug">
+                                                        <span className="font-bold">Reminder:</span> Mentors should personally meet the potential mentee before accepting the mentoring request to ensure readiness for discipleship.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPmReminderDismissed(true)}
+                                                    className="px-3 py-1 rounded-lg bg-white/85 hover:bg-white border border-[#F59E0B]/50 text-[#92400E] text-xs font-semibold shrink-0 transition-colors cursor-pointer whitespace-nowrap"
+                                                >
+                                                    Got it
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Compact Search & Source Filter Pills */}
+                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                                            <div className="relative w-full sm:w-72">
+                                                <svg className="w-4 h-4 text-[#6B665F] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <circle cx="11" cy="11" r="8" />
+                                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                                </svg>
+                                                <input
+                                                    type="text"
+                                                    value={pmSearch}
+                                                    onChange={(e) => setPmSearch(e.target.value)}
+                                                    placeholder="Search potential mentees..."
+                                                    className="w-full bg-white border border-[#E7E5E4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#292524] placeholder:text-[#6B665F] focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7] transition-colors"
+                                                />
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {(['All', 'Group Finder', 'Recommended'] as const).map((pill) => {
+                                                    const active = pmSourceFilter === pill;
+                                                    return (
+                                                        <button
+                                                            key={pill}
+                                                            type="button"
+                                                            onClick={() => setPmSourceFilter(pill)}
+                                                            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap cursor-pointer ${
+                                                                active
+                                                                    ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
+                                                                    : 'bg-white text-[#292524] border-[#E7E5E4] hover:bg-[#F5F2EC]'
+                                                            }`}
+                                                        >
+                                                            {pill}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Cards grid */}
+                                        {filteredPotentialMentees.length === 0 ? (
+                                            <div className="bg-white rounded-2xl border border-[#E7E5E4] p-10 text-center shadow-sm">
+                                                <p className="text-sm font-semibold text-[#292524]">No potential mentees found</p>
+                                                <p className="text-xs text-[#6B665F] mt-1">Try adjusting your search or filter selection.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                                                {filteredPotentialMentees.map((mentee) => (
+                                                    <PotentialMenteeCard key={mentee.id} mentee={mentee} onAccepted={handleMenteeAccepted} />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                             {/* ── Mentees Tab ── */}
                             {activeTab === 'mentees' && (
@@ -1797,7 +1968,7 @@ function MentorDashboard() {
                     <div className="flex items-center gap-2 mb-5">
                         {tabs.map(t => (
                             <button key={t.key} onClick={() => setTab(t.key)}
-                                className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#6741d9] text-white border-[#6741d9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
                                 {t.label}
                             </button>
                         ))}
@@ -1813,8 +1984,8 @@ function MentorDashboard() {
                                         <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                         <Tooltip contentStyle={CH_TS} formatter={(v: any, n: string) => [v, n === 'attendance' ? 'Attendance %' : 'Completion %']} />
                                         <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                        <Bar dataKey="attendance" name="Attendance %" fill="#6741d9" radius={[3, 3, 0, 0]} barSize={22} />
-                                        <Bar dataKey="completion" name="Completion %" fill="#6741d9" fillOpacity={0.4} radius={[3, 3, 0, 0]} barSize={22} />
+                                        <Bar dataKey="attendance" name="Attendance %" fill="#D97706" radius={[3, 3, 0, 0]} barSize={22} />
+                                        <Bar dataKey="completion" name="Completion %" fill="#D97706" fillOpacity={0.4} radius={[3, 3, 0, 0]} barSize={22} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </>
@@ -1829,7 +2000,7 @@ function MentorDashboard() {
                                         <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                         <Tooltip contentStyle={CH_TS} />
                                         <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                        <Bar dataKey="assigned" name="Assigned Potential" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
+                                        <Bar dataKey="assigned" name="Assigned Potential" fill="#0284C7" radius={[3, 3, 0, 0]} barSize={22} />
                                         <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -1844,7 +2015,7 @@ function MentorDashboard() {
                                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                         <Tooltip contentStyle={CH_TS} />
-                                        <Bar dataKey="members" name="Members" fill="#6741d9" radius={[3, 3, 0, 0]} barSize={28} />
+                                        <Bar dataKey="members" name="Members" fill="#D97706" radius={[3, 3, 0, 0]} barSize={28} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </>
@@ -1859,8 +2030,8 @@ function MentorDashboard() {
                                         <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                         <Tooltip contentStyle={CH_TS} />
                                         <Legend iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                        <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#6741d9" strokeWidth={2} dot={{ r: 4, fill: '#6741d9', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                                        <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#0b9b8a" strokeWidth={2} dot={{ r: 4, fill: '#0b9b8a', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#D97706" strokeWidth={2} dot={{ r: 4, fill: '#D97706', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#D97706" strokeWidth={2} dot={{ r: 4, fill: '#D97706', strokeWidth: 0 }} activeDot={{ r: 6 }} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </>
@@ -1913,7 +2084,7 @@ function MentorDashboard() {
                         <div className="flex items-center gap-2 mb-5 flex-wrap">
                             {tabs.map(t => (
                                 <button key={t.key} onClick={() => setTab(t.key)}
-                                    className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#0b9b8a] text-white border-[#0b9b8a]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                    className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
                                     {t.label}
                                 </button>
                             ))}
@@ -1929,7 +2100,7 @@ function MentorDashboard() {
                                             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                             <Tooltip contentStyle={COORD_TS} />
                                             <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                            <Bar dataKey="assigned" name="Assigned" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
+                                            <Bar dataKey="assigned" name="Assigned" fill="#0284C7" radius={[3, 3, 0, 0]} barSize={22} />
                                             <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -1942,15 +2113,15 @@ function MentorDashboard() {
                                         <AreaChart data={COORD_MONTHLY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="coordFill" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#0b9b8a" stopOpacity={0.2} />
-                                                    <stop offset="95%" stopColor="#0b9b8a" stopOpacity={0} />
+                                                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.2} />
+                                                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                                             <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                             <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'New Potential Mentees']} />
-                                            <Area type="monotone" dataKey="new" stroke="#0b9b8a" strokeWidth={2} fill="url(#coordFill)" dot={false} activeDot={{ r: 5 }} />
+                                            <Area type="monotone" dataKey="new" stroke="#0284C7" strokeWidth={2} fill="url(#coordFill)" dot={false} activeDot={{ r: 5 }} />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </>
@@ -1964,7 +2135,7 @@ function MentorDashboard() {
                                             <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                             <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={55} />
                                             <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'Mentees']} />
-                                            <Bar dataKey="count" name="Mentees" fill="#0b9b8a" radius={[0, 3, 3, 0]} barSize={16} />
+                                            <Bar dataKey="count" name="Mentees" fill="#0284C7" radius={[0, 3, 3, 0]} barSize={16} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </>
@@ -1979,8 +2150,8 @@ function MentorDashboard() {
                                             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                             <Tooltip contentStyle={COORD_TS} />
                                             <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                            <Bar dataKey="assigned" name="Assigned Mentees" fill="#0b9b8a" radius={[3, 3, 0, 0]} barSize={22} />
-                                            <Bar dataKey="capacity" name="Available Slots" fill="#0b9b8a" fillOpacity={0.3} radius={[3, 3, 0, 0]} barSize={22} />
+                                            <Bar dataKey="assigned" name="Assigned Mentees" fill="#0284C7" radius={[3, 3, 0, 0]} barSize={22} />
+                                            <Bar dataKey="capacity" name="Available Slots" fill="#0284C7" fillOpacity={0.3} radius={[3, 3, 0, 0]} barSize={22} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </>
@@ -2010,56 +2181,25 @@ function MentorDashboard() {
     }
 
                 if (user.role === 'admin') {
-        return (
-                <>
-                    <DashNav onLogout={handleLogout} />
-                    <div className="pt-nav-fixed">
-                        <AdminDashboard />
-                    </div>
-                </>
-                );
+        return <AdminDashboard />;
     }
 
                 if (user.role === 'ministry_head') {
-        return (
-                <>
-                    <DashNav onLogout={handleLogout} />
-                    <div className="pt-nav-fixed">
-                        <DepartmentHeadDashboard />
-                    </div>
-                </>
-                );
+        return <DepartmentHeadDashboard />;
     }
 
                 if (user.role === 'cluster_head') {
-        return (
-                <>
-                    <DashNav onLogout={handleLogout} />
-                    <div className="pt-nav-fixed">
-                        <ClusterHeadDashboard onLogout={handleLogout} reportsContent={<CHReportsCharts />} />
-                    </div>
-                </>
-                );
+        return <ClusterHeadDashboard onLogout={handleLogout} reportsContent={<CHReportsCharts />} />;
     }
 
                 if (user.role === 'c2s_coordinator') {
-        return (
-                <>
-                    <DashNav onLogout={handleLogout} />
-                    <div className="pt-nav-fixed">
-                        <CoordinatorDashboard onLogout={handleLogout} reportsContent={<CoordReportsCharts />} />
-                    </div>
-                </>
-                );
+        return <CoordinatorDashboard onLogout={handleLogout} reportsContent={<CoordReportsCharts />} />;
     }
 
                 return (
-                <>
-                    <DashNav onLogout={handleLogout} />
-                    <div className="pt-nav-fixed overflow-x-hidden">
-                        <MentorDashboard />
-                    </div>
-                </>
+                <div className="overflow-x-hidden">
+                    <MentorDashboard />
+                </div>
                 );
 }
 

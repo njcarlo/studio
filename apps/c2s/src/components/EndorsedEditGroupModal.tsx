@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState, useRef } from 'react';
 import type { EndorsedGroup } from '@/lib/data';
 import { BARANGAYS_BY_SATELLITE } from '@/lib/data';
@@ -23,13 +24,9 @@ const SUBDIVISIONS = ['Metrogate Dasmariñas Subdivision','Greenwoods Village','
 
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
     return (
-        <div className="relative">
-            <select value={value} onChange={e => onChange(e.target.value)}
-                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8">
-                {options.map(o => <option key={o}>{o}</option>)}
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-        </div>
+        <CustomSelect value={value} onChange={e => onChange(e.target.value)} className="w-full">
+            {options.map(o => <option key={o}>{o}</option>)}
+        </CustomSelect>
     );
 }
 
@@ -37,7 +34,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     return <div className="flex flex-col gap-1.5"><label className="text-xs font-semibold text-gray-700">{label}</label>{children}</div>;
 }
 
-const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-[#f8f9fc] w-full placeholder:text-gray-300';
+const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-[#f8f9fc] w-full placeholder:text-gray-300';
 
 export default function EndorsedEditGroupModal({ group, onClose, onSave }: Props) {
     const [name, setName]           = useState(group.name);
@@ -135,19 +132,16 @@ export default function EndorsedEditGroupModal({ group, onClose, onSave }: Props
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="Barangay">
-                                                <div className="relative">
-                                                    <select
-                                                        value={barangay}
-                                                        onChange={e => setBarangay(e.target.value)}
-                                                        className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
-                                                    >
-                                                        <option value="">— Select barangay —</option>
-                                                        {communityBarangays.map(b => (
-                                                            <option key={b} value={b}>{b}</option>
-                                                        ))}
-                                                    </select>
-                                                    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                                </div>
+                                                <CustomSelect
+                                                    value={barangay}
+                                                    onChange={e => setBarangay(e.target.value)}
+                                                    className="w-full"
+                                                >
+                                                    <option value="">— Select barangay —</option>
+                                                    {communityBarangays.map(b => (
+                                                        <option key={b} value={b}>{b}</option>
+                                                    ))}
+                                                </CustomSelect>
                                             </Field>
                                         </div>
                                         <Field label="Subdivision/Village">
@@ -161,7 +155,7 @@ export default function EndorsedEditGroupModal({ group, onClose, onSave }: Props
                                                     <ul className="absolute z-10 top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-44 overflow-y-auto">
                                                         {subdivSugg.map(s => (
                                                             <li key={s} onMouseDown={() => { setSubdiv(s); setShowSugg(false); }}
-                                                                className="px-3 py-2 text-sm text-gray-700 hover:bg-[#f0effe] cursor-pointer">{s}</li>
+                                                                className="px-3 py-2 text-sm text-gray-700 hover:bg-[#FEF3C7] cursor-pointer">{s}</li>
                                                         ))}
                                                     </ul>
                                                 )}
@@ -184,7 +178,7 @@ export default function EndorsedEditGroupModal({ group, onClose, onSave }: Props
 
                     <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
                         <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                        <button onClick={() => { onSave(); onClose(); }} className="px-6 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: '#5b50d6' }}>Save Changes</button>
+                        <button onClick={() => { onSave(); onClose(); }} className="px-6 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: '#D97706' }}>Save Changes</button>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -13,6 +14,7 @@ import Link from 'next/link';
 import MenteeProfileModal from '@/components/MenteeProfileModal';
 import DevotionalProgressModal from '@/components/DevotionalProgressModal';
 import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
+import { SidebarBrandHeader, DashboardTopHeader } from '@/components/DashboardHeader';
 import { exportToCsv } from '@/lib/export-csv';
 import type { ReactNode } from 'react';
 import {
@@ -26,7 +28,7 @@ const TOOLTIP_STYLE = {
 };
 
 // ─── Color helpers ──────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#5b50d6', '#5b50d6', '#0b9b8a', '#e67700', '#6741d9'];
+const AVATAR_COLORS = ['#D97706', '#D97706', '#0284C7', '#e67700', '#D97706'];
 function avatarColor(id: string) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
@@ -36,10 +38,10 @@ function avatarColor(id: string) {
 // ─── Status badge styles ─────────────────────────────────────────────────────
 const CLUSTER_STATUS_STYLE: Record<string, string> = {
     'New':                  'bg-[#1d4ed8] text-white',
-    'Waiting for Assignment': 'bg-[#b45309] text-white',
-    'Assigned to Mentor':   'bg-[#6741d9] text-white',
-    'Interview Scheduled':  'bg-[#5b50d6] text-white',
-    'Interview Completed':  'bg-[#0c8a6e] text-white',
+    'Waiting for Assignment': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
+    'Assigned to Mentor':   'bg-[#D97706] text-white',
+    'Interview Scheduled':  'bg-[#D97706] text-white',
+    'Interview Completed':  'bg-[#0284C7] text-white',
     'Accepted':             'bg-[#166534] text-white',
 };
 
@@ -110,9 +112,9 @@ function CoordinatorPanel({ coord, onClose }: { coord: C2SCoordinator; onClose: 
                     </section>
                     <div className="grid grid-cols-3 gap-3">
                         {[
-                            { label: 'Assigned Potential', value: coord.assignedPotential, color: '#6741d9' },
+                            { label: 'Assigned Potential', value: coord.assignedPotential, color: '#D97706' },
                             { label: 'Pending',            value: coord.pendingAssignments, color: '#e67700' },
-                            { label: 'Avg Days',           value: coord.avgAssignmentDays,  color: '#0b9b8a' },
+                            { label: 'Avg Days',           value: coord.avgAssignmentDays,  color: '#0284C7' },
                         ].map(s => (
                             <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-3 text-center">
                                 <p className="text-2xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
@@ -159,61 +161,58 @@ function chGroupsToMapGroups(groups: typeof CH_CLUSTER_GROUPS): ClusterMapGroup[
 }
 
 function MapTab() {
-    const [mapType, setMapType] = useState<'Community-based' | 'Church-based' | 'All'>('All');
-    const filtered = mapType === 'All' ? CH_CLUSTER_GROUPS : CH_CLUSTER_GROUPS.filter(g => g.type === mapType);
-    const mapGroups = chGroupsToMapGroups(filtered);
+    const [mapFilter, setMapFilter] = useState<'All' | 'Open' | 'Full'>('All');
+    const communityGroups = CH_CLUSTER_GROUPS.filter(g => g.type === 'Community-based');
+    const allMapGroups = chGroupsToMapGroups(communityGroups);
+    const mapGroups = mapFilter === 'All' ? allMapGroups : allMapGroups.filter(g => g.status === mapFilter);
 
     return (
         <div>
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Interactive Map</h1>
-                    <p className="text-sm text-gray-400 mt-1">Group distribution across the cluster barangays — powered by OpenStreetMap.</p>
+                    <p className="text-sm text-gray-400 mt-1">Community-based group distribution across the cluster barangays — powered by OpenStreetMap.</p>
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                <select
-                    value={mapType}
-                    onChange={e => setMapType(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6741d9] min-w-[160px]"
+                <CustomSelect
+                    value={mapFilter}
+                    onChange={e => setMapFilter(e.target.value as any)}
+                    className="min-w-[180px]"
                 >
-                    <option value="All">All Types</option>
-                    <option value="Community-based">Community-based</option>
-                    <option value="Church-based">Church-based</option>
-                </select>
+                    <option value="All">All Community-based</option>
+                    <option value="Open">Available</option>
+                    <option value="Full">Full</option>
+                </CustomSelect>
             </div>
 
             {/* Real OSM Map */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6 map-container">
-                <ClusterMapDynamic groups={mapGroups} accentColor="#6741d9" />
+                <ClusterMapDynamic groups={mapGroups} accentColor="#047857" />
             </div>
 
             {/* Legend */}
             <div className="flex items-center flex-wrap gap-x-6 gap-y-2 mb-5">
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#6741d9' }} />
+                    <div className="w-4 h-4 rounded-full" style={{ background: '#047857' }} />
                     <span className="text-xs text-gray-600 font-medium">Community-based</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#1971c2' }} />
-                    <span className="text-xs text-gray-600 font-medium">Church-based</span>
                 </div>
                 <p className="text-xs text-gray-400 sm:ml-auto hidden sm:block">Click a marker to see group details</p>
             </div>
 
             {/* Groups list */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {filtered.map(g => (
+                {mapGroups.map(g => (
                     <div key={g.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
-                            style={{ background: g.type === 'Church-based' ? '#1971c2' : '#6741d9' }}>
+                            style={{ background: '#047857' }}>
                             {g.members}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-sm">{g.name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#6741d9] text-white' : 'bg-[#0b9b8a] text-white'}`}>
+                        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 bg-[#E0F2FE] text-[#0369A1]">
                             {g.type}
                         </span>
                     </div>
@@ -227,16 +226,17 @@ function MapTab() {
 // Charts are rendered in dashboard/page.tsx (where recharts resolves correctly)
 // and passed in as reportsContent prop
 function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; reportsContent?: ReactNode }) {
-    const [mapType, setMapType] = useState<'All' | 'Community-based' | 'Church-based'>('All');
-    const filteredGroups = mapType === 'All' ? CH_CLUSTER_GROUPS : CH_CLUSTER_GROUPS.filter(g => g.type === mapType);
-    const mapGroups = chGroupsToMapGroups(filteredGroups);
+    const [mapFilter, setMapFilter] = useState<'All' | 'Open' | 'Full'>('All');
+    const communityGroups = CH_CLUSTER_GROUPS.filter(g => g.type === 'Community-based');
+    const allMapGroups = chGroupsToMapGroups(communityGroups);
+    const mapGroups = mapFilter === 'All' ? allMapGroups : allMapGroups.filter(g => g.status === mapFilter);
 
     function handleExportCsv() {
         const slug = clusterName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         exportToCsv(
             `${slug || 'cluster'}-groups-report.csv`,
             ['Group Name', 'Barangay', 'Type', 'Members', 'Capacity', 'Mentor', 'Status'],
-            filteredGroups.map((g) => [g.name, g.barangay, g.type, g.members, g.capacity, g.mentor, g.status]),
+            mapGroups.map((g) => [g.name, g.barangay, g.type, g.members, g.capacity, g.mentor, g.status]),
         );
     }
 
@@ -265,9 +265,9 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
             {/* Summary stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-10">
                 {[
-                    { value: `${CH_MENTORS.length}`,           label: 'Total Mentors',     sub: clusterName,        color: '#6741d9' },
-                    { value: `${CH_POTENTIAL_MENTEES.length}`, label: 'Potential Mentees', sub: 'All statuses',     color: '#5b50d6' },
-                    { value: `${CH_ACTIVE_MENTEES.length}`,    label: 'Active Mentees',    sub: 'In discipleship',  color: '#0b9b8a' },
+                    { value: `${CH_MENTORS.length}`,           label: 'Total Mentors',     sub: clusterName,        color: '#D97706' },
+                    { value: `${CH_POTENTIAL_MENTEES.length}`, label: 'Potential Mentees', sub: 'All statuses',     color: '#D97706' },
+                    { value: `${CH_ACTIVE_MENTEES.length}`,    label: 'Active Mentees',    sub: 'In discipleship',  color: '#0284C7' },
                     { value: `${CH_COORDINATORS.length}`,      label: 'C2S Coordinators',  sub: 'Active only',      color: '#e67700' },
                 ].map(s => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -281,43 +281,39 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
             {/* ── Interactive Map section ── */}
             <div className="mb-4">
                 <h2 className="text-lg font-black text-gray-900">Interactive Map</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Group distribution across the cluster barangays — powered by OpenStreetMap.</p>
+                <p className="text-sm text-gray-400 mt-0.5">Community-based group distribution across the cluster barangays — powered by OpenStreetMap.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-4">
-                <select
-                    value={mapType}
-                    onChange={e => setMapType(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6741d9] min-w-[160px]"
+                <CustomSelect
+                    value={mapFilter}
+                    onChange={e => setMapFilter(e.target.value as any)}
+                    className="min-w-[180px]"
                 >
-                    <option value="All">All Types</option>
-                    <option value="Community-based">Community-based</option>
-                    <option value="Church-based">Church-based</option>
-                </select>
+                    <option value="All">All Community-based</option>
+                    <option value="Open">Available</option>
+                    <option value="Full">Full</option>
+                </CustomSelect>
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4 map-container">
-                <ClusterMapDynamic groups={mapGroups} accentColor="#6741d9" />
+                <ClusterMapDynamic groups={mapGroups} accentColor="#047857" />
             </div>
             <div className="flex items-center flex-wrap gap-x-6 gap-y-2 mb-5">
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#6741d9' }} />
+                    <div className="w-4 h-4 rounded-full" style={{ background: '#047857' }} />
                     <span className="text-xs text-gray-600 font-medium">Community-based</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#1971c2' }} />
-                    <span className="text-xs text-gray-600 font-medium">Church-based</span>
                 </div>
                 <p className="text-xs text-gray-400 sm:ml-auto hidden sm:block">Click a marker to see group details</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {filteredGroups.map(g => (
+                {mapGroups.map(g => (
                     <div key={g.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
-                            style={{ background: g.type === 'Church-based' ? '#1971c2' : '#6741d9' }}>{g.members}</div>
+                            style={{ background: '#047857' }}>{g.members}</div>
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-sm">{g.name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#6741d9] text-white' : 'bg-[#0b9b8a] text-white'}`}>
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#D97706] text-white' : 'bg-[#0284C7] text-white'}`}>
                             {g.type}
                         </span>
                     </div>
@@ -332,9 +328,9 @@ function DashboardNotifications() {
     const [notifs, setNotifs] = useState(CH_NOTIFICATIONS);
     const unread = notifs.filter(n => !n.read).length;
     const iconFor = (type: string) => {
-        if (type === 'new_potential') return { bg: '#ede9fe', dot: '#6741d9', icon: <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/> };
+        if (type === 'new_potential') return { bg: '#FEF3C7', dot: '#D97706', icon: <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/> };
         if (type === 'assignment') return { bg: '#e0f0ff', dot: '#1971c2', icon: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/> };
-        return { bg: '#d3f9f0', dot: '#0b9b8a', icon: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/> };
+        return { bg: '#FEF3C7', dot: '#0284C7', icon: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/> };
     };
     return (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -345,7 +341,7 @@ function DashboardNotifications() {
                 </div>
                 {unread > 0 && (
                     <button onClick={() => setNotifs(prev => prev.map(n => ({ ...n, read: true })))}
-                        className="text-xs font-semibold text-[#6741d9] hover:underline">Mark all as read</button>
+                        className="text-xs font-semibold text-[#D97706] hover:underline">Mark all as read</button>
                 )}
             </div>
             <div className="divide-y divide-gray-50">
@@ -353,7 +349,7 @@ function DashboardNotifications() {
                     const ic = iconFor(n.type);
                     return (
                         <div key={n.id} onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
-                            className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${!n.read ? 'bg-[#faf8ff]' : ''}`}>
+                            className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${!n.read ? 'bg-[#FEF3C7]' : ''}`}>
                             <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
                                 <svg className="w-4.5 h-4.5" width="18" height="18" viewBox="0 0 24 24" fill={ic.dot}>{ic.icon}</svg>
                             </div>
@@ -361,7 +357,7 @@ function DashboardNotifications() {
                                 <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
                                 <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                             </div>
-                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#6741d9] shrink-0 mt-1.5" />}
+                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#D97706] shrink-0 mt-1.5" />}
                         </div>
                     );
                 })}
@@ -375,9 +371,9 @@ function NotificationsTab() {
     const [notifs, setNotifs] = useState(CH_NOTIFICATIONS);
     const unread = notifs.filter(n => !n.read).length;
     const iconFor = (type: string) => {
-        if (type === 'new_potential') return { bg: '#ede9fe', dot: '#6741d9', icon: <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/> };
+        if (type === 'new_potential') return { bg: '#FEF3C7', dot: '#D97706', icon: <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/> };
         if (type === 'assignment') return { bg: '#e0f0ff', dot: '#1971c2', icon: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/> };
-        return { bg: '#d3f9f0', dot: '#0b9b8a', icon: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/> };
+        return { bg: '#FEF3C7', dot: '#0284C7', icon: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/> };
     };
     return (
         <div>
@@ -388,14 +384,14 @@ function NotificationsTab() {
                 </div>
                 {unread > 0 && (
                     <button onClick={() => setNotifs(prev => prev.map(n => ({ ...n, read: true })))}
-                        className="text-xs font-semibold text-[#6741d9] hover:underline">Mark all as read</button>
+                        className="text-xs font-semibold text-[#D97706] hover:underline">Mark all as read</button>
                 )}
             </div>
             <div className="flex flex-col gap-3">
                 {notifs.map(n => {
                     const ic = iconFor(n.type);
                     return (
-                        <div key={n.id} className={`bg-white rounded-2xl border p-5 flex items-start gap-4 transition-colors ${n.read ? 'border-gray-100' : 'border-[#6741d9]/30 bg-[#faf8ff]'}`}>
+                        <div key={n.id} className={`bg-white rounded-2xl border p-5 flex items-start gap-4 transition-colors ${n.read ? 'border-gray-100' : 'border-[#D97706]/30 bg-[#FEF3C7]'}`}>
                             <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
                                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill={ic.dot}>{ic.icon}</svg>
                             </div>
@@ -403,7 +399,7 @@ function NotificationsTab() {
                                 <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
                                 <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                             </div>
-                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#6741d9] shrink-0 mt-1.5" />}
+                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#D97706] shrink-0 mt-1.5" />}
                         </div>
                     );
                 })}
@@ -422,7 +418,7 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
 
     const statusBadge = (s: string) => {
         if (s === 'Active')          return 'bg-[#16a34a] text-white';
-        if (s === 'Needs Follow-up') return 'bg-[#b45309] text-white';
+        if (s === 'Needs Follow-up') return 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]';
         return 'bg-gray-400 text-white';
     };
 
@@ -494,12 +490,12 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5 ml-6">All C2S groups assigned to this mentor.</p>
                 </div>
-                <span className="text-xs font-semibold text-[#6741d9] bg-[#ede9fe] px-3 py-1 rounded-full">
+                <span className="text-xs font-semibold text-[#D97706] bg-[#FEF3C7] px-3 py-1 rounded-full">
                     {mentor.groups.length} group{mentor.groups.length !== 1 ? 's' : ''}
                 </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <div className="grid gap-4 mb-8 items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>
                 {mentor.groups.map((g, i) => (
                     <div key={i} className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col justify-between gap-5">
                         <div>
@@ -520,11 +516,11 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                             <span className="flex items-center gap-2 text-sm text-gray-400">
                                 Active Mentees
-                                <span className="text-base font-bold text-[#6741d9]">{g.mentees}</span>
+                                <span className="text-base font-bold text-[#D97706]">{g.mentees}</span>
                             </span>
                             <button
                                 onClick={() => setViewingGroup(g.name)}
-                                className="text-sm font-semibold text-[#6741d9] hover:underline">
+                                className="text-sm font-semibold text-[#D97706] hover:underline">
                                 View Mentees
                             </button>
                         </div>
@@ -578,17 +574,17 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                                             placeholder=""
                                             value={menteeSearch}
                                             onChange={e => setMenteeSearch(e.target.value)}
-                                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6741d9] bg-white"
+                                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-white"
                                         />
                                     </div>
-                                    <select
+                                    <CustomSelect
                                         value={menteeStatusFilter}
                                         onChange={e => setMenteeStatusFilter(e.target.value)}
-                                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#6741d9] cursor-pointer shrink-0"
+                                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] cursor-pointer shrink-0"
                                     >
                                         {statusOptions.map(o => <option key={o}>{o}</option>)}
-                                    </select>
-                                    <span className="text-xs font-semibold text-[#6741d9] bg-[#ede9fe] px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">
+                                    </CustomSelect>
+                                    <span className="text-xs font-semibold text-[#D97706] bg-[#FEF3C7] px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">
                                         {grpMentees.length} mentee{grpMentees.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
@@ -720,9 +716,10 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                 />
             )}
 
-            {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-56 md:w-[68px]' : 'w-56'} border-r flex flex-col pt-4 md:pt-4 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
-                <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
+            {/* ── Left Sidebar (full viewport height with brand header) ── */}
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-72 md:w-[68px]' : 'w-72'} border-r flex flex-col pt-0 pb-4 fixed top-0 bottom-0 left-0 ${sidebarOpen ? 'z-50 translate-x-0' : 'z-40 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+                <SidebarBrandHeader collapsed={sidebarCollapsed} />
+                <div className={`flex items-center pt-4 mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
                     <p className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${sidebarCollapsed ? 'md:hidden' : ''}`}>Menu</p>
                     <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
                 </div>
@@ -758,7 +755,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                     ] as SidebarNavEntry[]}
                     activeKey={!settingsSection ? activeNav : null}
                     collapsed={sidebarCollapsed}
-                    accentColor="#6741d9"
+                    accentColor="#D97706"
                     onSelect={(key) => {
                         setActiveNav(key);
                         setSettingsSection(null);
@@ -776,23 +773,13 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
             </aside>
 
             {/* ── Main ── */}
-            <div className={`w-full ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-56'} pb-16 min-w-0 overflow-x-hidden transition-[margin] duration-200`}>
+            <div className={`w-full ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} pb-16 min-w-0 overflow-x-hidden transition-[margin] duration-200`}>
 
-                    {/* Mobile sticky menu bar */}
-                    <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
-                        <button
-                            className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-                            onClick={() => setSidebarOpen(true)}
-                            aria-label="Open menu"
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                            </svg>
-                        </button>
-                        <span className="text-xs text-gray-400 ml-1">
-                            {settingsSection ? 'Settings' : activeNav === 'dashboard' ? 'Dashboard' : CH_NAV.find(n => n.key === activeNav)?.label ?? ''}
-                        </span>
-                    </div>
+                    <DashboardTopHeader
+                        pageTitle={settingsSection ? 'Settings' : activeNav === 'dashboard' ? 'Dashboard' : CH_NAV.find(n => n.key === activeNav)?.label ?? ''}
+                        onOpenMenu={() => setSidebarOpen(true)}
+                        onLogout={onLogout}
+                    />
 
                     <div className="pt-4 md:pt-5 px-4 sm:px-6">
                     {settingsSection ? (
@@ -819,9 +806,9 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
                                 {[
-                                    { label: 'Assigned Potential', value: totalAssigned, color: '#6741d9' },
+                                    { label: 'Assigned Potential', value: totalAssigned, color: '#D97706' },
                                     { label: 'Pending Assignments', value: totalPending, color: '#e67700' },
-                                    { label: 'Avg Assignment Time', value: `${avgDays} days`, color: '#0b9b8a' },
+                                    { label: 'Avg Assignment Time', value: `${avgDays} days`, color: '#0284C7' },
                                 ].map(s => (
                                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5">
                                         <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
@@ -850,9 +837,9 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                         </div>
                                         <div className="grid grid-cols-3 gap-3">
                                             {[
-                                                { label: 'Assigned',  value: c.assignedPotential, color: '#6741d9' },
+                                                { label: 'Assigned',  value: c.assignedPotential, color: '#D97706' },
                                                 { label: 'Pending',   value: c.pendingAssignments, color: '#e67700' },
-                                                { label: 'Avg Days',  value: `${c.avgAssignmentDays}d`, color: '#0b9b8a' },
+                                                { label: 'Avg Days',  value: `${c.avgAssignmentDays}d`, color: '#0284C7' },
                                             ].map(s => (
                                                 <div key={s.label} className="rounded-xl p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                                                     <p className="text-lg font-black" style={{ color: s.color }}>{s.value}</p>
@@ -866,7 +853,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                 <p key={i} className="text-xs text-gray-600 leading-snug mb-1">• {a.text} <span className="text-gray-400 text-[10px]">({a.time})</span></p>
                                             ))}
                                         </div>
-                                        <button onClick={() => setViewingCoord(c)} className="text-xs font-semibold text-white px-4 py-2 rounded-lg transition-colors" style={{ background: '#6741d9' }}>
+                                        <button onClick={() => setViewingCoord(c)} className="text-xs font-semibold text-white px-4 py-2 rounded-lg transition-colors" style={{ background: '#D97706' }}>
                                             View Full Profile
                                         </button>
                                     </div>
@@ -890,8 +877,8 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                             </div>
 
                             {/* Info banner */}
-                            <div className="flex items-start gap-3 bg-[#5b50d6] rounded-xl px-4 py-3 mb-6">
-                                <svg className="w-4 h-4 text-[#6741d9] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                            <div className="flex items-start gap-3 bg-[#D97706] rounded-xl px-4 py-3 mb-6">
+                                <svg className="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
                                 <p className="text-xs text-white">Mentors are created exclusively through the Endorsement Approval process. No manual creation allowed.</p>
                             </div>
 
@@ -899,17 +886,17 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                 <div className="relative w-full sm:w-64">
                                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                                     <input type="text" placeholder="Search mentors..." value={mentorSearch} onChange={e => setMentorSearch(e.target.value)}
-                                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6741d9] w-full bg-white" />
+                                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-full bg-white" />
                                 </div>
-                                <select
+                                <CustomSelect
                                     value={mentorFilter}
                                     onChange={e => setMentorFilter(e.target.value as any)}
-                                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6741d9] min-w-[130px]"
+                                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                                 >
                                     <option value="All">All Status</option>
                                     <option value="Active">Active</option>
                                     <option value="Inactive">Inactive</option>
-                                </select>
+                                </CustomSelect>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -952,7 +939,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                         <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                                                         Groups
                                                     </div>
-                                                    <span className="text-[11px] font-semibold text-[#6741d9]">{m.groups.length} group{m.groups.length !== 1 ? 's' : ''}</span>
+                                                    <span className="text-[11px] font-semibold text-[#D97706]">{m.groups.length} group{m.groups.length !== 1 ? 's' : ''}</span>
                                                 </div>
 
                                                 <div className="flex flex-col divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
@@ -967,7 +954,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                 </div>
 
                                                 {extraGroups > 0 && (
-                                                    <button onClick={() => setMentorProfilePage(m)} className="mt-2 text-xs font-semibold text-[#6741d9] hover:underline">
+                                                    <button onClick={() => setMentorProfilePage(m)} className="mt-2 text-xs font-semibold text-[#D97706] hover:underline">
                                                         +{extraGroups} more
                                                     </button>
                                                 )}
@@ -996,17 +983,17 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                 <div className="relative w-full sm:w-64">
                                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                                     <input type="text" placeholder="Search..." value={potentialSearch} onChange={e => setPotentialSearch(e.target.value)}
-                                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6741d9] w-full bg-white" />
+                                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-full bg-white" />
                                 </div>
-                                <select
+                                <CustomSelect
                                     value={potentialFilter}
                                     onChange={e => setPotentialFilter(e.target.value as any)}
-                                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6741d9] min-w-[150px]"
+                                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[150px]"
                                 >
                                     {statusFilters.map(f => (
                                         <option key={f} value={f}>{f === 'All' ? 'All Status' : f}</option>
                                     ))}
-                                </select>
+                                </CustomSelect>
                             </div>
                             {/* Mobile cards */}
                             <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
@@ -1137,10 +1124,10 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                 {/* Stat cards — 2x2 on mobile, row on desktop */}
                                 <div className="grid grid-cols-2 sm:grid-cols-1 sm:flex sm:flex-1 gap-4">
                                     {[
-                                        { label: 'Total Mentees', value: totalMentees,   color: '#6741d9' },
+                                        { label: 'Total Mentees', value: totalMentees,   color: '#D97706' },
                                         { label: 'Active',        value: activeCnt,      color: '#ef4444' },
                                         { label: 'Inactive',      value: inactiveCnt,    color: '#3b82f6' },
-                                        { label: 'Transferred',   value: transferredCnt, color: '#0b9b8a' },
+                                        { label: 'Transferred',   value: transferredCnt, color: '#0284C7' },
                                     ].map(s => (
                                         <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 sm:px-7 py-5 flex flex-col justify-center sm:flex-1 dark:bg-[#1E293B] dark:border-[#334155]">
                                             <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2 dark:text-[#94A3B8]">{s.label}</p>
@@ -1157,7 +1144,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                     <div className="relative">
                                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                                         <input type="text" placeholder="Search mentees..." value={activeMenteeSearch} onChange={e => setActiveMenteeSearch(e.target.value)}
-                                            className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6741d9] bg-white w-52" />
+                                            className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-white w-52" />
                                     </div>
                                 </div>
                                 {filteredActiveMentees.length === 0 ? (
@@ -1183,12 +1170,12 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                         <span className="text-[11px] font-semibold text-gray-700">{m.progress}%</span>
                                                     </div>
                                                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#6741d9' }} />
+                                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} />
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setViewingActiveMentee(m)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300 transition-colors">View Profile</button>
-                                                    <button onClick={() => setUpdatingMentee(m)} className="text-xs font-semibold text-[#6741d9] border border-[#6741d9] px-3 py-1.5 rounded-lg hover:bg-[#f5f3ff] transition-colors">Devotional</button>
+                                                    <button onClick={() => setUpdatingMentee(m)} className="text-xs font-semibold text-[#D97706] border border-[#D97706] px-3 py-1.5 rounded-lg hover:bg-[#FEF3C7] transition-colors">Devotional</button>
                                                 </div>
                                             </div>
                                         ))}

@@ -151,11 +151,11 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                     <div key={mod.id}>
                         <button
                             onClick={() => setExpandedModule(expandedModule === mod.id ? 0 : mod.id)}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#f0effe] transition-colors rounded-xl"
+                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#FEF3C7] transition-colors rounded-xl"
                             style={{ background: 'var(--bg-subtle)' }}
                         >
                             <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                allDone ? 'bg-[#5b50d6] text-white' : 'bg-gray-200 text-gray-500'
+                                allDone ? 'bg-[#D97706] text-white' : 'bg-gray-200 text-gray-500'
                             }`}>{mod.id}</span>
                             <div className="flex-1 text-left">
                                 <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Module {mod.id}</p>
@@ -226,7 +226,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                                         else if (item.label === 'Transfer to Another Mentor') setShowTransfer(true);
                                         else if (item.label === 'Transfer to Group') setShowTransferGroup(true);
                                     }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-[#f0effe] transition-colors text-left">
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-[#FEF3C7] transition-colors text-left">
                                     <svg className="w-4 h-4 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">{item.icon}</svg>
                                     {item.label}
                                 </button>
@@ -275,7 +275,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                             {TRAININGS_LIST.map(t => (
                                 <li key={t}
                                     onClick={() => { setSelectedTraining(t); setShowTrainingList(false); }}
-                                    className="px-4 py-3 text-sm text-gray-700 hover:bg-[#f0effe] cursor-pointer">
+                                    className="px-4 py-3 text-sm text-gray-700 hover:bg-[#FEF3C7] cursor-pointer">
                                     {t}
                                 </li>
                             ))}
@@ -337,13 +337,13 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                     <div className="sm:hidden flex border-b border-gray-100 shrink-0">
                         <button
                             onClick={() => setMobileTab('modules')}
-                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'modules' ? 'text-[#5b50d6] border-b-2 border-[#5b50d6]' : 'text-gray-400'}`}
+                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'modules' ? 'text-[#D97706] border-b-2 border-[#D97706]' : 'text-gray-400'}`}
                         >
                             Modules
                         </button>
                         <button
                             onClick={() => setMobileTab('details')}
-                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'details' ? 'text-[#5b50d6] border-b-2 border-[#5b50d6]' : 'text-gray-400'}`}
+                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${mobileTab === 'details' ? 'text-[#D97706] border-b-2 border-[#D97706]' : 'text-gray-400'}`}
                         >
                             Details
                         </button>
@@ -358,7 +358,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                                     <button
                                         onClick={markModuleComplete}
                                         className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white rounded-xl transition-colors"
-                                        style={{ background: '#5b50d6' }}
+                                        style={{ background: '#D97706' }}
                                     >
                                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                         Mark as Completed
@@ -372,7 +372,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                                     <button
                                         onClick={handleSave}
                                         className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors"
-                                        style={{ background: saved ? '#22c55e' : '#5b50d6' }}
+                                        style={{ background: saved ? '#22c55e' : '#D97706' }}
                                     >
                                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                         {saved ? 'Saved!' : 'Save Changes'}
@@ -391,7 +391,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                                 <button
                                     onClick={markModuleComplete}
                                     className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white rounded-xl transition-colors"
-                                    style={{ background: '#5b50d6' }}
+                                    style={{ background: '#D97706' }}
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                     Mark as Completed
@@ -409,7 +409,7 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
                                 <button
                                     onClick={handleSave}
                                     className="flex items-center gap-1.5 text-sm font-semibold text-white px-6 py-2.5 rounded-xl transition-colors"
-                                    style={{ background: saved ? '#22c55e' : '#5b50d6' }}
+                                    style={{ background: saved ? '#22c55e' : '#D97706' }}
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                     {saved ? 'Saved!' : 'Save Changes'}

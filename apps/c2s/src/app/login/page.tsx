@@ -98,7 +98,7 @@ export default function LoginPage() {
                                 className="font-bold uppercase"
                                 style={{
                                     color: '#0F766E',
-                                    fontSize: '0.75rem',
+                                    fontSize: '11px',
                                     letterSpacing: '0.08em',
                                     lineHeight: 1.4,
                                 }}
@@ -109,7 +109,7 @@ export default function LoginPage() {
                                 className="font-extrabold tracking-tight mt-1"
                                 style={{
                                     color: '#0F172A',
-                                    fontSize: 'clamp(1.25rem, 2.5vw, 1.5rem)',
+                                    fontSize: '20px',
                                     lineHeight: 1.25,
                                 }}
                             >
@@ -119,7 +119,7 @@ export default function LoginPage() {
                                 className="mt-1 font-medium"
                                 style={{
                                     color: '#334155',
-                                    fontSize: '0.875rem',
+                                    fontSize: '13px',
                                     lineHeight: 1.45,
                                 }}
                             >
@@ -127,7 +127,7 @@ export default function LoginPage() {
                             </p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form data-no-confirm onSubmit={handleSubmit} className="space-y-4">
                             {/* Worker ID */}
                             <div>
                                 <label

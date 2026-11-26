@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { C2S_PIN_COLORS, createC2SMapIcon } from '@/components/C2SMapPin';
 
 export interface ClusterMapGroup {
     id: string;
@@ -17,7 +18,7 @@ export interface ClusterMapGroup {
 
 interface Props {
     groups: ClusterMapGroup[];
-    accentColor?: string; // defaults to '#0b9b8a'
+    accentColor?: string; // defaults to C2S_PIN_COLORS.primary ('#047857')
 }
 
 // Dasmariñas City, Cavite barangay approximate coords
@@ -61,7 +62,7 @@ export const DASMARIÑAS_GROUPS: ClusterMapGroup[] = [
     },
 ];
 
-export default function ClusterMap({ groups, accentColor = '#0b9b8a' }: Props) {
+export default function ClusterMap({ groups, accentColor = C2S_PIN_COLORS.primary }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const LRef = useRef<any>(null);
@@ -98,7 +99,9 @@ export default function ClusterMap({ groups, accentColor = '#0b9b8a' }: Props) {
             mapRef.current = map;
             LRef.current = L;
 
-            groups.forEach((g) => addMarker(L, map, g, accentColor, markersRef));
+            groups
+                .filter((g) => g.type === 'Community-based')
+                .forEach((g) => addMarker(L, map, g, accentColor, markersRef));
         });
 
         return () => {
@@ -121,7 +124,9 @@ export default function ClusterMap({ groups, accentColor = '#0b9b8a' }: Props) {
         markersRef.current.forEach((m) => m.remove());
         markersRef.current.clear();
 
-        groups.forEach((g) => addMarker(L, map, g, accentColor, markersRef));
+        groups
+            .filter((g) => g.type === 'Community-based')
+            .forEach((g) => addMarker(L, map, g, accentColor, markersRef));
     }, [groups, accentColor]);
 
     return <div ref={containerRef} className="w-full h-full" />;
@@ -129,22 +134,9 @@ export default function ClusterMap({ groups, accentColor = '#0b9b8a' }: Props) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function markerSvg(color: string) {
-    return `
-<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
-  <filter id="shadow" x="-30%" y="-20%" width="160%" height="160%">
-    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.25)"/>
-  </filter>
-  <path d="M20 1C10.059 1 2 9.059 2 19c0 13.5 18 31 18 31S38 32.5 38 19C38 9.059 29.941 1 20 1z"
-        fill="${color}" stroke="white" stroke-width="2" filter="url(#shadow)"/>
-  <circle cx="20" cy="18" r="11" fill="white" fill-opacity="0.97"/>
-  <image href="/c2s.png" x="9" y="7" width="22" height="22" preserveAspectRatio="xMidYMid meet" clip-path="circle(11px at 11px 11px)"/>
-</svg>`;
-}
-
-function popupHtml(g: ClusterMapGroup) {
+function popupHtml(g: ClusterMapGroup, communityColor: string) {
     const pct = Math.round((g.members / g.capacity) * 100);
-    const typeColor = g.type === 'Community-based' ? '#0b9b8a' : '#1971c2';
+    const typeColor = communityColor;
     const statusColor = g.status === 'Open' ? '#166534' : g.status === 'Full' ? '#92400e' : '#6b7280';
     const statusBg    = g.status === 'Open' ? '#dcfce7' : g.status === 'Full' ? '#fef9c3' : '#f3f4f6';
     return `
@@ -165,7 +157,7 @@ function popupHtml(g: ClusterMapGroup) {
       <span>Members</span><span style="font-weight:600;color:#374151">${g.members} / ${g.capacity}</span>
     </div>
     <div style="height:6px;background:#e5e7eb;border-radius:9999px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${pct >= 100 ? '#e67700' : '#0b9b8a'};border-radius:9999px"></div>
+      <div style="height:100%;width:${pct}%;background:${pct >= 100 ? '#e67700' : communityColor};border-radius:9999px"></div>
     </div>
   </div>
 </div>`;
@@ -178,19 +170,13 @@ function addMarker(
     accentColor: string,
     markersRef: React.MutableRefObject<Map<string, any>>
 ) {
-    const color = g.type === 'Church-based' ? '#1971c2' : accentColor;
+    const color = accentColor;
 
-    const icon = L.divIcon({
-        html: markerSvg(color),
-        iconSize: [40, 52],
-        iconAnchor: [20, 52],
-        popupAnchor: [0, -54],
-        className: '',
-    });
+    const icon = createC2SMapIcon(L, color);
 
     const marker = L.marker([g.lat, g.lng], { icon, title: g.name });
 
-    marker.bindPopup(popupHtml(g), {
+    marker.bindPopup(popupHtml(g, accentColor), {
         closeButton: true,
         className: 'cluster-map-popup',
         maxWidth: 260,

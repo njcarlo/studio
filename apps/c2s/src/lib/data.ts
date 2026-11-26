@@ -41,12 +41,12 @@ export const LIVE_SCHEDULE: LiveScheduleItem[] = [
 
 export const YOUTUBE_LIVE_ID = 'O0WewzcECwg';
 
-const TEAL   = 'bg-[#0b9b8a] text-white';
+const TEAL   = 'bg-[#0284C7] text-white';
 const PINK   = 'bg-[#e6184d] text-white';
 const BLUE   = 'bg-[#1971c2] text-white';
-const GREEN  = 'bg-[#0c8a6e] text-white';
+const GREEN  = 'bg-[#0284C7] text-white';
 const YELLOW = 'bg-[#b45309] text-white';
-const PURPLE = 'bg-[#6741d9] text-white';
+const PURPLE = 'bg-[#0284C7] text-white';
 
 // Dasmariñas City center: 14.3294, 120.9367
 export const C2S_GROUPS: C2SGroup[] = [
@@ -230,7 +230,7 @@ export const POTENTIAL_MENTEES: PotentialMentee[] = [
     {
         id: 'pm1', initials: 'JR', name: 'Jasmine Reyes',
         age: 22, gender: 'Female', phone: '+63 917 555 0142',
-        source: 'From C2S Group Finder', sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+        source: 'From C2S Group Finder', sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
         requestedGroup: 'Orchard Residences',
         notes: 'Interested in joining the Young Adults Fellowship.',
         status: 'Pending',
@@ -250,7 +250,7 @@ export const POTENTIAL_MENTEES: PotentialMentee[] = [
     {
         id: 'pm2', initials: 'MS', name: 'Marco Santos',
         age: 33, gender: 'Male', phone: '+63 917 555 0142',
-        source: 'From C2S Group Finder', sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+        source: 'From C2S Group Finder', sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
         requestedGroup: 'Orchard Residences',
         notes: 'Interested in joining the Young Adults Fellowship.',
         status: 'Pending',
@@ -270,7 +270,7 @@ export const POTENTIAL_MENTEES: PotentialMentee[] = [
     {
         id: 'pm3', initials: 'AM', name: 'Aira Mendoza',
         age: 27, gender: 'Female', phone: '+63 916 457 0862',
-        source: 'Recommended', sourceColor: 'bg-[#ede9fe] text-[#6741d9]',
+        source: 'Recommended', sourceColor: 'bg-[#FEF3C7] text-[#0284C7]',
         requestedGroup: 'Orchard Residences',
         notes: 'Interested in joining the Young Adults Fellowship.',
         status: 'Pending',
@@ -902,7 +902,7 @@ export interface C2SCoordinator {
 
 export const CH_COORDINATORS: C2SCoordinator[] = [
     {
-        id: 'co1', initials: 'RC', name: 'Rosa Castillo', color: '#5b50d6',
+        id: 'co1', initials: 'RC', name: 'Rosa Castillo', color: '#1E293B',
         barangay: 'Burol', phone: '+63 917 100 2001', email: 'rosa.c@cogdasmarinas.org',
         assignedPotential: 8, pendingAssignments: 2, avgAssignmentDays: 3,
         status: 'Active',
@@ -913,7 +913,7 @@ export const CH_COORDINATORS: C2SCoordinator[] = [
         ],
     },
     {
-        id: 'co2', initials: 'BM', name: 'Ben Macaraeg', color: '#0b9b8a',
+        id: 'co2', initials: 'BM', name: 'Ben Macaraeg', color: '#0284C7',
         barangay: 'Paliparan III', phone: '+63 918 200 3002', email: 'ben.m@cogdasmarinas.org',
         assignedPotential: 5, pendingAssignments: 1, avgAssignmentDays: 4,
         status: 'Active',
@@ -977,7 +977,7 @@ export interface ClusterMentor {
 
 export const CH_MENTORS: ClusterMentor[] = [
     {
-        id: 'cm1', initials: 'JD', name: 'Juan Dela Cruz', color: '#5b50d6',
+        id: 'cm1', initials: 'JD', name: 'Juan Dela Cruz', color: '#1E293B',
         group: 'Orchard Residences', barangay: 'Burol',
         phone: '+63 917 123 4567', email: 'juan.dc@cogdasmarinas.org',
         numberOfGroups: 3, activeMentees: 5, groupCapacity: 12,
@@ -988,11 +988,11 @@ export const CH_MENTORS: ClusterMentor[] = [
             { name: 'San Marino',         barangay: 'Paliparan I', mentees: 5, schedule: 'Sat 4:00 PM', address: 'San Marino Subd.' },
         ],
         mentees: [
-            { id: 'MT-001', initials: 'JC', name: 'Juan Cruz',      color: '#5b50d6', group: 'Orchard Residences', barangay: 'Burol',       lesson: 'Lesson 4: Prayer',       devotionDate: 'Jul 14, 2026', attendanceDate: 'Jul 15, 2026', status: 'Active' },
+            { id: 'MT-001', initials: 'JC', name: 'Juan Cruz',      color: '#1E293B', group: 'Orchard Residences', barangay: 'Burol',       lesson: 'Lesson 4: Prayer',       devotionDate: 'Jul 14, 2026', attendanceDate: 'Jul 15, 2026', status: 'Active' },
             { id: 'MT-002', initials: 'MS', name: 'Maria Santos',   color: '#e91e8c', group: 'Orchard Residences', barangay: 'Burol',       lesson: 'Lesson 3: Faith',        devotionDate: 'Jul 12, 2026', attendanceDate: 'Jul 13, 2026', status: 'Active' },
-            { id: 'MT-003', initials: 'PL', name: 'Pedro Lim',      color: '#0b9b8a', group: 'Green Village',      barangay: 'Burol',       lesson: 'Lesson 2: Salvation',    devotionDate: 'Jul 08, 2026', attendanceDate: 'Jul 10, 2026', status: 'Needs Follow-up' },
+            { id: 'MT-003', initials: 'PL', name: 'Pedro Lim',      color: '#0284C7', group: 'Green Village',      barangay: 'Burol',       lesson: 'Lesson 2: Salvation',    devotionDate: 'Jul 08, 2026', attendanceDate: 'Jul 10, 2026', status: 'Needs Follow-up' },
             { id: 'MT-004', initials: 'AV', name: 'Ana Villanueva', color: '#e67700', group: 'San Marino',         barangay: 'Paliparan I', lesson: 'Lesson 5: Discipleship', devotionDate: 'Jul 16, 2026', attendanceDate: 'Jul 16, 2026', status: 'Active' },
-            { id: 'MT-005', initials: 'RT', name: 'Ramon Torres',   color: '#6741d9', group: 'San Marino',         barangay: 'Paliparan I', lesson: 'Lesson 1: The Gospel',   devotionDate: 'Jun 30, 2026', attendanceDate: 'Jul 02, 2026', status: 'Inactive' },
+            { id: 'MT-005', initials: 'RT', name: 'Ramon Torres',   color: '#0284C7', group: 'San Marino',         barangay: 'Paliparan I', lesson: 'Lesson 1: The Gospel',   devotionDate: 'Jun 30, 2026', attendanceDate: 'Jul 02, 2026', status: 'Inactive' },
         ],
     },
     {
@@ -1007,14 +1007,14 @@ export const CH_MENTORS: ClusterMentor[] = [
             { name: 'Cedar Park',       barangay: 'Paliparan IV',  mentees: 3, schedule: 'Sat 3:00 PM', address: 'Cedar Park Subd.' },
         ],
         mentees: [
-            { id: 'MT-011', initials: 'KR', name: 'Karl Reyes',    color: '#5b50d6', group: 'Lumina Homes',     barangay: 'Paliparan III', lesson: 'Lesson 3: Faith',        devotionDate: 'Jul 13, 2026', attendanceDate: 'Jul 14, 2026', status: 'Active' },
+            { id: 'MT-011', initials: 'KR', name: 'Karl Reyes',    color: '#1E293B', group: 'Lumina Homes',     barangay: 'Paliparan III', lesson: 'Lesson 3: Faith',        devotionDate: 'Jul 13, 2026', attendanceDate: 'Jul 14, 2026', status: 'Active' },
             { id: 'MT-012', initials: 'BG', name: 'Bianca Garcia', color: '#e91e8c', group: 'Lumina Homes',     barangay: 'Paliparan III', lesson: 'Lesson 4: Prayer',       devotionDate: 'Jul 14, 2026', attendanceDate: 'Jul 15, 2026', status: 'Active' },
-            { id: 'MT-013', initials: 'EC', name: 'Eli Cruz',      color: '#0b9b8a', group: 'Rosewood Estates', barangay: 'Paliparan III', lesson: 'Lesson 2: Salvation',    devotionDate: 'Jul 07, 2026', attendanceDate: 'Jul 09, 2026', status: 'Needs Follow-up' },
+            { id: 'MT-013', initials: 'EC', name: 'Eli Cruz',      color: '#0284C7', group: 'Rosewood Estates', barangay: 'Paliparan III', lesson: 'Lesson 2: Salvation',    devotionDate: 'Jul 07, 2026', attendanceDate: 'Jul 09, 2026', status: 'Needs Follow-up' },
             { id: 'MT-014', initials: 'NG', name: 'Nina Gomez',    color: '#e67700', group: 'Cedar Park',       barangay: 'Paliparan IV',  lesson: 'Lesson 1: The Gospel',   devotionDate: 'Jul 10, 2026', attendanceDate: 'Jul 11, 2026', status: 'Active' },
         ],
     },
     {
-        id: 'cm3', initials: 'MR', name: 'Maria Reyes', color: '#0b9b8a',
+        id: 'cm3', initials: 'MR', name: 'Maria Reyes', color: '#0284C7',
         group: 'Greenfields 1', barangay: 'Sampaloc I',
         phone: '+63 919 345 6789', email: 'maria.r@cogdasmarinas.org',
         numberOfGroups: 2, activeMentees: 3, groupCapacity: 7,
@@ -1024,9 +1024,9 @@ export const CH_MENTORS: ClusterMentor[] = [
             { name: 'Greenfields 2', barangay: 'Sampaloc II', mentees: 3, schedule: 'Wed 5:30 PM', address: 'Greenfields Phase 2' },
         ],
         mentees: [
-            { id: 'MT-021', initials: 'LB', name: 'Leo Bautista',  color: '#5b50d6', group: 'Greenfields 1', barangay: 'Sampaloc I',  lesson: 'Lesson 2: Salvation',  devotionDate: 'Jul 11, 2026', attendanceDate: 'Jul 12, 2026', status: 'Active' },
+            { id: 'MT-021', initials: 'LB', name: 'Leo Bautista',  color: '#1E293B', group: 'Greenfields 1', barangay: 'Sampaloc I',  lesson: 'Lesson 2: Salvation',  devotionDate: 'Jul 11, 2026', attendanceDate: 'Jul 12, 2026', status: 'Active' },
             { id: 'MT-022', initials: 'SM', name: 'Sofia Mendez',  color: '#e91e8c', group: 'Greenfields 1', barangay: 'Sampaloc I',  lesson: 'Lesson 3: Faith',      devotionDate: 'Jul 09, 2026', attendanceDate: 'Jul 10, 2026', status: 'Active' },
-            { id: 'MT-023', initials: 'AP', name: 'Alex Pascual',  color: '#6741d9', group: 'Greenfields 2', barangay: 'Sampaloc II', lesson: 'Lesson 1: The Gospel', devotionDate: 'Jun 28, 2026', attendanceDate: 'Jul 01, 2026', status: 'Needs Follow-up' },
+            { id: 'MT-023', initials: 'AP', name: 'Alex Pascual',  color: '#0284C7', group: 'Greenfields 2', barangay: 'Sampaloc II', lesson: 'Lesson 1: The Gospel', devotionDate: 'Jun 28, 2026', attendanceDate: 'Jul 01, 2026', status: 'Needs Follow-up' },
         ],
     },
     {
@@ -1039,8 +1039,8 @@ export const CH_MENTORS: ClusterMentor[] = [
             { name: 'Salitran Heights', barangay: 'Salitran III', mentees: 2, schedule: 'Sun 4:00 PM', address: 'Salitran Heights Subd.' },
         ],
         mentees: [
-            { id: 'MT-031', initials: 'FC', name: 'Faye Castillo', color: '#5b50d6', group: 'Salitran Heights', barangay: 'Salitran III', lesson: 'Lesson 2: Salvation', devotionDate: 'Jun 20, 2026', attendanceDate: 'Jun 22, 2026', status: 'Inactive' },
-            { id: 'MT-032', initials: 'RN', name: 'Rico Natividad', color: '#0b9b8a', group: 'Salitran Heights', barangay: 'Salitran III', lesson: 'Lesson 1: The Gospel', devotionDate: 'Jun 18, 2026', attendanceDate: 'Jun 20, 2026', status: 'Inactive' },
+            { id: 'MT-031', initials: 'FC', name: 'Faye Castillo', color: '#1E293B', group: 'Salitran Heights', barangay: 'Salitran III', lesson: 'Lesson 2: Salvation', devotionDate: 'Jun 20, 2026', attendanceDate: 'Jun 22, 2026', status: 'Inactive' },
+            { id: 'MT-032', initials: 'RN', name: 'Rico Natividad', color: '#0284C7', group: 'Salitran Heights', barangay: 'Salitran III', lesson: 'Lesson 1: The Gospel', devotionDate: 'Jun 18, 2026', attendanceDate: 'Jun 20, 2026', status: 'Inactive' },
         ],
     },
 ];
@@ -1056,7 +1056,7 @@ export const CH_POTENTIAL_MENTEES: ClusterPotentialMentee[] = [
     {
         id: 'chpm1', initials: 'JR', name: 'Jasmine Reyes',
         age: 22, gender: 'Female', phone: '+63 917 555 0142',
-        source: 'From C2S Group Finder', sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+        source: 'From C2S Group Finder', sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
         requestedGroup: 'Orchard Residences',
         notes: 'Interested in joining the Young Adults Fellowship.',
         status: 'Pending',
@@ -1070,7 +1070,7 @@ export const CH_POTENTIAL_MENTEES: ClusterPotentialMentee[] = [
     {
         id: 'chpm2', initials: 'MS', name: 'Marco Santos',
         age: 33, gender: 'Male', phone: '+63 917 555 0143',
-        source: 'From C2S Group Finder', sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+        source: 'From C2S Group Finder', sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
         requestedGroup: 'DBB-B',
         notes: 'Looking for a married couples group.',
         status: 'Pending',
@@ -1085,7 +1085,7 @@ export const CH_POTENTIAL_MENTEES: ClusterPotentialMentee[] = [
     {
         id: 'chpm3', initials: 'AM', name: 'Aira Mendoza',
         age: 27, gender: 'Female', phone: '+63 916 457 0862',
-        source: 'Recommended', sourceColor: 'bg-[#ede9fe] text-[#6741d9]',
+        source: 'Recommended', sourceColor: 'bg-[#FEF3C7] text-[#0284C7]',
         requestedGroup: 'Greenfields 1',
         notes: 'Transferred from another cluster.',
         status: 'Pending',
@@ -1100,7 +1100,7 @@ export const CH_POTENTIAL_MENTEES: ClusterPotentialMentee[] = [
     {
         id: 'chpm4', initials: 'RB', name: 'Rafael Buenaventura',
         age: 29, gender: 'Male', phone: '+63 915 333 7788',
-        source: 'From C2S Group Finder', sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+        source: 'From C2S Group Finder', sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
         requestedGroup: 'Orchard Residences',
         notes: 'Was referred by a current member.',
         status: 'Pending',
@@ -1116,7 +1116,7 @@ export const CH_POTENTIAL_MENTEES: ClusterPotentialMentee[] = [
     {
         id: 'chpm5', initials: 'NV', name: 'Nina Villanueva',
         age: 24, gender: 'Female', phone: '+63 917 444 5566',
-        source: 'From C2S Group Finder', sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+        source: 'From C2S Group Finder', sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
         requestedGroup: 'DBB-B',
         notes: 'Attended two services already.',
         status: 'Pending',
@@ -1132,7 +1132,7 @@ export const CH_POTENTIAL_MENTEES: ClusterPotentialMentee[] = [
     {
         id: 'chpm6', initials: 'TO', name: 'Tirso Orozco',
         age: 45, gender: 'Male', phone: '+63 918 555 6677',
-        source: 'Recommended', sourceColor: 'bg-[#ede9fe] text-[#6741d9]',
+        source: 'Recommended', sourceColor: 'bg-[#FEF3C7] text-[#0284C7]',
         requestedGroup: 'DBB-B',
         notes: 'Long-time church member seeking discipleship.',
         status: 'Accepted',
@@ -1349,7 +1349,7 @@ export interface CoordMentor {
 
 export const COORD_MENTORS: CoordMentor[] = [
     {
-        id: 'cm1', initials: 'JD', name: 'Juan Dela Cruz', color: '#5b50d6',
+        id: 'cm1', initials: 'JD', name: 'Juan Dela Cruz', color: '#1E293B',
         group: 'Orchard Residences', barangay: 'Burol',
         phone: '+63 917 123 4567', email: 'juan.dc@cogdasmarinas.org',
         activeMentees: 5, groupCapacity: 12, availableSlots: 7, status: 'Active',
@@ -1361,7 +1361,7 @@ export const COORD_MENTORS: CoordMentor[] = [
         activeMentees: 4, groupCapacity: 11, availableSlots: 7, status: 'Active',
     },
     {
-        id: 'cm3', initials: 'MR', name: 'Maria Reyes', color: '#0b9b8a',
+        id: 'cm3', initials: 'MR', name: 'Maria Reyes', color: '#0284C7',
         group: 'Greenfields 1', barangay: 'Sampaloc I',
         phone: '+63 919 345 6789', email: 'maria.r@cogdasmarinas.org',
         activeMentees: 3, groupCapacity: 7, availableSlots: 4, status: 'Active',
@@ -1393,7 +1393,7 @@ export interface CoordGroup {
 export const COORD_GROUPS: CoordGroup[] = [
     {
         id: 'cg1', name: 'Orchard Residences', mentor: 'Juan Dela Cruz',
-        mentorInitials: 'JD', mentorColor: '#5b50d6',
+        mentorInitials: 'JD', mentorColor: '#1E293B',
         barangay: 'Burol', type: 'Community-based',
         members: 5, capacity: 12, availableSlots: 7,
         status: 'Open', schedule: 'Friday · 7:00 PM',
@@ -1407,7 +1407,7 @@ export const COORD_GROUPS: CoordGroup[] = [
     },
     {
         id: 'cg3', name: 'Greenfields 1', mentor: 'Maria Reyes',
-        mentorInitials: 'MR', mentorColor: '#0b9b8a',
+        mentorInitials: 'MR', mentorColor: '#0284C7',
         barangay: 'Sampaloc I', type: 'Community-based',
         members: 3, capacity: 7, availableSlots: 4,
         status: 'Open', schedule: 'Friday · 7:00 PM',
@@ -1421,14 +1421,14 @@ export const COORD_GROUPS: CoordGroup[] = [
     },
     {
         id: 'cg5', name: 'Emmanuel Homes', mentor: 'Ana Lim',
-        mentorInitials: 'AL', mentorColor: '#6741d9',
+        mentorInitials: 'AL', mentorColor: '#0284C7',
         barangay: 'Emmanuel Bergado I', type: 'Community-based',
         members: 6, capacity: 10, availableSlots: 4,
         status: 'Open', schedule: 'Wednesday · 7:00 PM',
     },
     {
         id: 'cg6', name: 'Fatima Sector', mentor: 'Carmen Villanueva',
-        mentorInitials: 'CV', mentorColor: '#0c8a6e',
+        mentorInitials: 'CV', mentorColor: '#0284C7',
         barangay: 'Fatima I', satellite: 'Trece', type: 'Church-based',
         members: 8, capacity: 10, availableSlots: 2,
         status: 'Open', schedule: 'Saturday · 3:00 PM',
@@ -1472,7 +1472,7 @@ export const MH_CLUSTERS: OutreachCluster[] = [
         name: 'Cluster 1',
         clusterHead: 'Liza Evangelista',
         clusterHeadInitials: 'LE',
-        clusterHeadColor: '#5b50d6',
+        clusterHeadColor: '#1E293B',
         coordinator: 'Rosa Castillo',
         coordinatorInitials: 'RC',
         coordinatorColor: '#e91e8c',
@@ -1490,10 +1490,10 @@ export const MH_CLUSTERS: OutreachCluster[] = [
         name: 'Cluster 2',
         clusterHead: 'Marco Villanueva',
         clusterHeadInitials: 'MV',
-        clusterHeadColor: '#0b9b8a',
+        clusterHeadColor: '#0284C7',
         coordinator: 'Ben Macaraeg',
         coordinatorInitials: 'BM',
-        coordinatorColor: '#6741d9',
+        coordinatorColor: '#0284C7',
         totalGroups: 3,
         totalMentors: 3,
         totalPotentialMentees: 6,
@@ -1511,7 +1511,7 @@ export const MH_CLUSTERS: OutreachCluster[] = [
         clusterHeadColor: '#e67700',
         coordinator: 'Sofia Aguila',
         coordinatorInitials: 'SA',
-        coordinatorColor: '#0b9b8a',
+        coordinatorColor: '#0284C7',
         totalGroups: 5,
         totalMentors: 5,
         totalPotentialMentees: 10,
@@ -1547,7 +1547,7 @@ export const MH_CLUSTERS: OutreachCluster[] = [
         clusterHeadColor: '#e91e8c',
         coordinator: 'Ferdinand Ramos',
         coordinatorInitials: 'FR',
-        coordinatorColor: '#5b50d6',
+        coordinatorColor: '#1E293B',
         totalGroups: 3,
         totalMentors: 3,
         totalPotentialMentees: 5,
@@ -1562,7 +1562,7 @@ export const MH_CLUSTERS: OutreachCluster[] = [
         name: 'Cluster 6',
         clusterHead: 'Danilo Reyes',
         clusterHeadInitials: 'DR',
-        clusterHeadColor: '#0c8a6e',
+        clusterHeadColor: '#0284C7',
         coordinator: 'Maricel Santos',
         coordinatorInitials: 'MS',
         coordinatorColor: '#1971c2',
@@ -1590,10 +1590,10 @@ export interface MHCoordinator {
 
 export const MH_COORDINATORS: MHCoordinator[] = [
     { id: 'mhco1', initials: 'RC', name: 'Rosa Castillo',      color: '#e91e8c', cluster: 'Cluster 1', assignedPotentialMentees: 8,  activeMentors: 4, status: 'Active' },
-    { id: 'mhco2', initials: 'BM', name: 'Ben Macaraeg',       color: '#6741d9', cluster: 'Cluster 2', assignedPotentialMentees: 6,  activeMentors: 3, status: 'Active' },
-    { id: 'mhco3', initials: 'SA', name: 'Sofia Aguila',       color: '#0b9b8a', cluster: 'Cluster 3', assignedPotentialMentees: 10, activeMentors: 5, status: 'Active' },
+    { id: 'mhco2', initials: 'BM', name: 'Ben Macaraeg',       color: '#0284C7', cluster: 'Cluster 2', assignedPotentialMentees: 6,  activeMentors: 3, status: 'Active' },
+    { id: 'mhco3', initials: 'SA', name: 'Sofia Aguila',       color: '#0284C7', cluster: 'Cluster 3', assignedPotentialMentees: 10, activeMentors: 5, status: 'Active' },
     { id: 'mhco4', initials: 'PB', name: 'Patricia Bautista',  color: '#e67700', cluster: 'Cluster 4', assignedPotentialMentees: 7,  activeMentors: 4, status: 'Active' },
-    { id: 'mhco5', initials: 'FR', name: 'Ferdinand Ramos',    color: '#5b50d6', cluster: 'Cluster 5', assignedPotentialMentees: 5,  activeMentors: 3, status: 'Active' },
+    { id: 'mhco5', initials: 'FR', name: 'Ferdinand Ramos',    color: '#1E293B', cluster: 'Cluster 5', assignedPotentialMentees: 5,  activeMentors: 3, status: 'Active' },
     { id: 'mhco6', initials: 'MS', name: 'Maricel Santos',     color: '#1971c2', cluster: 'Cluster 6', assignedPotentialMentees: 9,  activeMentors: 4, status: 'Active' },
 ];
 
@@ -1611,28 +1611,28 @@ export interface MHMentor {
 }
 
 export const MH_ALL_MENTORS: MHMentor[] = [
-    { id: 'mhm1',  initials: 'JD', name: 'Juan Dela Cruz',      color: '#5b50d6', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0001', dateAssigned: 'Jan 10, 2024' },
+    { id: 'mhm1',  initials: 'JD', name: 'Juan Dela Cruz',      color: '#1E293B', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0001', dateAssigned: 'Jan 10, 2024' },
     { id: 'mhm2',  initials: 'PS', name: 'Pedro Santos',        color: '#e91e8c', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0002', dateAssigned: 'Feb 5, 2024'  },
-    { id: 'mhm3',  initials: 'MR', name: 'Maria Reyes',         color: '#0b9b8a', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0003', dateAssigned: 'Mar 1, 2024'  },
+    { id: 'mhm3',  initials: 'MR', name: 'Maria Reyes',         color: '#0284C7', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0003', dateAssigned: 'Mar 1, 2024'  },
     { id: 'mhm4',  initials: 'LS', name: 'Lena Santos',         color: '#e67700', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0004', dateAssigned: 'Apr 15, 2024' },
-    { id: 'mhm5',  initials: 'AL', name: 'Ana Lim',             color: '#6741d9', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0005', dateAssigned: 'Jan 20, 2024' },
-    { id: 'mhm6',  initials: 'CV', name: 'Carmen Villanueva',   color: '#0c8a6e', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0006', dateAssigned: 'Feb 10, 2024' },
+    { id: 'mhm5',  initials: 'AL', name: 'Ana Lim',             color: '#0284C7', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0005', dateAssigned: 'Jan 20, 2024' },
+    { id: 'mhm6',  initials: 'CV', name: 'Carmen Villanueva',   color: '#0284C7', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0006', dateAssigned: 'Feb 10, 2024' },
     { id: 'mhm7',  initials: 'RB', name: 'Rico Bautista',       color: '#1971c2', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0007', dateAssigned: 'Mar 5, 2024'  },
-    { id: 'mhm8',  initials: 'EC', name: 'Ernesto Cruz',        color: '#5b50d6', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0008', dateAssigned: 'Jan 8, 2024'  },
+    { id: 'mhm8',  initials: 'EC', name: 'Ernesto Cruz',        color: '#1E293B', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0008', dateAssigned: 'Jan 8, 2024'  },
     { id: 'mhm9',  initials: 'LT', name: 'Luz Torres',          color: '#e91e8c', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0009', dateAssigned: 'Feb 14, 2024' },
-    { id: 'mhm10', initials: 'NF', name: 'Noel Flores',         color: '#0b9b8a', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0010', dateAssigned: 'Mar 20, 2024' },
+    { id: 'mhm10', initials: 'NF', name: 'Noel Flores',         color: '#0284C7', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0010', dateAssigned: 'Mar 20, 2024' },
     { id: 'mhm11', initials: 'AM', name: 'Alma Mendoza',        color: '#e67700', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0011', dateAssigned: 'Apr 1, 2024'  },
-    { id: 'mhm12', initials: 'DG', name: 'Dante Garcia',        color: '#6741d9', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Inactive', phone: '+63 917 000 0012', dateAssigned: 'May 5, 2024'  },
+    { id: 'mhm12', initials: 'DG', name: 'Dante Garcia',        color: '#0284C7', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Inactive', phone: '+63 917 000 0012', dateAssigned: 'May 5, 2024'  },
     { id: 'mhm13', initials: 'CP', name: 'Carlos Pineda',       color: '#1971c2', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0013', dateAssigned: 'Jan 15, 2024' },
     { id: 'mhm14', initials: 'FV', name: 'Fe Villarin',         color: '#e91e8c', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0014', dateAssigned: 'Feb 20, 2024' },
-    { id: 'mhm15', initials: 'BN', name: 'Bobby Natividad',     color: '#0c8a6e', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0015', dateAssigned: 'Mar 10, 2024' },
-    { id: 'mhm16', initials: 'GQ', name: 'Gloria Quizon',       color: '#5b50d6', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0016', dateAssigned: 'Apr 25, 2024' },
+    { id: 'mhm15', initials: 'BN', name: 'Bobby Natividad',     color: '#0284C7', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0015', dateAssigned: 'Mar 10, 2024' },
+    { id: 'mhm16', initials: 'GQ', name: 'Gloria Quizon',       color: '#1E293B', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0016', dateAssigned: 'Apr 25, 2024' },
     { id: 'mhm17', initials: 'TC', name: 'Tomas Castillo',      color: '#e67700', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0017', dateAssigned: 'Jan 30, 2024' },
-    { id: 'mhm18', initials: 'RI', name: 'Rowena Ignacio',      color: '#6741d9', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0018', dateAssigned: 'Feb 28, 2024' },
+    { id: 'mhm18', initials: 'RI', name: 'Rowena Ignacio',      color: '#0284C7', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0018', dateAssigned: 'Feb 28, 2024' },
     { id: 'mhm19', initials: 'VB', name: 'Victor Bernardo',     color: '#1971c2', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 2, status: 'Active',   phone: '+63 917 000 0019', dateAssigned: 'Mar 15, 2024' },
-    { id: 'mhm20', initials: 'HM', name: 'Helen Macapagal',     color: '#5b50d6', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0020', dateAssigned: 'Jan 5, 2024'  },
+    { id: 'mhm20', initials: 'HM', name: 'Helen Macapagal',     color: '#1E293B', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0020', dateAssigned: 'Jan 5, 2024'  },
     { id: 'mhm21', initials: 'JP', name: 'Joel Panganiban',     color: '#e91e8c', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0021', dateAssigned: 'Feb 12, 2024' },
-    { id: 'mhm22', initials: 'RA', name: 'Rosario Aquino',      color: '#0b9b8a', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0022', dateAssigned: 'Mar 22, 2024' },
+    { id: 'mhm22', initials: 'RA', name: 'Rosario Aquino',      color: '#0284C7', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0022', dateAssigned: 'Mar 22, 2024' },
     { id: 'mhm23', initials: 'EE', name: 'Eduardo Esperanza',   color: '#e67700', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0023', dateAssigned: 'Apr 10, 2024' },
 ];
 

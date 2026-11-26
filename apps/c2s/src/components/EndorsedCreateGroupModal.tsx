@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import { SUBDIVISIONS_BY_BARANGAY, BARANGAYS_BY_SATELLITE } from '@/lib/data';
 
@@ -20,19 +21,15 @@ const GENDERS    = ['Female','Male','Both'];
 
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
     return (
-        <div className="relative">
-            <select value={value} onChange={e => onChange(e.target.value)}
-                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700">
-                {options.map(o => <option key={o}>{o}</option>)}
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-        </div>
+        <CustomSelect value={value} onChange={e => onChange(e.target.value)} className="w-full">
+            {options.map(o => <option key={o}>{o}</option>)}
+        </CustomSelect>
     );
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return <div className="flex flex-col gap-1.5"><label className="text-xs font-semibold text-gray-700">{label}</label>{children}</div>;
 }
-const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-[#f8f9fc] w-full';
+const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-[#f8f9fc] w-full';
 
 export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
     const [name, setName]           = useState('');
@@ -129,40 +126,34 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="Barangay">
-                                                <div className="relative">
-                                                    <select
-                                                        value={barangay}
-                                                        onChange={e => handleBarangayChange(e.target.value)}
-                                                        className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
-                                                    >
-                                                        <option value="">— Select barangay —</option>
-                                                        {communityBarangays.map(b => (
-                                                            <option key={b} value={b}>{b}</option>
-                                                        ))}
-                                                    </select>
-                                                    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                                </div>
+                                                <CustomSelect
+                                                    value={barangay}
+                                                    onChange={e => handleBarangayChange(e.target.value)}
+                                                    className="w-full"
+                                                >
+                                                    <option value="">— Select barangay —</option>
+                                                    {communityBarangays.map(b => (
+                                                        <option key={b} value={b}>{b}</option>
+                                                    ))}
+                                                </CustomSelect>
                                             </Field>
                                         </div>
                                         <Field label="Subdivision/Village">
-                                            <div className="relative">
-                                                <select
-                                                    value={subdivision}
-                                                    onChange={e => {
-                                                        setSubdiv(e.target.value);
-                                                        if (e.target.value !== 'Other') setCustomSubdiv('');
-                                                    }}
-                                                    disabled={!barangay}
-                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700 disabled:opacity-50"
-                                                >
-                                                    <option value="">— Select subdivision —</option>
-                                                    {subdivisionOptions.map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                            </div>
+                                            <CustomSelect
+                                                value={subdivision}
+                                                onChange={e => {
+                                                    setSubdiv(e.target.value);
+                                                    if (e.target.value !== 'Other') setCustomSubdiv('');
+                                                }}
+                                                disabled={!barangay}
+                                                className="w-full"
+                                            >
+                                                <option value="">— Select subdivision —</option>
+                                                {subdivisionOptions.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                                <option value="Other">Other</option>
+                                            </CustomSelect>
                                             {isOther && (
                                                 <input
                                                     type="text"
@@ -192,7 +183,7 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                         <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
                         <button onClick={() => { if (name.trim()) { onCreate(); onClose(); } }} disabled={!name.trim()}
                             className="px-6 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ background: '#5b50d6' }}>
+                            style={{ background: '#D97706' }}>
                             Create Group
                         </button>
                     </div>

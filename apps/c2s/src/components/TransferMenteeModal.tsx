@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import { DEPARTMENTS, MINISTRY_DEPARTMENTS } from '@/lib/admin-data';
 
@@ -21,16 +22,10 @@ function Sel({ placeholder, options, value, onChange }: {
     value: string; onChange: (v: string) => void;
 }) {
     return (
-        <div className="relative">
-            <select value={value} onChange={e => onChange(e.target.value)}
-                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700">
-                <option value="" disabled>{placeholder}</option>
-                {options.map(o => <option key={o}>{o}</option>)}
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 10l5 5 5-5z"/>
-            </svg>
-        </div>
+        <CustomSelect value={value} onChange={e => onChange(e.target.value)} className="w-full">
+            <option value="" disabled>{placeholder}</option>
+            {options.map(o => <option key={o}>{o}</option>)}
+        </CustomSelect>
     );
 }
 
@@ -71,7 +66,7 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                                 </button>
                                 <button onClick={() => setStep(2)}
                                     className="px-6 py-2 text-sm font-semibold text-white rounded-lg"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     Next
                                 </button>
                             </div>
@@ -133,7 +128,7 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                                     {/* Mentee row */}
                                     <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
                                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0"
-                                            style={{ background: '#5b50d6' }}>{menteeInitials}</div>
+                                            style={{ background: '#D97706' }}>{menteeInitials}</div>
                                         <div>
                                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Current Mentee</p>
                                             <p className="text-sm font-semibold text-gray-900">{menteeName}</p>
@@ -180,7 +175,7 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                                     onClick={() => { if (canNext) { onConfirm(); onClose(); } }}
                                     disabled={!canNext}
                                     className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     {canNext ? 'Submit' : 'Next'}
                                 </button>
                             </div>

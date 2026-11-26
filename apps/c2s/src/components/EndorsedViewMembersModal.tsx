@@ -11,7 +11,7 @@ interface Props {
     onClose: () => void;
 }
 
-const AVATAR_COLORS = ['#5b50d6','#e91e8c','#0b9b8a','#e67700','#6741d9'];
+const AVATAR_COLORS = ['#D97706','#e91e8c','#0284C7','#e67700','#D97706'];
 function ac(i: number) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
 
 // Static info for the group info grid
@@ -85,7 +85,7 @@ export default function EndorsedViewMembersModal({ group, onClose }: Props) {
                         </svg>
                         <input type="text" placeholder="Search members..." value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-44" />
+                            className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] w-44" />
                     </div>
                 </div>
 
@@ -105,11 +105,11 @@ export default function EndorsedViewMembersModal({ group, onClose }: Props) {
                                     <p className="font-semibold text-gray-900 text-sm">{m.name}</p>
                                     <p className="text-xs text-gray-400 truncate">{m.module} · {m.lesson}</p>
                                 </div>
-                                <span className="text-xs font-bold text-[#5b50d6]">{m.progress}%</span>
+                                <span className="text-xs font-bold text-[#D97706]">{m.progress}%</span>
                             </div>
 
                             <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                                <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} />
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -119,7 +119,7 @@ export default function EndorsedViewMembersModal({ group, onClose }: Props) {
                                 </button>
                                 <button onClick={() => setUpdating(m)}
                                     className="flex-1 py-2 text-xs font-bold text-white rounded-lg transition-colors"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     Update Progress
                                 </button>
                             </div>

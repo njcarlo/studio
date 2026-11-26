@@ -29,13 +29,13 @@ export default function AcceptMenteeModal({ menteeName, groupName, onCancel, onC
                     </p>
 
                     {/* Reminder banner */}
-                    <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-[#b45309]" style={{ border: '1px solid #92400e' }}>
-                        <svg className="w-4 h-4 text-white shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
+                    <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-[#FEF3C7] border border-[#F59E0B]">
+                        <svg className="w-4 h-4 text-[#92400E] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                         </svg>
                         <div>
-                            <p className="text-xs font-bold text-white mb-0.5">Reminder</p>
-                            <p className="text-xs text-white/90 leading-relaxed">
+                            <p className="text-xs font-bold text-[#92400E] mb-0.5">Reminder</p>
+                            <p className="text-xs text-[#92400E] leading-relaxed">
                                 Mentors should personally meet the potential mentee before accepting the mentoring request.
                                 This helps ensure both mentor and mentee are ready for discipleship.
                             </p>
@@ -52,8 +52,7 @@ export default function AcceptMenteeModal({ menteeName, groupName, onCancel, onC
                         </button>
                         <button
                             onClick={() => { onConfirm(); onCancel(); }}
-                            className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
-                            style={{ background: '#5b50d6' }}
+                            className="px-6 py-2 text-sm font-semibold text-white rounded-lg bg-[#D97706] hover:bg-[#B45309] transition-colors"
                         >
                             Accept
                         </button>

@@ -11,7 +11,7 @@ interface Props {
 }
 
 // Initials avatar colors
-const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
+const AVATAR_COLORS = ['#D97706', '#e91e8c', '#0284C7', '#e67700', '#D97706'];
 function avatarColor(i: number) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
 
 export default function ViewMembersModal({ group, onClose }: Props) {
@@ -90,7 +90,7 @@ export default function ViewMembersModal({ group, onClose }: Props) {
                             placeholder="Search members..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-44"
+                            className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] w-44"
                         />
                     </div>
                 </div>
@@ -116,14 +116,14 @@ export default function ViewMembersModal({ group, onClose }: Props) {
                                         {member.currentModule.split('—')[0].trim()} · {member.currentLesson.split(':')[0].trim()}
                                     </p>
                                 </div>
-                                <span className="text-xs font-bold text-[#5b50d6]">{member.progress}%</span>
+                                <span className="text-xs font-bold text-[#D97706]">{member.progress}%</span>
                             </div>
 
                             {/* Progress bar */}
                             <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full rounded-full"
-                                    style={{ width: `${member.progress}%`, background: '#5b50d6' }}
+                                    style={{ width: `${member.progress}%`, background: '#D97706' }}
                                 />
                             </div>
 
@@ -137,7 +137,7 @@ export default function ViewMembersModal({ group, onClose }: Props) {
                                 </button>
                                 <button
                                     className="flex-1 py-2 text-xs font-bold text-white rounded-lg transition-colors"
-                                    style={{ background: '#5b50d6' }}
+                                    style={{ background: '#D97706' }}
                                 >
                                     Update Progress
                                 </button>

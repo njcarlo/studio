@@ -25,7 +25,7 @@ export default function EndorseMenteeModal({ menteeName, onClose, onConfirm }: P
                         </button>
                         <button onClick={() => { onConfirm(); onClose(); }}
                             className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
-                            style={{ background: '#5b50d6' }}>
+                            style={{ background: '#D97706' }}>
                             Endorse
                         </button>
                     </div>

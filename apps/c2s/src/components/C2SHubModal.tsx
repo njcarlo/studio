@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 
 interface Props {
@@ -174,7 +175,7 @@ export default function C2SHubModal({ onClose }: Props) {
                             <button
                                 onClick={onClose}
                                 className="text-white font-bold px-16 py-3 rounded-xl text-sm transition-colors"
-                                style={{ background: '#5b50d6' }}
+                                style={{ background: '#D97706' }}
                             >
                                 Back to Home
                             </button>
@@ -184,8 +185,8 @@ export default function C2SHubModal({ onClose }: Props) {
                     <form onSubmit={handleSubmit} className="p-4 sm:p-7">
                         {/* Header */}
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="w-8 h-8 rounded-lg bg-[#e0f7f5] flex items-center justify-center">
-                                <svg className="w-4 h-4 text-[#0b9b8a]" viewBox="0 0 24 24" fill="currentColor">
+                            <div className="w-8 h-8 rounded-lg bg-[#FEF3C7] flex items-center justify-center">
+                                <svg className="w-4 h-4 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                                 </svg>
                             </div>
@@ -199,7 +200,7 @@ export default function C2SHubModal({ onClose }: Props) {
 
                         {/* ── MEMBER INFORMATION ── */}
                         <div className="mb-5">
-                            <p className="text-xs font-bold text-[#0b9b8a] tracking-widest uppercase mb-3">
+                            <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
                                 Member Information
                             </p>
                             <hr className="border-gray-100 mb-4" />
@@ -214,7 +215,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                         type="text"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]"
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                     />
                                 </div>
                                 <div>
@@ -226,7 +227,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]"
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                     />
                                 </div>
                             </div>
@@ -240,14 +241,14 @@ export default function C2SHubModal({ onClose }: Props) {
                                     type="tel"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]"
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                 />
                             </div>
                         </div>
 
                         {/* ── ADDRESS ── */}
                         <div className="mb-5">
-                            <p className="text-xs font-bold text-[#0b9b8a] tracking-widest uppercase mb-3">
+                            <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
                                 Address
                             </p>
                             <hr className="border-gray-100 mb-4" />
@@ -256,22 +257,17 @@ export default function C2SHubModal({ onClose }: Props) {
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                     Barangay <span className="text-[#f03e5f]">*</span>
                                 </label>
-                                <div className="relative">
-                                    <select
-                                        required
-                                        value={barangay}
-                                        onChange={(e) => setBarangay(e.target.value)}
-                                        className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
-                                    >
-                                        <option value="" disabled hidden>Select barangay</option>
-                                        {BARANGAYS.map((b) => (
-                                            <option key={b} value={b}>{b}</option>
-                                        ))}
-                                    </select>
-                                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                <CustomSelect
+                                    required
+                                    value={barangay}
+                                    onChange={(e) => setBarangay(e.target.value)}
+                                    className="w-full"
+                                >
+                                    <option value="" disabled hidden>Select barangay</option>
+                                    {BARANGAYS.map((b) => (
+                                        <option key={b} value={b}>{b}</option>
+                                    ))}
+                                </CustomSelect>
                             </div>
 
                             <div>
@@ -284,14 +280,14 @@ export default function C2SHubModal({ onClose }: Props) {
                                     value={address}
                                     onChange={(e) => setAddress(e.target.value)}
                                     placeholder="House no, Street, Subdivision, Village"
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] placeholder:text-gray-300"
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300"
                                 />
                             </div>
                         </div>
 
                         {/* ── HOSTING INFORMATION ── */}
                         <div className="mb-5">
-                            <p className="text-xs font-bold text-[#0b9b8a] tracking-widest uppercase mb-3">
+                            <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
                                 Hosting Information
                             </p>
                             <hr className="border-gray-100 mb-4" />
@@ -301,19 +297,14 @@ export default function C2SHubModal({ onClose }: Props) {
                                     <label className="block text-xs font-medium text-gray-700 mb-1">
                                         Can your house host a weekly C2S devotion? <span className="text-[#f03e5f]">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <select
-                                            required
-                                            className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
-                                        >
-                                            <option value="" disabled hidden>Select yes or no</option>
-                                            <option value="yes">Yes</option>
-                                            <option value="no">No</option>
-                                        </select>
-                                        <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
+                                    <CustomSelect
+                                        required
+                                        className="w-full"
+                                    >
+                                        <option value="" disabled hidden>Select yes or no</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </CustomSelect>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -326,7 +317,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                         value={potential === 0 ? '' : potential}
                                         onChange={(e) => setPotential(Number(e.target.value))}
                                         placeholder="0"
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] placeholder:text-gray-300"
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300"
                                     />
                                 </div>
                             </div>
@@ -336,43 +327,33 @@ export default function C2SHubModal({ onClose }: Props) {
                                     <label className="block text-xs font-medium text-gray-700 mb-1">
                                         Preffered Meeting Day <span className="text-[#f03e5f]">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <select
-                                            required
-                                            value={day}
-                                            onChange={(e) => setDay(e.target.value)}
-                                            className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
-                                        >
-                                            <option value="" disabled hidden>e.g Monday, Tuesday</option>
-                                            {DAYS.map((d) => (
-                                                <option key={d} value={d}>{d}</option>
-                                            ))}
-                                        </select>
-                                        <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
+                                    <CustomSelect
+                                        required
+                                        value={day}
+                                        onChange={(e) => setDay(e.target.value)}
+                                        className="w-full"
+                                    >
+                                        <option value="" disabled hidden>e.g Monday, Tuesday</option>
+                                        {DAYS.map((d) => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                    </CustomSelect>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 mb-1">
                                         Preffered Time <span className="text-[#f03e5f]">*</span>
                                     </label>
-                                    <div className="relative">
-                                        <select
-                                            required
-                                            value={time}
-                                            onChange={(e) => setTime(e.target.value)}
-                                            className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
-                                        >
-                                            <option value="" disabled hidden>Select time</option>
-                                            {TIMES.map((t) => (
-                                                <option key={t} value={t}>{t}</option>
-                                            ))}
-                                        </select>
-                                        <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
+                                    <CustomSelect
+                                        required
+                                        value={time}
+                                        onChange={(e) => setTime(e.target.value)}
+                                        className="w-full"
+                                    >
+                                        <option value="" disabled hidden>Select time</option>
+                                        {TIMES.map((t) => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </CustomSelect>
                                 </div>
                             </div>
 
@@ -382,7 +363,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]"
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                 />
                             </div>
                         </div>
@@ -416,7 +397,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                 type="submit"
                                 disabled={!agreed}
                                 className="px-6 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                                style={{ background: agreed ? '#5b50d6' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}
+                                style={{ background: agreed ? '#D97706' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}
                             >
                                 Submit Application
                             </button>

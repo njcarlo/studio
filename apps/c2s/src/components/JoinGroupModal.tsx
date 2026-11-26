@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import type { C2SGroup, PotentialMentee } from '@/lib/data';
 
@@ -70,7 +71,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
             gender,
             phone,
             source: 'From C2S Group Finder',
-            sourceColor: 'bg-[#0b9b8a] text-white',
+            sourceColor: 'bg-[#E0F2FE] text-[#0369A1]',
             requestedGroup: group.name,
             notes: notes.trim() || 'No notes provided.',
             status: 'Pending',
@@ -118,7 +119,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <h2 className="text-xl font-black text-gray-900 mb-1">Sign Up</h2>
                     <p className="text-sm text-gray-500 mb-6">
                         You&apos;re signing up for{' '}
-                        <span style={{ color: '#5b50d6' }} className="font-semibold">{group.name}</span>
+                        <span style={{ color: '#D97706' }} className="font-semibold">{group.name}</span>
                         {' '}in {group.location}.
                     </p>
 
@@ -126,17 +127,17 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                First Name <span className="text-[#5b50d6]">*</span>
+                                First Name <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Last Name <span className="text-[#5b50d6]">*</span>
+                                Last Name <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                     </div>
 
@@ -144,17 +145,17 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email Address <span className="text-[#5b50d6]">*</span>
+                                Email Address <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone Number <span className="text-[#5b50d6]">*</span>
+                                Phone Number <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                     </div>
 
@@ -162,27 +163,21 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Birthday <span className="text-[#5b50d6]">*</span>
+                                Birthday <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] text-gray-500" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Gender <span className="text-[#5b50d6]">*</span>
+                                Gender <span className="text-[#D97706]">*</span>
                             </label>
-                            <div className="relative">
-                                <select required value={gender} onChange={(e) => setGender(e.target.value)}
-                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8 text-gray-500">
-                                    <option value="" disabled>Select</option>
-                                    <option>Male</option>
-                                    <option>Female</option>
-                                    <option>Prefer not to say</option>
-                                </select>
-                                <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
+                            <CustomSelect required value={gender} onChange={(e) => setGender(e.target.value)} className="w-full">
+                                <option value="" disabled>Select</option>
+                                <option>Male</option>
+                                <option>Female</option>
+                                <option>Prefer not to say</option>
+                            </CustomSelect>
                         </div>
                     </div>
 
@@ -190,7 +185,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Facebook Link</label>
                         <input type="text" placeholder="Facebook URL" value={facebook} onChange={(e) => setFacebook(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] placeholder:text-gray-300" />
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300" />
                     </div>
 
                     {/* First Time Attended */}
@@ -199,26 +194,14 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                             First Time Attended Church Of God (Month &amp; Year)
                         </label>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="relative">
-                                <select value={attendedMonth} onChange={(e) => setAttendedMonth(e.target.value)}
-                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8 text-gray-500">
-                                    <option value="">Select Month</option>
-                                    {MONTHS.map((m) => <option key={m}>{m}</option>)}
-                                </select>
-                                <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            <div className="relative">
-                                <select value={attendedYear} onChange={(e) => setAttendedYear(e.target.value)}
-                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8 text-gray-500">
-                                    <option value="">Select Year</option>
-                                    {YEARS.map((y) => <option key={y}>{y}</option>)}
-                                </select>
-                                <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
+                            <CustomSelect value={attendedMonth} onChange={(e) => setAttendedMonth(e.target.value)} className="w-full">
+                                <option value="">Select Month</option>
+                                {MONTHS.map((m) => <option key={m}>{m}</option>)}
+                            </CustomSelect>
+                            <CustomSelect value={attendedYear} onChange={(e) => setAttendedYear(e.target.value)} className="w-full">
+                                <option value="">Select Year</option>
+                                {YEARS.map((y) => <option key={y}>{y}</option>)}
+                            </CustomSelect>
                         </div>
                     </div>
 
@@ -226,17 +209,17 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <div className="mb-5">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Questions</label>
                         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] resize-none" />
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none" />
                     </div>
 
                     {/* Privacy checkbox */}
                     <div className="flex items-start gap-2.5 mb-6 bg-gray-50 p-3 rounded-xl">
                         <input id="join-privacy" type="checkbox" checked={agreed}
                             onChange={(e) => setAgreed(e.target.checked)}
-                            className="mt-0.5 w-4 h-4 accent-[#5b50d6] cursor-pointer shrink-0" />
+                            className="mt-0.5 w-4 h-4 accent-[#D97706] cursor-pointer shrink-0" />
                         <label htmlFor="join-privacy" className="text-xs text-gray-600 cursor-pointer">
                             I agree to the{' '}
-                            <span className="text-[#5b50d6] underline">Data privacy Policy</span>
+                            <span className="text-[#D97706] underline">Data privacy Policy</span>
                             {' '}of Church of God Dasmariñas.
                         </label>
                     </div>
@@ -249,7 +232,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                         </button>
                         <button type="submit" disabled={!agreed}
                             className="px-8 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                            style={{ background: agreed ? '#5b50d6' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}>
+                            style={{ background: agreed ? '#D97706' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}>
                             Sign Up
                         </button>
                     </div>

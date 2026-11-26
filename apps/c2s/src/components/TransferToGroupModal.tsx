@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState } from 'react';
 import { C2S_GROUPS } from '@/lib/data';
 
@@ -15,16 +16,10 @@ function Sel({ placeholder, options, value, onChange }: {
     value: string; onChange: (v: string) => void;
 }) {
     return (
-        <div className="relative">
-            <select value={value} onChange={e => onChange(e.target.value)}
-                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700">
-                <option value="" disabled>{placeholder}</option>
-                {options.map(o => <option key={o}>{o}</option>)}
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 10l5 5 5-5z"/>
-            </svg>
-        </div>
+        <CustomSelect value={value} onChange={e => onChange(e.target.value)} className="w-full">
+            <option value="" disabled>{placeholder}</option>
+            {options.map(o => <option key={o}>{o}</option>)}
+        </CustomSelect>
     );
 }
 
@@ -58,7 +53,7 @@ export default function TransferToGroupModal({ menteeName, menteeGender, onClose
                                 </button>
                                 <button onClick={() => setStep(2)}
                                     className="px-6 py-2 text-sm font-semibold text-white rounded-lg"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     Next
                                 </button>
                             </div>
@@ -84,7 +79,7 @@ export default function TransferToGroupModal({ menteeName, menteeGender, onClose
                                     onClick={() => { if (selectedGroup) { onConfirm(); onClose(); } }}
                                     disabled={!selectedGroup}
                                     className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     Add
                                 </button>
                             </div>

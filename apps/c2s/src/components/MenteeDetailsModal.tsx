@@ -10,12 +10,12 @@ interface Props {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-    'Pending':      'bg-[#b45309] text-white',
+    'Pending':      'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
     'Accepted':     'bg-[#16a34a] text-white',
-    'Recommended':  'bg-[#6741d9] text-white',
+    'Recommended':  'bg-[#D97706] text-white',
 };
 
-const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
+const AVATAR_COLORS = ['#D97706', '#e91e8c', '#0284C7', '#e67700', '#D97706'];
 function avatarColor(name: string) {
     let h = 0;
     for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
@@ -99,7 +99,7 @@ export default function MenteeDetailsModal({ mentee, onClose, onAccept, onRecomm
                     <button
                         onClick={() => { onAccept(); }}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white rounded-lg transition-colors"
-                        style={{ background: '#5b50d6' }}
+                        style={{ background: '#D97706' }}
                     >
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>

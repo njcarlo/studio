@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { C2SGroup } from '@/lib/data';
+import { C2S_PIN_COLORS, createC2SMapIcon } from '@/components/C2SMapPin';
 
 interface Props {
     groups: C2SGroup[];
@@ -100,24 +101,8 @@ export default function GroupFinderMap({ groups, selectedId, onSelect }: Props) 
 
 /* ─── Helpers ─────────────────────────────────────────────── */
 
-function pinSvg(color: string) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52" style="display:block;overflow:visible;filter:drop-shadow(0 4px 10px rgba(0, 0, 0, 0.18))">
-        <path d="M20 1C10.059 1 2 9.059 2 19c0 13.5 18 31 18 31S38 32.5 38 19C38 9.059 29.941 1 20 1z"
-              fill="${color}" stroke="white" stroke-width="2"/>
-        <circle cx="20" cy="18" r="11.5" fill="#ffffff"/>
-        <image href="/c2s.png" x="11" y="9" width="18" height="18" preserveAspectRatio="xMidYMid meet" clip-path="circle(11.5px at 9px 9px)"/>
-    </svg>`;
-}
-
 function makeIcon(L: any, selected: boolean) {
-    return L.divIcon({
-        html: pinSvg(selected ? '#0b9b8a' : '#047857'),
-        iconSize: [40, 52],
-        iconAnchor: [20, 52],
-        popupAnchor: [0, -54],
-        tooltipAnchor: [0, -54],
-        className: '',
-    });
+    return createC2SMapIcon(L, selected ? C2S_PIN_COLORS.accent : C2S_PIN_COLORS.primary);
 }
 
 function escapeHtml(text: string) {

@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/lib/theme-context';
 import { useFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT } from '@/lib/font-size-context';
@@ -61,7 +62,7 @@ export function SidebarNavList({
     activeKey,
     onSelect,
     collapsed = false,
-    accentColor = '#5b50d6',
+    accentColor = '#D97706',
 }: {
     entries: SidebarNavEntry[];
     activeKey: string | null;
@@ -112,7 +113,7 @@ export function SidebarNavList({
                                 {item.badge !== undefined && item.badge > 0 && (
                                     <span
                                         className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-white shrink-0"
-                                        style={{ background: item.badgeColor ?? '#5b50d6' }}
+                                        style={{ background: item.badgeColor ?? '#D97706' }}
                                     >
                                         {item.badge}
                                     </span>
@@ -125,7 +126,7 @@ export function SidebarNavList({
                     const groupActive = group.items.some(i => i.key === activeKey);
                     const isOpen = Boolean(openGroups[group.id]);
                     const totalBadge = group.items.reduce((sum, i) => sum + (i.badge ?? 0), 0);
-                    const badgeBg = group.items.find(i => (i.badge ?? 0) > 0)?.badgeColor ?? '#5b50d6';
+                    const badgeBg = group.items.find(i => (i.badge ?? 0) > 0)?.badgeColor ?? '#D97706';
 
                     return (
                         <div key={group.id} className="flex flex-col">
@@ -191,7 +192,7 @@ export function SidebarNavList({
                                                 {sub.badge !== undefined && sub.badge > 0 && (
                                                     <span
                                                         className="ml-auto text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-white shrink-0"
-                                                        style={{ background: sub.badgeColor ?? '#5b50d6' }}
+                                                        style={{ background: sub.badgeColor ?? '#D97706' }}
                                                     >
                                                         {sub.badge}
                                                     </span>
@@ -236,7 +237,7 @@ export function SidebarNavList({
                                             {item.badge !== undefined && item.badge > 0 && (
                                                 <span
                                                     className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full text-white font-bold sidebar-badge-collapsed ring-2 ring-[#f4f5f7] dark:ring-[#111827]"
-                                                    style={{ background: item.badgeColor ?? '#5b50d6' }}
+                                                    style={{ background: item.badgeColor ?? '#D97706' }}
                                                 >
                                                     {item.badge}
                                                 </span>
@@ -325,12 +326,12 @@ export function SidebarSettingsDropdown({
                 aria-label={label}
                 className={`flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors w-full text-left ${collapsed ? 'md:justify-center md:px-0 md:w-10 md:h-10 md:mx-auto' : ''
                     } ${isAnyActive || (open && !collapsed)
-                        ? 'bg-[#5b50d6]/10 text-[#5b50d6]'
+                        ? 'bg-[#D97706]/10 text-[#D97706]'
                         : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'
                     }`}
             >
                 <span className="flex items-center gap-2.5">
-                    <svg className={`shrink-0 ${collapsed ? 'md:w-5 md:h-5' : ''}`} width="18" height="18" viewBox="0 0 24 24" fill={isAnyActive || (open && !collapsed) ? '#5b50d6' : '#aaa'}>
+                    <svg className={`shrink-0 ${collapsed ? 'md:w-5 md:h-5' : ''}`} width="18" height="18" viewBox="0 0 24 24" fill={isAnyActive || (open && !collapsed) ? '#D97706' : '#aaa'}>
                         <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                     </svg>
                     <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
@@ -357,7 +358,7 @@ export function SidebarSettingsDropdown({
                             type="button"
                             onClick={() => { scrollDashboardToTop(); extraItem.onClick(); }}
                             className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left w-full ${extraItem.active
-                                ? 'bg-[#5b50d6] text-white shadow-sm'
+                                ? 'bg-[#D97706] text-white shadow-sm'
                                 : 'text-gray-500 hover:bg-white/70 hover:text-gray-800'
                                 }`}
                         >
@@ -372,7 +373,7 @@ export function SidebarSettingsDropdown({
                                 type="button"
                                 onClick={() => { scrollDashboardToTop(); onSelect(item.key); }}
                                 className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left w-full ${active
-                                    ? 'bg-[#5b50d6] text-white shadow-sm'
+                                    ? 'bg-[#D97706] text-white shadow-sm'
                                     : 'text-gray-500 hover:bg-white/70 hover:text-gray-800'
                                     }`}
                             >
@@ -469,7 +470,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 </div>
                                 <div
                                     className="relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200"
-                                    style={{ background: isDark ? '#14B8A6' : '#cbd5e1' }}
+                                    style={{ background: isDark ? '#D97706' : '#cbd5e1' }}
                                 >
                                     <div
                                         className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
@@ -481,8 +482,11 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                             {/* Text Size */}
                             <div className="px-5 py-4 space-y-3">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#ede9fe]">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#5b50d6">
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                        style={{ backgroundColor: isDark ? 'rgba(217, 119, 6, 0.16)' : '#FEF3C7' }}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill={isDark ? '#FBBF24' : '#D97706'}>
                                             <path d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z" />
                                         </svg>
                                     </div>
@@ -494,7 +498,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                         <button
                                             type="button"
                                             onClick={() => setFontSize(FONT_SIZE_DEFAULT)}
-                                            className="text-xs font-semibold text-[#5b50d6] hover:underline shrink-0"
+                                            className="text-xs font-semibold text-[#D97706] hover:underline shrink-0"
                                         >
                                             Reset
                                         </button>
@@ -510,9 +514,9 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                         value={fontSize}
                                         onChange={e => setFontSize(Number(e.target.value))}
                                         aria-label="Adjust text size"
-                                        className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[#5b50d6] dark:accent-[#14B8A6]"
+                                        className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[#D97706] dark:accent-[#F59E0B]"
                                         style={{
-                                            background: `linear-gradient(to right, ${isDark ? '#14B8A6' : '#5b50d6'} ${fontPct}%, ${isDark ? '#334155' : '#e2e8f0'} ${fontPct}%)`
+                                            background: `linear-gradient(to right, ${isDark ? '#F59E0B' : '#D97706'} ${fontPct}%, ${isDark ? '#334155' : '#e2e8f0'} ${fontPct}%)`
                                         }}
                                     />
                                     <span className="text-base font-bold text-gray-400">A</span>
@@ -534,7 +538,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 </div>
                                 <p className="font-bold text-gray-900">Password updated!</p>
                                 <p className="text-xs text-gray-400 text-center">Your password has been changed successfully.</p>
-                                <button type="button" onClick={() => setPwSuccess(false)} className="mt-1 text-xs font-semibold text-[#5b50d6] hover:underline">
+                                <button type="button" onClick={() => setPwSuccess(false)} className="mt-1 text-xs font-semibold text-[#D97706] hover:underline">
                                     Change again
                                 </button>
                             </div>
@@ -552,12 +556,12 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                             value={value}
                                             onChange={e => set(e.target.value)}
                                             placeholder="••••••••"
-                                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-gray-50"
+                                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-gray-50"
                                         />
                                     </div>
                                 ))}
                                 {pwError && <p className="text-xs font-semibold text-red-500">{pwError}</p>}
-                                <button type="submit" className="bg-[#5b50d6] hover:bg-[#4a41c0] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                                <button type="submit" className="bg-[#D97706] hover:bg-[#B45309] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
                                     Update Password
                                 </button>
                             </form>
@@ -571,9 +575,9 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                         <div>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Current Device</p>
                             {devices.filter(d => d.current).map(d => (
-                                <div key={d.id} className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3.5">
-                                    <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                                        <svg className="w-4 h-4 text-emerald-700" viewBox="0 0 24 24" fill="currentColor">
+                                <div key={d.id} className="flex items-center gap-3 bg-[#E0F2FE]/55 border border-[#BAE6FD] rounded-xl px-4 py-3.5">
+                                    <div className="w-9 h-9 rounded-lg bg-[#E0F2FE] flex items-center justify-center shrink-0">
+                                        <svg className="w-4 h-4 text-[#0369A1]" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" />
                                         </svg>
                                     </div>
@@ -581,7 +585,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                         <p className="text-sm font-semibold text-gray-900 truncate">{d.name}</p>
                                         <p className="text-xs text-gray-400">{d.location} · {d.time}</p>
                                     </div>
-                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 shrink-0">This device</span>
+                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#E0F2FE] text-[#0369A1] border border-[#BAE6FD] shrink-0">This device</span>
                                 </div>
                             ))}
                         </div>
@@ -631,8 +635,8 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                             { title: 'Contact Support', desc: 'Reach our support team at support@c2s.church' },
                         ].map(item => (
                             <div key={item.title} className="flex items-start gap-3.5 px-4 py-4 rounded-xl border border-gray-100 bg-[#fafbff]">
-                                <div className="w-8 h-8 rounded-lg bg-[#ede9fe] flex items-center justify-center shrink-0 mt-0.5">
-                                    <svg className="w-4 h-4 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor">
+                                <div className="w-8 h-8 rounded-lg bg-[#FEF3C7] flex items-center justify-center shrink-0 mt-0.5">
+                                    <svg className="w-4 h-4 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" />
                                     </svg>
                                 </div>
@@ -657,7 +661,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 </div>
                                 <p className="font-bold text-gray-900">Report submitted!</p>
                                 <p className="text-xs text-gray-400 text-center">Thank you. We&apos;ll look into this as soon as possible.</p>
-                                <button type="button" onClick={() => setReportSent(false)} className="mt-1 text-xs font-semibold text-[#5b50d6] hover:underline">
+                                <button type="button" onClick={() => setReportSent(false)} className="mt-1 text-xs font-semibold text-[#D97706] hover:underline">
                                     Submit another
                                 </button>
                             </div>
@@ -665,12 +669,12 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                             <form onSubmit={handleReport} className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Category</label>
-                                    <select className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#5b50d6]">
+                                    <CustomSelect className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#D97706]">
                                         <option>Bug / Error</option>
                                         <option>Feature Request</option>
                                         <option>Incorrect Data</option>
                                         <option>Other</option>
-                                    </select>
+                                    </CustomSelect>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Description</label>
@@ -679,13 +683,13 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                         value={reportText}
                                         onChange={e => setReportText(e.target.value)}
                                         placeholder="Describe the problem in detail…"
-                                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] resize-none"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none"
                                     />
                                 </div>
                                 <button
                                     type="submit"
                                     disabled={reportText.trim().length < 10}
-                                    className="bg-[#5b50d6] hover:bg-[#4a41c0] disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+                                    className="bg-[#D97706] hover:bg-[#B45309] disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
                                 >
                                     Submit Report
                                 </button>

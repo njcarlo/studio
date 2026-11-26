@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState, useRef } from 'react';
 import type { C2SGroup } from '@/lib/data';
 import { BARANGAYS_BY_SATELLITE } from '@/lib/data';
@@ -9,6 +10,7 @@ interface Props {
     group: C2SGroup;
     onClose: () => void;
     onSave: (updated: C2SGroup) => void;
+    onDelete?: () => void;
 }
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -43,7 +45,7 @@ function parseSchedule(schedule: string) {
     return { day: parts[0] ?? 'Friday', time: parts[1] ?? '8:00 AM' };
 }
 
-export default function EditGroupModal({ group, onClose, onSave }: Props) {
+export default function EditGroupModal({ group, onClose, onSave, onDelete }: Props) {
     const { activeSatellites } = useSatellites();
     const satOptionNames = activeSatellites.map(s => s.name);
     const initialSat = group.satelliteName || group.satellite || (activeSatellites[0]?.name ?? 'COG Dasmarinas');
@@ -209,19 +211,16 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                                     </div>
                                     <div className="w-full sm:max-w-[50%]">
                                         <Field label="Barangay">
-                                            <div className="relative">
-                                                <select
-                                                    value={barangay}
-                                                    onChange={(e) => setBarangay(e.target.value)}
-                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
-                                                >
-                                                    <option value="">— Select barangay —</option>
-                                                    {communityBarangays.map((b) => (
-                                                        <option key={b} value={b}>{b}</option>
-                                                    ))}
-                                                </select>
-                                                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                            </div>
+                                            <CustomSelect
+                                                value={barangay}
+                                                onChange={(e) => setBarangay(e.target.value)}
+                                                className="w-full"
+                                            >
+                                                <option value="">— Select barangay —</option>
+                                                {communityBarangays.map((b) => (
+                                                    <option key={b} value={b}>{b}</option>
+                                                ))}
+                                            </CustomSelect>
                                         </Field>
                                     </div>
                                     <Field label="Subdivision/Village">
@@ -239,7 +238,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                                                     {subdivSuggestions.map((s) => (
                                                         <li key={s}
                                                             onMouseDown={() => { setSubdivision(s); setShowSuggestions(false); }}
-                                                            className="px-3 py-2 text-sm text-gray-700 hover:bg-[#f0effe] cursor-pointer"
+                                                            className="px-3 py-2 text-sm text-gray-700 hover:bg-[#FEF3C7] cursor-pointer"
                                                         >{s}</li>
                                                     ))}
                                                 </ul>
@@ -267,16 +266,36 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                     </div>
 
                     {/* Footer */}
-                    <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
-                        <button onClick={onClose}
-                            className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                            Cancel
-                        </button>
-                        <button onClick={handleSave}
-                            className="px-6 py-2 text-sm font-bold text-white rounded-lg transition-colors"
-                            style={{ background: '#5b50d6' }}>
-                            Save Changes
-                        </button>
+                    <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            {onDelete && (
+                                <button
+                                    type="button"
+                                    onClick={onDelete}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                        <path d="M10 11v6" />
+                                        <path d="M14 11v6" />
+                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                    </svg>
+                                    Delete Group
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-3 ml-auto">
+                            <button onClick={onClose}
+                                className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
+                                Cancel
+                            </button>
+                            <button onClick={handleSave}
+                                className="px-6 py-2 text-sm font-bold text-white rounded-lg transition-colors"
+                                style={{ background: '#D97706' }}>
+                                Save Changes
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -285,7 +304,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
 }
 
 /* ── Shared sub-components ── */
-const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-[#f8f9fc] w-full';
+const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D97706] bg-[#f8f9fc] w-full';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -298,14 +317,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
     return (
-        <div className="relative">
-            <select value={value} onChange={(e) => onChange(e.target.value)}
-                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-[#f8f9fc] pr-8">
-                {options.map((o) => <option key={o}>{o}</option>)}
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 10l5 5 5-5z"/>
-            </svg>
-        </div>
+        <CustomSelect value={value} onChange={(e) => onChange(e.target.value)} className="w-full">
+            {options.map((o) => <option key={o}>{o}</option>)}
+        </CustomSelect>
     );
 }

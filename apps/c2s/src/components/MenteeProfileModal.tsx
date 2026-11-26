@@ -7,7 +7,7 @@ interface Props {
     onClose: () => void;
 }
 
-const AVATAR_COLORS = ['#5b50d6','#e91e8c','#0b9b8a','#e67700','#6741d9'];
+const AVATAR_COLORS = ['#D97706','#e91e8c','#0284C7','#e67700','#D97706'];
 function avatarColor(id: string) {
     let h = 0; for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
     return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
@@ -75,10 +75,10 @@ export default function MenteeProfileModal({ mentee, onClose }: Props) {
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Devotional Timeline</p>
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs text-gray-500">Overall progress</span>
-                            <span className="text-xs font-semibold text-[#5b50d6]">{mentee.progress}%</span>
+                            <span className="text-xs font-semibold text-[#D97706]">{mentee.progress}%</span>
                         </div>
                         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-                            <div className="h-full rounded-full" style={{ width: `${mentee.progress}%`, background: '#5b50d6' }} />
+                            <div className="h-full rounded-full" style={{ width: `${mentee.progress}%`, background: '#D97706' }} />
                         </div>
                         <p className="text-[10px] text-gray-400 mb-0.5">Current</p>
                         <p className="text-sm font-semibold text-gray-800">{mentee.currentModule}</p>

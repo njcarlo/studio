@@ -1,5 +1,6 @@
 'use client';
 
+import CustomSelect from '@/components/CustomSelect';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -10,6 +11,7 @@ import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
 import type { ReactNode } from 'react';
 import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
+import { SidebarBrandHeader, DashboardTopHeader } from '@/components/DashboardHeader';
 import { exportToCsv } from '@/lib/export-csv';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
@@ -22,7 +24,7 @@ const TOOLTIP_STYLE = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#5b50d6', '#5b50d6', '#1971c2', '#e67700', '#6741d9'];
+const AVATAR_COLORS = ['#D97706', '#D97706', '#1971c2', '#e67700', '#D97706'];
 function avatarColor(id: string) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
@@ -31,10 +33,10 @@ function avatarColor(id: string) {
 
 const STATUS_STYLE: Record<string, string> = {
     'New': 'bg-[#1d4ed8] text-white',
-    'Waiting for Assignment': 'bg-[#b45309] text-white',
-    'Assigned to Mentor': 'bg-[#6741d9] text-white',
-    'Interview Scheduled': 'bg-[#5b50d6] text-white',
-    'Interview Completed': 'bg-[#5b50d6] text-white',
+    'Waiting for Assignment': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
+    'Assigned to Mentor': 'bg-[#D97706] text-white',
+    'Interview Scheduled': 'bg-[#D97706] text-white',
+    'Interview Completed': 'bg-[#D97706] text-white',
     'Accepted': 'bg-[#166534] text-white',
 };
 
@@ -73,18 +75,18 @@ function InterviewModal({ name, onClose }: { name: string; onClose: () => void }
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Interview Date</label>
                             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Interview Time</label>
                             <input type="time" value={time} onChange={e => setTime(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
                             <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
                                 placeholder="Interview notes or preparation..."
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] resize-none" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none" />
                         </div>
                     </div>
                     <div className="flex gap-3">
@@ -92,7 +94,7 @@ function InterviewModal({ name, onClose }: { name: string; onClose: () => void }
                         <button
                             onClick={() => { setDone(true); setTimeout(onClose, 900); }}
                             className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors"
-                            style={{ background: done ? '#22c55e' : '#5b50d6' }}>
+                            style={{ background: done ? '#22c55e' : '#D97706' }}>
                             {done ? 'Scheduled!' : 'Schedule Interview'}
                         </button>
                     </div>
@@ -136,7 +138,7 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {
                             <p className="text-xs text-gray-400 italic">No available mentors with open slots.</p>
                         )}
                         {available.map(m => (
-                            <label key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${selected === m.name ? 'border-[#5b50d6] bg-[#f5f3ff]' : 'border-gray-100 hover:border-gray-200'}`}>
+                            <label key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${selected === m.name ? 'border-[#D97706] bg-[#FEF3C7]' : 'border-gray-100 hover:border-gray-200'}`}>
                                 <input type="radio" name="mentor" value={m.name} checked={selected === m.name} onChange={() => setSelected(m.name)} className="sr-only" />
                                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div>
                                 <div className="flex-1 min-w-0">
@@ -144,7 +146,7 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {
                                     <p className="text-xs text-gray-400">{m.group} · {m.availableSlots} slots left</p>
                                 </div>
                                 {selected === m.name && (
-                                    <svg className="w-5 h-5 text-[#5b50d6] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+                                    <svg className="w-5 h-5 text-[#D97706] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
                                 )}
                             </label>
                         ))}
@@ -155,7 +157,7 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {
                             onClick={() => { if (selected) { onAssign(mentee.id, selected); onClose(); } }}
                             disabled={!selected}
                             className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
-                            style={{ background: '#5b50d6' }}>
+                            style={{ background: '#D97706' }}>
                             Assign
                         </button>
                     </div>
@@ -236,15 +238,15 @@ function ViewDetailsModal({ mentee, onClose, onAssign, onRecommend }: {
                         <p className="text-xs text-gray-600 leading-relaxed">{mentee.notes}</p>
                     </section>
                     {mentee.assignedMentor && (
-                        <section className="rounded-xl bg-[#f5f3ff] border border-[#ddd6fe] px-4 py-3">
-                            <p className="text-[9px] font-semibold text-[#5b50d6] uppercase tracking-widest mb-1">Assigned Mentor</p>
+                        <section className="rounded-xl bg-[#FEF3C7] border border-[#FDE68A] px-4 py-3">
+                            <p className="text-[9px] font-semibold text-[#D97706] uppercase tracking-widest mb-1">Assigned Mentor</p>
                             <p className="text-sm font-bold text-gray-900">{mentee.assignedMentor}</p>
                         </section>
                     )}
                 </div>
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-                    <button onClick={onAssign} className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg transition-colors" style={{ background: '#5b50d6' }}>
+                    <button onClick={onAssign} className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg transition-colors" style={{ background: '#D97706' }}>
                         Assign to Mentor
                     </button>
                     <button onClick={onRecommend} className="flex-1 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-gray-300 py-2.5 rounded-lg transition-colors">
@@ -277,7 +279,7 @@ function RecommendGroupModal({ mentee, groups, onClose, onConfirm }: {
                     </div>
                     <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
                         {available.map(g => (
-                            <label key={g.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${selected === g.name ? 'border-[#5b50d6] bg-[#f5f3ff]' : 'border-gray-100 hover:border-gray-200'}`}>
+                            <label key={g.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${selected === g.name ? 'border-[#D97706] bg-[#FEF3C7]' : 'border-gray-100 hover:border-gray-200'}`}>
                                 <input type="radio" name="group" value={g.name} checked={selected === g.name} onChange={() => setSelected(g.name)} className="sr-only" />
                                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
                                 <div className="flex-1 min-w-0">
@@ -293,7 +295,7 @@ function RecommendGroupModal({ mentee, groups, onClose, onConfirm }: {
                             onClick={() => { if (selected) { setDone(true); setTimeout(() => { onConfirm(mentee.id, selected); onClose(); }, 800); } }}
                             disabled={!selected}
                             className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
-                            style={{ background: done ? '#22c55e' : '#5b50d6' }}>
+                            style={{ background: done ? '#22c55e' : '#D97706' }}>
                             {done ? 'Recommended!' : 'Confirm'}
                         </button>
                     </div>
@@ -370,17 +372,17 @@ function PotentialMenteesTab({
                 <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search name, barangay, group..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-full bg-white" />
                 </div>
-                <select
+                <CustomSelect
                     value={filter}
                     onChange={e => setFilter(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
                     {STATUS_FILTERS.map(f => (
                         <option key={f} value={f}>{f === 'All' ? 'All Status' : f}</option>
                     ))}
-                </select>
+                </CustomSelect>
             </div>
 
             {/* Mobile cards */}
@@ -400,13 +402,13 @@ function PotentialMenteesTab({
                             {m.preferredGroups.map((g, i) => <p key={i}><span className="text-gray-400">{i + 1}.</span> {g}</p>)}
                         </div>
                         <div className="flex items-center gap-3 text-[11px]">
-                            <span className={`font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{m.groupType}</span>
+                            <span className={`font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>{m.groupType}</span>
                             <span className="text-gray-400">{m.dateSubmitted}</span>
                         </div>
                         <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
-                            <button onClick={() => setViewingMentee(m)} className="text-xs font-semibold text-[#5b50d6] hover:underline">View</button>
+                            <button onClick={() => setViewingMentee(m)} className="text-xs font-semibold text-[#D97706] hover:underline">View</button>
                             <span className="text-gray-200">|</span>
-                            <button onClick={() => setInterviewMentee(m)} className="text-xs font-semibold text-[#6741d9] hover:underline">Schedule Interview</button>
+                            <button onClick={() => setInterviewMentee(m)} className="text-xs font-semibold text-[#D97706] hover:underline">Schedule Interview</button>
                         </div>
                     </div>
                 ))}
@@ -451,7 +453,7 @@ function PotentialMenteesTab({
                                 </td>
                                 <td className="px-4 py-3.5 text-xs text-gray-600">{m.barangay}</td>
                                 <td className="px-4 py-3.5 whitespace-nowrap">
-                                    <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${m.groupType === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>
+                                    <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${m.groupType === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>
                                         {m.groupType}
                                     </span>
                                 </td>
@@ -461,9 +463,9 @@ function PotentialMenteesTab({
                                 </td>
                                 <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                     <div className="flex items-center gap-1.5">
-                                        <button onClick={() => setViewingMentee(m)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
+                                        <button onClick={() => setViewingMentee(m)} className="text-[11px] font-semibold text-[#D97706] hover:underline">View</button>
                                         <span className="text-gray-200">|</span>
-                                        <button onClick={() => setInterviewMentee(m)} className="text-[11px] font-semibold text-[#6741d9] hover:underline">Schedule Interview</button>
+                                        <button onClick={() => setInterviewMentee(m)} className="text-[11px] font-semibold text-[#D97706] hover:underline">Schedule Interview</button>
                                     </div>
                                 </td>
                             </tr>
@@ -498,17 +500,17 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                 <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search mentors..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-full bg-white" />
                 </div>
-                <select
+                <CustomSelect
                     value={filter}
                     onChange={e => setFilter(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
                     <option value="All">All Status</option>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
-                </select>
+                </CustomSelect>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {filtered.map(m => {
@@ -525,16 +527,16 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                                         </div>
                                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span>
                                     </div>
-                                    <div className="flex gap-4 mt-1.5 text-[11px] text-gray-500">
-                                        <span>📞 {m.phone}</span>
-                                        <span>✉ {m.email}</span>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-[11px] text-gray-500 min-w-0">
+                                        <span className="whitespace-nowrap">📞 {m.phone}</span>
+                                        <span className="break-all">✉ {m.email}</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {[
-                                    { label: 'Active Mentees', value: m.activeMentees, color: '#5b50d6' },
-                                    { label: 'Available Slots', value: m.availableSlots, color: m.availableSlots > 0 ? '#5b50d6' : '#e67700' },
+                                    { label: 'Active Mentees', value: m.activeMentees, color: '#D97706' },
+                                    { label: 'Available Slots', value: m.availableSlots, color: m.availableSlots > 0 ? '#D97706' : '#e67700' },
                                     { label: 'Group Capacity', value: m.groupCapacity, color: '#1971c2' },
                                 ].map(s => (
                                     <div key={s.label} className="rounded-xl p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
@@ -550,7 +552,7 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                                     <span className="text-[11px] font-semibold text-gray-700">{slotPct}%</span>
                                 </div>
                                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all" style={{ width: `${slotPct}%`, background: slotPct >= 100 ? '#e67700' : '#5b50d6' }} />
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${slotPct}%`, background: slotPct >= 100 ? '#e67700' : '#D97706' }} />
                                 </div>
                             </div>
                             {/* Availability badge */}
@@ -580,25 +582,25 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                 <p className="text-sm text-gray-400 mt-1">All groups within the cluster.</p>
             </div>
             <div className="flex items-center gap-3 mb-5 flex-wrap">
-                <select
+                <CustomSelect
                     value={filter}
                     onChange={e => setFilter(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[150px]"
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[150px]"
                 >
                     <option value="All">All Types</option>
                     <option value="Community-based">Community-based</option>
                     <option value="Church-based">Church-based</option>
-                </select>
-                <select
+                </CustomSelect>
+                <CustomSelect
                     value={statusFilter}
                     onChange={e => setStatusFilter(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
                     <option value="All">All Status</option>
                     <option value="Open">Open</option>
                     <option value="Full">Full</option>
                     <option value="Closed">Closed</option>
-                </select>
+                </CustomSelect>
             </div>
             {/* Mobile cards */}
             <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
@@ -608,7 +610,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                         <div key={g.id} className="p-4 flex flex-col gap-2.5">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="font-semibold text-gray-900 text-sm leading-tight">{g.name}</span>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${g.type === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
@@ -617,13 +619,13 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                             <p className="text-xs text-gray-500">{g.barangay}</p>
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#5b50d6' }} />
+                                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#D97706' }} />
                                 </div>
                                 <span className="text-xs text-gray-600">{g.members}/{g.capacity}</span>
-                                <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#5b50d6]' : 'text-[#e67700]'}`}>{g.availableSlots} open</span>
+                                <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#D97706]' : 'text-[#e67700]'}`}>{g.availableSlots} open</span>
                             </div>
                             <div className="flex items-center justify-between gap-2">
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
+                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                                 <span className="text-xs text-gray-400">{g.schedule}</span>
                             </div>
                         </div>
@@ -655,22 +657,22 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                                     </td>
                                     <td className="px-4 py-3.5 text-xs text-gray-600">{g.barangay}</td>
                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                     </td>
                                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#5b50d6' }} />
+                                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#D97706' }} />
                                             </div>
                                             <span className="text-xs font-semibold text-gray-700">{g.members}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3.5 text-xs text-center text-gray-600 whitespace-nowrap">{g.capacity}</td>
                                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                        <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#5b50d6]' : 'text-[#e67700]'}`}>{g.availableSlots}</span>
+                                        <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#D97706]' : 'text-[#e67700]'}`}>{g.availableSlots}</span>
                                     </td>
                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-1 rounded-full leading-none ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
+                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-1 rounded-full leading-none ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                                     </td>
                                     <td className="pl-4 pr-6 py-3.5 text-xs text-gray-500 whitespace-nowrap">{g.schedule}</td>
                                 </tr>
@@ -690,8 +692,8 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
     groups: CoordGroup[];
     reportsContent?: ReactNode;
 }) {
-    const [mapType, setMapType] = useState<'All' | 'Community-based' | 'Church-based'>('All');
-    const filteredGroups = mapType === 'All' ? groups : groups.filter(g => g.type === mapType);
+    const [mapFilter, setMapFilter] = useState<'All' | 'Open' | 'Full'>('All');
+    const filteredGroups = groups.filter(g => g.type === 'Community-based' && (mapFilter === 'All' || g.status === mapFilter));
     const mapGroups = coordGroupsToMapGroups(filteredGroups);
 
     function handleExportCsv() {
@@ -728,9 +730,9 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
             {/* Summary stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-10">
                 {[
-                    { value: COORD_POTENTIAL_MENTEES.length, label: 'Total Potential', sub: 'All statuses', color: '#5b50d6' },
-                    { value: COORD_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, label: 'New This Week', sub: 'Not yet processed', color: '#5b50d6' },
-                    { value: COORD_MENTORS.filter(m => m.status === 'Active').length, label: 'Active Mentors', sub: 'Available', color: '#5b50d6' },
+                    { value: COORD_POTENTIAL_MENTEES.length, label: 'Total Potential', sub: 'All statuses', color: '#D97706' },
+                    { value: COORD_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, label: 'New This Week', sub: 'Not yet processed', color: '#D97706' },
+                    { value: COORD_MENTORS.filter(m => m.status === 'Active').length, label: 'Active Mentors', sub: 'Available', color: '#D97706' },
                     { value: COORD_GROUPS.filter(g => g.status === 'Open').length, label: 'Open Groups', sub: 'Accepting now', color: '#1971c2' },
                 ].map(s => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -744,30 +746,26 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
             {/* ── Interactive Map section ── */}
             <div className="mb-4">
                 <h2 className="text-lg font-black text-gray-900">Interactive Map</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Group distribution within the cluster — powered by OpenStreetMap.</p>
+                <p className="text-sm text-gray-400 mt-0.5">Community-based group distribution within the cluster — powered by OpenStreetMap.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-4">
-                <select
-                    value={mapType}
-                    onChange={e => setMapType(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                <CustomSelect
+                    value={mapFilter}
+                    onChange={e => setMapFilter(e.target.value as any)}
+                    className="min-w-[180px]"
                 >
-                    <option value="All">All Types</option>
-                    <option value="Community-based">Community-based</option>
-                    <option value="Church-based">Church-based</option>
-                </select>
+                    <option value="All">All Community-based</option>
+                    <option value="Open">Available</option>
+                    <option value="Full">Full</option>
+                </CustomSelect>
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4 map-container">
-                <ClusterMapDynamic groups={mapGroups} accentColor="#5b50d6" />
+                <ClusterMapDynamic groups={mapGroups} accentColor="#047857" />
             </div>
             <div className="flex items-center flex-wrap gap-x-6 gap-y-2 mb-5">
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#5b50d6' }} />
+                    <div className="w-4 h-4 rounded-full" style={{ background: '#047857' }} />
                     <span className="text-xs text-gray-600 font-medium">Community-based</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#1971c2' }} />
-                    <span className="text-xs text-gray-600 font-medium">Church-based</span>
                 </div>
                 <p className="text-xs text-gray-400 sm:ml-auto hidden sm:block">Click a marker to see group details</p>
             </div>
@@ -775,14 +773,14 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
                 {filteredGroups.map(g => (
                     <div key={g.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow"
-                            style={{ background: g.type === 'Church-based' ? '#1971c2' : '#5b50d6' }}>{g.members}</div>
+                            style={{ background: '#047857' }}>{g.members}</div>
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-sm">{g.name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
                         <div className="text-right shrink-0 flex flex-col gap-1">
-                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
+                            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#E0F2FE] text-[#0369A1]">{g.type}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                         </div>
                     </div>
                 ))}
@@ -817,8 +815,8 @@ function coordGroupsToMapGroups(groups: CoordGroup[]): ClusterMapGroup[] {
 }
 
 function CoordMapTab({ groups }: { groups: CoordGroup[] }) {
-    const [mapType, setMapType] = useState<'All' | 'Community-based' | 'Church-based'>('All');
-    const filtered = mapType === 'All' ? groups : groups.filter(g => g.type === mapType);
+    const [mapFilter, setMapFilter] = useState<'All' | 'Open' | 'Full'>('All');
+    const filtered = groups.filter(g => g.type === 'Community-based' && (mapFilter === 'All' || g.status === mapFilter));
     const mapGroups = coordGroupsToMapGroups(filtered);
 
     return (
@@ -826,35 +824,31 @@ function CoordMapTab({ groups }: { groups: CoordGroup[] }) {
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Interactive Map</h1>
-                    <p className="text-sm text-gray-400 mt-1">Group distribution within the cluster — powered by OpenStreetMap.</p>
+                    <p className="text-sm text-gray-400 mt-1">Community-based group distribution within the cluster — powered by OpenStreetMap.</p>
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                <select
-                    value={mapType}
-                    onChange={e => setMapType(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                <CustomSelect
+                    value={mapFilter}
+                    onChange={e => setMapFilter(e.target.value as any)}
+                    className="min-w-[180px]"
                 >
-                    <option value="All">All Types</option>
-                    <option value="Community-based">Community-based</option>
-                    <option value="Church-based">Church-based</option>
-                </select>
+                    <option value="All">All Community-based</option>
+                    <option value="Open">Available</option>
+                    <option value="Full">Full</option>
+                </CustomSelect>
             </div>
 
             {/* OSM Map */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6 map-container">
-                <ClusterMapDynamic groups={mapGroups} accentColor="#5b50d6" />
+                <ClusterMapDynamic groups={mapGroups} accentColor="#047857" />
             </div>
 
             {/* Legend + group list */}
             <div className="flex items-center flex-wrap gap-x-6 gap-y-2 mb-5">
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#5b50d6' }} />
+                    <div className="w-4 h-4 rounded-full" style={{ background: '#047857' }} />
                     <span className="text-xs text-gray-600 font-medium">Community-based</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ background: '#1971c2' }} />
-                    <span className="text-xs text-gray-600 font-medium">Church-based</span>
                 </div>
                 <p className="text-xs text-gray-400 sm:ml-auto hidden sm:block">Click a marker to see group details</p>
             </div>
@@ -863,14 +857,14 @@ function CoordMapTab({ groups }: { groups: CoordGroup[] }) {
                 {filtered.map(g => (
                     <div key={g.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow"
-                            style={{ background: g.type === 'Church-based' ? '#1971c2' : '#5b50d6' }}>{g.members}</div>
+                            style={{ background: '#047857' }}>{g.members}</div>
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-sm">{g.name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
                         <div className="text-right shrink-0 flex flex-col gap-1">
-                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
+                            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#E0F2FE] text-[#0369A1]">{g.type}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                         </div>
                     </div>
                 ))}
@@ -884,11 +878,11 @@ function CoordDashboardNotifications() {
     const [notifs, setNotifs] = useState(COORD_NOTIFICATIONS);
     const unread = notifs.filter(n => !n.read).length;
     const iconMap: Record<string, { bg: string; color: string; path: string }> = {
-        new_mentee: { bg: '#ede9fe', color: '#6741d9', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+        new_mentee: { bg: '#FEF3C7', color: '#D97706', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
         accepted: { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
         reassign: { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
         capacity: { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
-        interview: { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
+        interview: { bg: '#FEF3C7', color: '#D97706', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
     };
     return (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -899,7 +893,7 @@ function CoordDashboardNotifications() {
                 </div>
                 {unread > 0 && (
                     <button onClick={() => setNotifs(prev => prev.map(n => ({ ...n, read: true })))}
-                        className="text-xs font-semibold text-[#5b50d6] hover:underline">Mark all as read</button>
+                        className="text-xs font-semibold text-[#D97706] hover:underline">Mark all as read</button>
                 )}
             </div>
             <div className="divide-y divide-gray-50">
@@ -907,7 +901,7 @@ function CoordDashboardNotifications() {
                     const ic = iconMap[n.type] ?? iconMap.new_mentee;
                     return (
                         <div key={n.id} onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
-                            className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${!n.read ? 'bg-[#f5f3ff]' : ''}`}>
+                            className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${!n.read ? 'bg-[#FEF3C7]' : ''}`}>
                             <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill={ic.color}><path d={ic.path} /></svg>
                             </div>
@@ -915,7 +909,7 @@ function CoordDashboardNotifications() {
                                 <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
                                 <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                             </div>
-                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#5b50d6] shrink-0 mt-1.5" />}
+                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#D97706] shrink-0 mt-1.5" />}
                         </div>
                     );
                 })}
@@ -929,11 +923,11 @@ function CoordNotifsTab() {
     const [notifs, setNotifs] = useState(COORD_NOTIFICATIONS);
     const unread = notifs.filter(n => !n.read).length;
     const iconMap: Record<string, { bg: string; color: string; path: string }> = {
-        new_mentee: { bg: '#ede9fe', color: '#6741d9', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+        new_mentee: { bg: '#FEF3C7', color: '#D97706', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
         accepted: { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
         reassign: { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
         capacity: { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
-        interview: { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
+        interview: { bg: '#FEF3C7', color: '#D97706', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
     };
     return (
         <div>
@@ -943,7 +937,7 @@ function CoordNotifsTab() {
                     <p className="text-sm text-gray-400 mt-1">{unread} unread</p>
                 </div>
                 {unread > 0 && (
-                    <button onClick={() => setNotifs(prev => prev.map(n => ({ ...n, read: true })))} className="text-xs font-semibold text-[#5b50d6] hover:underline">Mark all as read</button>
+                    <button onClick={() => setNotifs(prev => prev.map(n => ({ ...n, read: true })))} className="text-xs font-semibold text-[#D97706] hover:underline">Mark all as read</button>
                 )}
             </div>
             <div className="flex flex-col gap-3">
@@ -951,7 +945,7 @@ function CoordNotifsTab() {
                     const ic = iconMap[n.type] ?? iconMap.new_mentee;
                     return (
                         <div key={n.id} onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
-                            className={`bg-white rounded-2xl border p-5 flex items-start gap-4 cursor-pointer transition-colors ${n.read ? 'border-gray-100' : 'border-[#5b50d6]/30 bg-[#f5f3ff]'}`}>
+                            className={`bg-white rounded-2xl border p-5 flex items-start gap-4 cursor-pointer transition-colors ${n.read ? 'border-gray-100' : 'border-[#D97706]/30 bg-[#FEF3C7]'}`}>
                             <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
                                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill={ic.color}><path d={ic.path} /></svg>
                             </div>
@@ -959,7 +953,7 @@ function CoordNotifsTab() {
                                 <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
                                 <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                             </div>
-                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#5b50d6] shrink-0 mt-1.5" />}
+                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#D97706] shrink-0 mt-1.5" />}
                         </div>
                     );
                 })}
@@ -982,7 +976,7 @@ interface HubApplication {
 }
 
 const HUB_STATUS_STYLE: Record<string, string> = {
-    'Pending': 'bg-[#b45309] text-white',
+    'Pending': 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
     'Approved': 'bg-[#16a34a] text-white',
     'Rejected': 'bg-[#dc2626] text-white',
 };
@@ -1035,10 +1029,10 @@ function PotentialC2SGroupsTab() {
                     <div className="fixed inset-0 z-[9999] bg-black/50" onClick={() => setConfirm(null)} />
                     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={() => setConfirm(null)}>
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${confirm.action === 'Approved' ? 'bg-[#d3f9f0]' : 'bg-[#fee2e2]'}`}>
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${confirm.action === 'Approved' ? 'bg-[#FEF3C7]' : 'bg-[#fee2e2]'}`}>
                                 {confirm.action === 'Approved'
-                                    ? <svg className="w-6 h-6 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-                                    : <svg className="w-6 h-6 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
+                                    ? <svg className="w-6 h-6 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                    : <svg className="w-6 h-6 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                                 }
                             </div>
                             <div className="text-center">
@@ -1047,8 +1041,8 @@ function PotentialC2SGroupsTab() {
                                 </h3>
                                 <p className="text-sm text-gray-500">
                                     {confirm.action === 'Approved'
-                                        ? <>Are you sure you want to <span className="font-semibold text-[#5b50d6]">approve</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
-                                        : <>Are you sure you want to <span className="font-semibold text-[#5b50d6]">reject</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
+                                        ? <>Are you sure you want to <span className="font-semibold text-[#D97706]">approve</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
+                                        : <>Are you sure you want to <span className="font-semibold text-[#D97706]">reject</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
                                     }
                                 </p>
                             </div>
@@ -1060,7 +1054,7 @@ function PotentialC2SGroupsTab() {
                                 <button
                                     onClick={() => updateStatus(confirm.id, confirm.action)}
                                     className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors"
-                                    style={{ background: confirm.action === 'Approved' ? '#5b50d6' : '#5b50d6' }}>
+                                    style={{ background: confirm.action === 'Approved' ? '#D97706' : '#D97706' }}>
                                     {confirm.action === 'Approved' ? 'Yes, Approve' : 'Yes, Reject'}
                                 </button>
                             </div>
@@ -1086,7 +1080,7 @@ function PotentialC2SGroupsTab() {
                         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
                             {/* Name + status */}
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] font-black text-lg shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] font-black text-lg shrink-0">
                                     {viewing.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                 </div>
                                 <div>
@@ -1120,13 +1114,13 @@ function PotentialC2SGroupsTab() {
                                 <button
                                     onClick={() => requestAction(viewing, 'Approved')}
                                     className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     Approve
                                 </button>
                                 <button
                                     onClick={() => requestAction(viewing, 'Rejected')}
                                     className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg"
-                                    style={{ background: '#5b50d6' }}>
+                                    style={{ background: '#D97706' }}>
                                     Reject
                                 </button>
                             </div>
@@ -1154,18 +1148,18 @@ function PotentialC2SGroupsTab() {
                 <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-full bg-white" />
                 </div>
-                <select
+                <CustomSelect
                     value={filter}
                     onChange={e => setFilter(e.target.value as any)}
-                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[140px]"
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[140px]"
                 >
                     <option value="All">All Status</option>
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
-                </select>
+                </CustomSelect>
                 <span className="text-xs text-gray-400 sm:ml-auto">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
@@ -1183,7 +1177,7 @@ function PotentialC2SGroupsTab() {
                         {filtered.map(a => (
                             <div key={a.id} className="p-4 flex flex-col gap-2.5">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
                                         {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                     </div>
                                     <div>
@@ -1200,7 +1194,7 @@ function PotentialC2SGroupsTab() {
                                     <span className="text-[11px] text-gray-400">{a.submitted}</span>
                                     <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
                                 </div>
-                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#5b50d6] border border-[#5b50d6] px-3 py-1.5 rounded-lg hover:bg-[#ede9fe] transition-colors">View</button>
+                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#D97706] border border-[#D97706] px-3 py-1.5 rounded-lg hover:bg-[#FEF3C7] transition-colors">View</button>
                             </div>
                         ))}
                     </div>
@@ -1220,7 +1214,7 @@ function PotentialC2SGroupsTab() {
                                     <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
                                         <td className="pl-6 pr-4 py-3.5">
                                             <div className="flex items-center gap-2.5">
-                                                <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                                <div className="w-7 h-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
                                                     {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                                 </div>
                                                 <div>
@@ -1238,7 +1232,7 @@ function PotentialC2SGroupsTab() {
                                         </td>
                                         <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
                                             <div className="flex items-center gap-1.5">
-                                                <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
+                                                <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#D97706] hover:underline">View</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -1313,9 +1307,10 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                 />
             )}
 
-            {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-56 md:w-[68px]' : 'w-56'} border-r flex flex-col pt-4 md:pt-4 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
-                <div className={`flex items-center mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
+            {/* ── Left Sidebar (full viewport height with brand header) ── */}
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-72 md:w-[68px]' : 'w-72'} border-r flex flex-col pt-0 pb-4 fixed top-0 bottom-0 left-0 ${sidebarOpen ? 'z-50 translate-x-0' : 'z-40 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+                <SidebarBrandHeader collapsed={sidebarCollapsed} />
+                <div className={`flex items-center pt-4 mb-3 ${sidebarCollapsed ? 'justify-between px-5 md:justify-center md:px-0 md:mb-2' : 'justify-between px-4'}`}>
                     <p className={`text-[10px] font-bold text-gray-400 uppercase tracking-widest ${sidebarCollapsed ? 'md:hidden' : ''}`}>Menu</p>
                     <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
                 </div>
@@ -1363,23 +1358,13 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             </aside>
 
             {/* ── Main ── */}
-            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-56'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
+            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
 
-                {/* Mobile sticky menu bar */}
-                <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
-                    <button
-                        className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-                        onClick={() => setSidebarOpen(true)}
-                        aria-label="Open menu"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-                        </svg>
-                    </button>
-                    <span className="text-xs text-gray-400 ml-1">
-                        {settingsSection ? 'Settings' : COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
-                    </span>
-                </div>
+                <DashboardTopHeader
+                    pageTitle={settingsSection ? 'Settings' : COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                    onOpenMenu={() => setSidebarOpen(true)}
+                    onLogout={onLogout}
+                />
 
                 <div className="pt-4 md:pt-5 px-4 sm:px-6">
                     {settingsSection ? (

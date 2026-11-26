@@ -51,14 +51,14 @@ export default function ConfirmModal({
     if (!open) return null;
 
     const isDanger = variant === 'danger';
-    const accentColor = isDanger ? '#EF4444' : '#14B8A6';
+    const accentColor = isDanger ? '#DC2626' : '#D97706';
     const badgeBg = isDanger
         ? isDark
-            ? 'rgba(239, 68, 68, 0.16)'
-            : 'rgba(239, 68, 68, 0.12)'
+            ? 'rgba(220, 38, 38, 0.16)'
+            : 'rgba(220, 38, 38, 0.12)'
         : isDark
-            ? 'rgba(20, 184, 166, 0.16)'
-            : 'rgba(20, 184, 166, 0.12)';
+            ? 'rgba(217, 119, 6, 0.18)'
+            : '#FEF3C7';
 
     return (
         <div

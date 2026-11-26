@@ -62,7 +62,7 @@ export default function C2SFinderPage() {
                         {/* Left */}
                         <div>
                             {/* "Find your community" teal pill */}
-                            <div className="inline-flex items-center bg-[#0b9b8a] text-white text-xs font-semibold px-3 py-1 rounded-full mb-5">
+                            <div className="inline-flex items-center bg-[#D97706] text-white text-xs font-semibold px-3 py-1 rounded-full mb-5">
                                 Find your community
                             </div>
 
@@ -159,7 +159,7 @@ export default function C2SFinderPage() {
                             placeholder="Search by name, location, or leader..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-full text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2dc7be]"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-full text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                         />
                     </div>
 
@@ -171,8 +171,8 @@ export default function C2SFinderPage() {
                                 onClick={() => setActiveTag(tag)}
                                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                                     activeTag === tag
-                                        ? 'bg-[#2dc7be] text-white'
-                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#2dc7be] hover:text-[#2dc7be]'
+                                        ? 'bg-[#D97706] text-white'
+                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#D97706] hover:text-[#D97706]'
                                 }`}
                             >
                                 {tag}
@@ -208,7 +208,7 @@ export default function C2SFinderPage() {
                         {[
                             {
                                 emoji: '📗',
-                                iconBg: 'bg-[#e0f7f5]',
+                                iconBg: 'bg-[#FEF3C7]',
                                 title: 'Grow in Faith',
                                 desc: 'Dive deeper into Scripture and strengthen your relationship with God through intentional Bible study and prayer.',
                             },
