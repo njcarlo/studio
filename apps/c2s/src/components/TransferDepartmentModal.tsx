@@ -1,6 +1,7 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ModernDatePicker from '@/components/ModernDatePicker';
 import { useState } from 'react';
 import {
     DEPARTMENTS,
@@ -142,7 +143,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
 
     return (
         <>
-            <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+            <div className="fixed inset-0 z-[9999] bg-black/50 transition-opacity" onClick={onClose} />
             <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={onClose}>
                 <div
                     className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col my-auto border border-gray-100 overflow-hidden"
@@ -303,14 +304,16 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
 
                                     {/* Effective Date */}
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        <label htmlFor="transfer-effective-date" className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                                             Effective Date <span className="text-red-500">*</span>
                                         </label>
-                                        <input
-                                            type="date"
+                                        <ModernDatePicker
+                                            id="transfer-effective-date"
                                             value={effectiveDate}
-                                            onChange={e => setEffectiveDate(e.target.value)}
-                                            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-800 font-medium"
+                                            onChange={setEffectiveDate}
+                                            placeholder="Select effective date"
+                                            className="font-medium"
+                                            required
                                         />
                                     </div>
                                 </div>
@@ -507,7 +510,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="px-5 py-2.5 text-xs font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-white transition-colors"
+                                    className="px-[1.375rem] py-[0.625rem] text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                                 >
                                     Cancel
                                 </button>
@@ -515,7 +518,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                     type="button"
                                     onClick={handleNext}
                                     disabled={!canProceed}
-                                    className="px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-[#D97706] hover:bg-[#B45309]"
+                                    className="px-[1.375rem] py-[0.625rem] text-xs font-bold text-white rounded-xl shadow-sm transition-all bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed"
                                 >
                                     Next: Review Transfer →
                                 </button>
@@ -525,7 +528,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                 <button
                                     type="button"
                                     onClick={() => setStep(1)}
-                                    className="px-5 py-2.5 text-xs font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-white transition-colors"
+                                    className="px-[1.375rem] py-[0.625rem] text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                                 >
                                     ← Back to Edit
                                 </button>
@@ -533,7 +536,7 @@ export default function TransferDepartmentModal({ worker, onClose, onConfirm }: 
                                     type="button"
                                     onClick={handleFinalSubmit}
                                     disabled={isSubmitting}
-                                    className="px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-md transition-all bg-[#0284C7] hover:bg-[#098375] flex items-center gap-2"
+                                    className="px-[1.375rem] py-[0.625rem] text-xs font-bold text-white rounded-xl shadow-md transition-all bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 flex items-center gap-2 cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? (
                                         <>

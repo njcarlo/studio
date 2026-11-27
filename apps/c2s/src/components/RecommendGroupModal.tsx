@@ -186,10 +186,10 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                         {/* Next / Confirm */}
                         {step === 1 && (
                             <button
+                                type="button"
                                 onClick={() => setStep(2)}
                                 disabled={!canNext1}
-                                className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                style={{ background: '#D97706' }}
+                                className="flex items-center gap-2 px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                                 Next
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
@@ -197,10 +197,10 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                         )}
                         {step === 2 && !selectedGroup && (
                             <button
+                                type="button"
                                 onClick={() => setStep(3)}
                                 disabled={!canNext2}
-                                className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                style={{ background: '#D97706' }}
+                                className="flex items-center gap-2 px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                                 Next
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
@@ -208,9 +208,9 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                         )}
                         {step === 3 && selectedGroup && (
                             <button
+                                type="button"
                                 onClick={() => { onConfirm(); onClose(); }}
-                                className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
-                                style={{ background: '#D97706' }}
+                                className="flex items-center gap-2 px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer"
                             >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                                 Confirm transfer

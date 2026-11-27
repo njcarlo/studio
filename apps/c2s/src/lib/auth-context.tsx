@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User } from './auth';
+import { resolveSessionUser, type User } from './auth';
 
 const SESSION_KEY = 'c2s_user';
 
@@ -24,13 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const stored = localStorage.getItem(SESSION_KEY);
         if (stored) {
-            try { setUser(JSON.parse(stored)); } catch {}
+            try { setUser(resolveSessionUser(JSON.parse(stored))); } catch {}
         }
     }, []);
 
     function login(u: User) {
-        setUser(u);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+        const resolved = resolveSessionUser(u);
+        setUser(resolved);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(resolved));
     }
 
     function logout() {

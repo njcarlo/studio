@@ -1,6 +1,7 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ModernDatePicker, { formatIsoDate, parseIsoDate } from '@/components/ModernDatePicker';
 import { useState } from 'react';
 import type { C2SGroup, PotentialMentee } from '@/lib/data';
 
@@ -44,20 +45,18 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
         const fullName = `${firstName.trim()} ${lastName.trim()}`;
         const initials = `${firstName.trim()[0] ?? ''}${lastName.trim()[0] ?? ''}`.toUpperCase();
 
-        // Calculate age from birthday
+        // Calculate age and formatted display without UTC timezone drift
         let age = 0;
-        if (birthday) {
-            const birth = new Date(birthday);
+        let birthdayDisplay = '';
+        const parsedBirth = birthday ? parseIsoDate(birthday) : null;
+        if (parsedBirth) {
             const today = new Date();
-            age = today.getFullYear() - birth.getFullYear();
-            const m = today.getMonth() - birth.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+            age = today.getFullYear() - parsedBirth.year;
+            const m = (today.getMonth() + 1) - parsedBirth.month;
+            if (m < 0 || (m === 0 && today.getDate() < parsedBirth.day)) age--;
+            if (age < 0) age = 0;
+            birthdayDisplay = `${String(parsedBirth.month).padStart(2, '0')}/${String(parsedBirth.day).padStart(2, '0')}/${parsedBirth.year}`;
         }
-
-        // Format birthday for display
-        const birthdayDisplay = birthday
-            ? new Date(birthday).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
-            : '';
 
         const firstAttended = attendedMonth && attendedYear
             ? `${attendedMonth} ${attendedYear}`
@@ -110,67 +109,78 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                 {/* Close */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-light leading-none z-10"
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-light leading-none z-10 p-1"
                     aria-label="Close"
                 >×</button>
 
-                <form onSubmit={handleSubmit} className="p-5 sm:p-7">
+                <form onSubmit={handleSubmit} className="p-5 sm:p-6">
                     {/* Header */}
                     <h2 className="text-xl font-black text-gray-900 mb-1">Sign Up</h2>
-                    <p className="text-sm text-gray-500 mb-6">
+                    <p className="text-sm text-gray-500 mb-5">
                         You&apos;re signing up for{' '}
                         <span style={{ color: '#D97706' }} className="font-semibold">{group.name}</span>
                         {' '}in {group.location}.
                     </p>
 
                     {/* First Name + Last Name */}
-                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-5 mb-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
                                 First Name <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                                className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Last Name <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                                className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                     </div>
 
                     {/* Email + Phone */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Email Address <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                                className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Phone Number <span className="text-[#D97706]">*</span>
                             </label>
                             <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                                className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
                         </div>
                     </div>
 
                     {/* Birthday + Gender */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Birthday <span className="text-[#D97706]">*</span>
+                            <label htmlFor="join-group-birthday" className="block text-sm font-medium text-gray-700 mb-2">
+                                Birthday <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
-                            <input required type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-500" />
+                            <ModernDatePicker
+                                id="join-group-birthday"
+                                name="birthday"
+                                value={birthday}
+                                onChange={setBirthday}
+                                placeholder="Select birthday"
+                                max={formatIsoDate({
+                                    year: new Date().getFullYear(),
+                                    month: new Date().getMonth() + 1,
+                                    day: new Date().getDate(),
+                                })}
+                                required
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Gender <span className="text-[#D97706]">*</span>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Gender <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
                             <CustomSelect required value={gender} onChange={(e) => setGender(e.target.value)} className="w-full">
                                 <option value="" disabled>Select</option>
@@ -182,18 +192,18 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     </div>
 
                     {/* Facebook Link */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Facebook Link</label>
+                    <div className="mb-5">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Facebook Link</label>
                         <input type="text" placeholder="Facebook URL" value={facebook} onChange={(e) => setFacebook(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300" />
+                            className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300" />
                     </div>
 
                     {/* First Time Attended */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div className="mb-5">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                             First Time Attended Church Of God (Month &amp; Year)
                         </label>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <CustomSelect value={attendedMonth} onChange={(e) => setAttendedMonth(e.target.value)} className="w-full">
                                 <option value="">Select Month</option>
                                 {MONTHS.map((m) => <option key={m}>{m}</option>)}
@@ -206,33 +216,32 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     </div>
 
                     {/* Notes */}
-                    <div className="mb-5">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Questions</label>
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Notes / Questions</label>
                         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none" />
+                            className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52] resize-none" />
                     </div>
 
                     {/* Privacy checkbox */}
-                    <div className="flex items-start gap-2.5 mb-6 bg-gray-50 p-3 rounded-xl">
+                    <div className="flex items-start gap-3 mb-7 bg-[#F8FAFC] dark:bg-[#222933] p-4 rounded-xl border border-[#E2E8E5] dark:border-[#2A323D]">
                         <input id="join-privacy" type="checkbox" checked={agreed}
                             onChange={(e) => setAgreed(e.target.checked)}
-                            className="mt-0.5 w-4 h-4 accent-[#D97706] cursor-pointer shrink-0" />
-                        <label htmlFor="join-privacy" className="text-xs text-gray-600 cursor-pointer">
+                            className="mt-0.5 w-4 h-4 accent-[#0E5B52] cursor-pointer shrink-0 rounded" />
+                        <label htmlFor="join-privacy" className="text-xs text-[#64748B] dark:text-[#9BA7B4] cursor-pointer">
                             I agree to the{' '}
-                            <span className="text-[#D97706] underline">Data privacy Policy</span>
+                            <span className="text-[#0E5B52] dark:text-[#5EEAD4] font-semibold underline">Data privacy Policy</span>
                             {' '}of Church of God Dasmariñas.
                         </label>
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-3.5 pt-2">
                         <button type="button" onClick={onClose}
-                            className="px-6 py-2.5 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                            className="px-[1.375rem] py-[0.625rem] rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
                             Cancel
                         </button>
                         <button type="submit" disabled={!agreed}
-                            className="px-8 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                            style={{ background: agreed ? '#D97706' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}>
+                            className="px-[1.375rem] py-[0.625rem] rounded-xl text-sm font-bold text-white bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed">
                             Sign Up
                         </button>
                     </div>

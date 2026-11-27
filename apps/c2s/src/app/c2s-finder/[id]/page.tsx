@@ -13,7 +13,7 @@ export default async function GroupDetailPage({ params }: Props) {
     if (!group) notFound();
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="force-light min-h-screen bg-white">
             <Navbar />
             <div className="pt-24 max-w-2xl mx-auto px-6 pb-16">
                 <Link

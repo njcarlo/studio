@@ -1,6 +1,8 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ActionMenu, { ActionIcons } from '@/components/ActionMenu';
+import { WorkerSinceValue } from '@/components/WorkerIdentityBits';
 import { useEffect, useState } from 'react';
 import {
     MH_CLUSTERS, MH_COORDINATORS, MH_ALL_MENTORS, MH_POTENTIAL_MENTEES,
@@ -8,6 +10,7 @@ import {
     type OutreachCluster,
 } from '@/lib/data';
 import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
+import DashboardWelcomeBanner from '@/components/DashboardWelcomeBanner';
 import ClusterMap, { DASMARIÑAS_GROUPS, type ClusterMapGroup } from './ClusterMap';
 import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
 import { SidebarBrandHeader, DashboardTopHeader } from '@/components/DashboardHeader';
@@ -38,8 +41,24 @@ const TOOLTIP_STYLE = {
 };
 
 // ─── Nav definition ────────────────────────────────────────────────────────────
-type NavKey = 'dashboard' | 'clusters' | 'coordinators' | 'mentors' | 'potential' | 'mentees' | 'reports' | 'notifications';
-const MH_NAV: { key: NavKey; label: string; icon: string }[] = [
+type NavKey =
+    | 'dashboard'
+    | 'clusters'
+    | 'coordinators'
+    | 'mentors'
+    | 'potential'
+    | 'mentees'
+    | 'reports_monthly'
+    | 'reports_quarterly'
+    | 'reports_annual'
+    | 'reports_coordinator'
+    | 'reports_cluster'
+    | 'reports_mentor'
+    | 'reports_community'
+    | 'reports_maps'
+    | 'notifications';
+
+const MH_NAV: { key: NavKey; label: string; icon: string; iconKind?: 'fill' | 'stroke' }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z' },
     { key: 'notifications', label: 'Notifications', icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
     { key: 'clusters', label: 'Clusters', icon: 'M20 6h-2.18c.07-.44.18-.86.18-1a3 3 0 1 0-6 0c0 .14.11.56.18 1H6c-1.11 0-2 .9-2 2v11c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8-3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm2 16H6v-2h8v2zm6-4H6v-6h14v6z' },
@@ -47,7 +66,14 @@ const MH_NAV: { key: NavKey; label: string; icon: string }[] = [
     { key: 'mentors', label: 'Mentors', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
     { key: 'potential', label: 'Potential Mentees', icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
     { key: 'mentees', label: 'Active Mentees', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-    { key: 'reports', label: 'Reports', icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
+    { key: 'reports_monthly', label: 'Monthly', iconKind: 'stroke', icon: 'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
+    { key: 'reports_quarterly', label: 'Quarterly', iconKind: 'stroke', icon: 'M3 3v18h18 M7 16v-4 M12 16V8 M17 16v-6' },
+    { key: 'reports_annual', label: 'Annual', iconKind: 'stroke', icon: 'M3 17l6-6 4 4 8-8 M17 7h4v4' },
+    { key: 'reports_coordinator', label: 'Per Coordinator', iconKind: 'stroke', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75' },
+    { key: 'reports_cluster', label: 'Per Cluster', iconKind: 'stroke', icon: 'M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4' },
+    { key: 'reports_mentor', label: 'Per Mentor', iconKind: 'stroke', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
+    { key: 'reports_community', label: 'Community Outreach', iconKind: 'stroke', icon: 'M3 21h18 M5 21V7l7-4 7 4v14 M9 21v-6h6v6' },
+    { key: 'reports_maps', label: 'Interactive Maps', iconKind: 'stroke', icon: 'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z M9 3v15 M15 6v15' },
 ];
 
 // ─── Dashboard Notifications panel ───────────────────────────────────────────
@@ -97,10 +123,7 @@ function MHDashboardNotifications() {
 function DashboardTab() {
     return (
         <div>
-            <div className="mb-5">
-                <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
-                <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
-            </div>
+            <DashboardWelcomeBanner fallbackRole="ministry_head" />
             <SharedDashboardTab data={CHURCH_WIDE_DATA} hideWorkers showChurchInKmi />
         </div>
     );
@@ -108,70 +131,180 @@ function DashboardTab() {
 
 
 // ─── Clusters Tab ─────────────────────────────────────────────────────────────
-function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL_MENTORS[0]; cluster: OutreachCluster; onClose: () => void }) {
+function MentorProfileView({
+    mentor,
+    cluster,
+    onBack,
+    onClose,
+}: {
+    mentor: typeof MH_ALL_MENTORS[0];
+    cluster: OutreachCluster;
+    onBack: () => void;
+    onClose: () => void;
+}) {
     const mentees = MH_ACTIVE_MENTEES_LIST.filter(m => m.mentor === mentor.name);
+
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.key === 'Escape') onBack();
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onBack]);
+
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm" onClick={onClose} />
             {/* Modal */}
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto pointer-events-auto" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
-                    {/* Header */}
-                    <div className="flex items-start justify-between px-6 pt-6 pb-4">
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-900">{mentor.name}</h2>
-                            <p className="text-sm text-gray-400 mt-0.5">Outreach · {cluster.name}</p>
-                        </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 rounded-full border border-gray-200 transition-colors">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="c2s-mentor-modal-title"
+                className="fixed inset-0 z-[9999] flex flex-col p-4 sm:p-6 overflow-y-auto scrollbar-none"
+                onClick={onClose}
+            >
+                <div
+                    className="relative w-full mx-auto my-auto bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] shadow-2xl flex flex-col"
+                    style={{ maxWidth: '720px', borderRadius: '1.5rem', padding: '1.5rem' }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Top Navigation Bar: Back to Cluster (left) + Close × (right) */}
+                    <div className="flex items-center justify-between gap-4 pb-3">
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748B] hover:text-[#181F26] dark:text-[#9BA7B4] dark:hover:text-[#E6EDF3] transition-colors cursor-pointer"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <line x1="19" y1="12" x2="5" y2="12" />
+                                <polyline points="12 19 5 12 12 5" />
+                            </svg>
+                            <span>Back to {cluster.name}</span>
+                        </button>
+                        <button
+                            type="button"
+                            data-confirm-modal-btn="true"
+                            aria-label="Close"
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-[#64748B] hover:bg-slate-100 dark:hover:bg-[#222933] transition-colors shrink-0 cursor-pointer"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
                         </button>
                     </div>
 
-                    {/* Info Cards */}
-                    <div className="px-6 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Profile Header with 44x44 Initials Avatar & Role Badge */}
+                    <div className="flex items-center gap-3.5 pb-4">
+                        <div className="w-11 h-11 rounded-full bg-[#181F26] dark:bg-[#2A323D] text-white flex items-center justify-center text-sm font-black shrink-0">
+                            {mentor.initials}
+                        </div>
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h2 id="c2s-mentor-modal-title" className="text-xl font-bold text-[#181F26] dark:text-[#E6EDF3] leading-tight">
+                                    {mentor.name}
+                                </h2>
+                                <span
+                                    data-pill="true"
+                                    className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[rgba(14,91,82,0.10)] text-[#0E5B52] dark:bg-[rgba(42,157,143,0.16)] dark:text-[#5EEAD4]"
+                                >
+                                    Mentor
+                                </span>
+                            </div>
+                            <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-0.5">
+                                Outreach · {cluster.name} · <span className="font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{mentor.workerId}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* 3×2 Summary Info Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pb-4">
+                        <div
+                            className="border border-[#E2E8E5] dark:border-[#2A323D] bg-[#F8FAFC] dark:bg-[#222933] px-3.5 py-2.5"
+                            style={{ borderRadius: '0.75rem' }}
+                        >
+                            <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4] mb-1">Worker ID</p>
+                            <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums truncate">{mentor.workerId}</p>
+                        </div>
+                        <div
+                            className="border border-[#E2E8E5] dark:border-[#2A323D] bg-[#F8FAFC] dark:bg-[#222933] px-3.5 py-2.5"
+                            style={{ borderRadius: '0.75rem' }}
+                        >
+                            <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4] mb-1">Worker Since (ID Issued)</p>
+                            <WorkerSinceValue createdAt={mentor.workerIdCreatedAt} className="text-sm" />
+                        </div>
                         {[
-                            { label: 'Contact', value: mentor.phone },
-                            { label: 'Department', value: 'Outreach' },
-                            { label: 'Cluster', value: cluster.name },
-                            { label: 'Date Assigned', value: mentor.dateAssigned },
-                            { label: 'Status', value: mentor.status },
-                            { label: 'Active Mentees', value: String(mentor.activeMentees) },
+                            { label: 'Contact', value: mentor.phone, isStatus: false },
+                            { label: 'Cluster', value: cluster.name, isStatus: false },
+                            { label: 'Active Mentees', value: String(mentees.length), isStatus: false },
+                            { label: 'Status', value: mentor.status, isStatus: true },
                         ].map((f) => (
-                            <div key={f.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                                <p className="text-xs text-gray-400 mb-1">{f.label}</p>
-                                <p className="text-sm font-bold text-gray-900">{f.value}</p>
+                            <div
+                                key={f.label}
+                                className="border border-[#E2E8E5] dark:border-[#2A323D] bg-[#F8FAFC] dark:bg-[#222933] px-3.5 py-2.5"
+                                style={{ borderRadius: '0.75rem' }}
+                            >
+                                <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4] mb-1">{f.label}</p>
+                                {f.isStatus ? (
+                                    <span
+                                        data-pill="true"
+                                        className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${f.value === 'Active'
+                                            ? 'bg-[rgba(14,91,82,0.10)] text-[#0E5B52] dark:bg-[rgba(42,157,143,0.16)] dark:text-[#5EEAD4]'
+                                            : 'bg-[#F1F5F9] text-[#64748B] dark:bg-[#1A2026] dark:text-[#9BA7B4]'
+                                            }`}
+                                    >
+                                        {f.value}
+                                    </span>
+                                ) : (
+                                    <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] truncate">{f.value}</p>
+                                )}
                             </div>
                         ))}
                     </div>
 
                     {/* My Mentees */}
-                    <div className="px-6 pb-6">
-                        <h3 className="font-bold text-gray-900 text-sm mb-3">My Mentees</h3>
+                    <div>
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-2">
+                            My Mentees ({mentees.length})
+                        </h3>
                         {mentees.length === 0 ? (
-                            <p className="text-sm text-gray-400">No active mentees assigned.</p>
+                            <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D] rounded-lg px-3 py-2.5">
+                                No active mentees assigned.
+                            </p>
                         ) : (
-                            <div className="rounded-xl border border-gray-200 overflow-hidden">
-                                {/* Table Header */}
-                                <div className="grid grid-cols-12 gap-2 px-4 py-2 border-b border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
-                                    <p className="col-span-4 text-[10px] font-semibold text-gray-400 uppercase tracking-widest min-w-0 truncate">Name</p>
-                                    <p className="col-span-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest min-w-0 truncate">Module</p>
-                                    <p className="col-span-5 text-[10px] font-semibold text-gray-400 uppercase tracking-widest min-w-0 truncate">Progress</p>
-                                </div>
-                                <div className="divide-y divide-gray-50">
-                                    {mentees.map((mt) => (
-                                        <div key={mt.id} className="grid grid-cols-12 gap-2 items-center px-4 py-3">
-                                            <p className="col-span-4 text-sm font-semibold text-gray-900 min-w-0 truncate">{mt.name}</p>
-                                            <p className="col-span-3 text-xs text-gray-500 min-w-0 truncate">{mt.module}</p>
-                                            <div className="col-span-5 flex items-center gap-2 min-w-0">
-                                                <div className="flex-1 bg-gray-100 rounded-full h-1.5 min-w-0">
-                                                    <div className="h-1.5 rounded-full" style={{ width: `${mt.progress}%`, background: '#D97706' }} />
-                                                </div>
-                                                <span className="text-xs font-semibold text-gray-600 w-9 text-right shrink-0 whitespace-nowrap">{mt.progress}%</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            <div className="rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] overflow-x-auto">
+                                <table className="w-full table-fixed">
+                                    <colgroup>
+                                        <col className="w-[36%]" />
+                                        <col className="w-[32%]" />
+                                        <col className="w-[32%]" />
+                                    </colgroup>
+                                    <thead>
+                                        <tr className="table-header-row">
+                                            <th className="text-left">Name</th>
+                                            <th className="text-left">Module</th>
+                                            <th className="text-left">Progress</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {mentees.map((mt) => (
+                                            <tr key={mt.id}>
+                                                <td className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{mt.name}</td>
+                                                <td className="text-[#64748B] dark:text-[#9BA7B4] text-left">{mt.module}</td>
+                                                <td className="text-left">
+                                                    <div className="flex items-center justify-start gap-2">
+                                                        <div className="flex-1 bg-slate-100 dark:bg-[#2A323D] rounded-full h-1.5 min-w-0">
+                                                            <div className="h-1.5 rounded-full bg-[#0E5B52] dark:bg-[#2A9D8F]" style={{ width: `${mt.progress}%` }} />
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] tabular-nums shrink-0">{mt.progress}%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
@@ -181,73 +314,260 @@ function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL
     );
 }
 
-function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; onClose: () => void }) {
+function ClusterDetailModal({ cluster, onClose }: { cluster: OutreachCluster; onClose: () => void }) {
     const [viewingMentor, setViewingMentor] = useState<typeof MH_ALL_MENTORS[0] | null>(null);
     const mentors = MH_ALL_MENTORS.filter(m => m.cluster === cluster.name);
-    const totalMembers = cluster.totalActiveMentees + cluster.totalPotentialMentees;
+    const clusterGroups = DASMARIÑAS_GROUPS.filter(g => cluster.barangays.includes(g.barangay));
+
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.key === 'Escape' && !viewingMentor) {
+                onClose();
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose, viewingMentor]);
+
+    if (viewingMentor) {
+        return (
+            <MentorProfileView
+                mentor={viewingMentor}
+                cluster={cluster}
+                onBack={() => setViewingMentor(null)}
+                onClose={onClose}
+            />
+        );
+    }
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Mentor Profile Modal */}
-            {viewingMentor && (
-                <MentorProfileView mentor={viewingMentor} cluster={cluster} onClose={() => setViewingMentor(null)} />
-            )}
-            {/* Header */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-black text-gray-900">{cluster.name}</h1>
-                    <p className="text-sm text-gray-400 mt-0.5">Led by {cluster.clusterHead}</p>
-                </div>
-                <button onClick={onClose} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 bg-white transition-colors">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" /></svg>
-                    All Clusters
-                </button>
-            </div>
+        <>
 
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 gap-3">
-                {[
-                    { label: 'Mentors', value: cluster.totalMentors, color: '#0284C7', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
-                    { label: 'Mentees', value: totalMembers, color: '#D97706', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-                ].map((s) => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: s.color + '18' }}>
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill={s.color}><path d={s.icon} /></svg>
-                        </div>
-                        <div>
-                            <p className="text-2xl font-black leading-none" style={{ color: s.color }}>{s.value}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <div
+                className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm"
+                onClick={onClose}
+            />
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="c2s-cluster-modal-title"
+                className="fixed inset-0 z-[9999] flex flex-col p-4 sm:p-6 overflow-y-auto scrollbar-none"
+                onClick={onClose}
+            >
+                <div
+                    className="relative w-full mx-auto my-auto bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] shadow-2xl flex flex-col"
+                    style={{ maxWidth: '900px', borderRadius: '1.5rem', padding: '1.5rem' }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Top-right Close (×) Button */}
+                    <button
+                        type="button"
+                        data-confirm-modal-btn="true"
+                        aria-label="Close"
+                        onClick={onClose}
+                        className="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center text-[#64748B] hover:bg-slate-100 dark:hover:bg-[#222933] transition-colors cursor-pointer"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
 
-            {/* Mentor Directory */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                <div className="px-6 py-4 border-b border-gray-50">
-                    <h2 className="font-bold text-gray-900 text-base">Mentor Directory</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">All mentors currently assigned to this cluster</p>
-                </div>
-                <div className="p-4 grid gap-3 items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))' }}>
-                    {mentors.map((m) => (
-                        <div key={m.id} className="h-full bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-col justify-between gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                            <div className="flex flex-col gap-3">
-                                <div>
-                                    <p className="text-sm font-bold text-gray-900 truncate">{m.name}</p>
-                                    <p className="text-xs text-gray-400">{cluster.name}</p>
+                    {/* Body */}
+                    <div className="space-y-3.5">
+                        {/* Header */}
+                        <div className="pr-8">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h2
+                                    id="c2s-cluster-modal-title"
+                                    className="text-xl font-bold text-[#181F26] dark:text-[#E6EDF3] leading-tight"
+                                >
+                                    {cluster.name}
+                                </h2>
+                                <span
+                                    data-pill="true"
+                                    className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#222933] text-[#475569] dark:text-[#9BA7B4] border border-[#E2E8E5] dark:border-[#2A323D]"
+                                >
+                                    {cluster.barangays.length} Barangay{cluster.barangays.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-0.5">
+                                Outreach Ministry Cluster Overview &amp; Directory
+                            </p>
+                        </div>
+
+                        {/* Top Row: Leadership + 3-Column Stat Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                            {/* Cluster Head & C2S Coordinator */}
+                            <div className="md:col-span-7 rounded-2xl bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D] p-3 space-y-2 flex flex-col justify-center">
+                                <div className="flex items-center justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-7 h-7 rounded-full bg-[#181F26] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                                            {cluster.clusterHeadInitials}
+                                        </div>
+                                        <p className="text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] truncate">{cluster.clusterHead}</p>
+                                    </div>
+                                    <span
+                                        data-pill="true"
+                                        className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white dark:bg-[#1A2026] text-[#181F26] dark:text-[#E6EDF3] border border-[#E2E8E5] dark:border-[#2A323D] whitespace-nowrap shrink-0"
+                                    >
+                                        Cluster Head
+                                    </span>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">Mentees</p>
-                                    <p className="text-sm font-bold text-gray-800 mt-0.5">{m.activeMentees}</p>
+                                <div className="flex items-center justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-7 h-7 rounded-full bg-[#0E5B52] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                                            {cluster.coordinatorInitials}
+                                        </div>
+                                        <p className="text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] truncate">{cluster.coordinator}</p>
+                                    </div>
+                                    <span
+                                        data-pill="true"
+                                        className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white dark:bg-[#1A2026] text-[#0E5B52] dark:text-[#5EEAD4] border border-[#E2E8E5] dark:border-[#2A323D] whitespace-nowrap shrink-0"
+                                    >
+                                        C2S Coordinator
+                                    </span>
                                 </div>
                             </div>
-                            <button onClick={() => setViewingMentor(m)} className="text-xs font-bold text-white py-2.5 px-4 rounded-lg w-full bg-[#D97706] hover:bg-[#B45309] whitespace-nowrap transition-colors">View Profile</button>
+
+                            {/* 3-Column Stat Summary Row */}
+                            <div className="md:col-span-5 grid grid-cols-3 gap-2.5">
+                                {[
+                                    { label: 'Members', value: cluster.totalGroups },
+                                    { label: 'Mentors', value: cluster.totalMentors },
+                                    { label: 'Active', value: cluster.totalActiveMentees },
+                                ].map((s) => (
+                                    <div
+                                        key={s.label}
+                                        className="rounded-xl px-2 py-2.5 flex flex-col items-center justify-center text-center bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D]"
+                                    >
+                                        <p className="text-xl font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-none">
+                                            {s.value}
+                                        </p>
+                                        <p className="text-[11px] font-medium text-[#64748B] dark:text-[#9BA7B4] mt-1">
+                                            {s.label}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    ))}
+
+                        {/* Assigned Barangays */}
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-1.5">
+                                Assigned Barangays ({cluster.barangays.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {cluster.barangays.map((b) => (
+                                    <span
+                                        key={b}
+                                        data-pill="true"
+                                        className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F8FAFC] dark:bg-[#222933] text-[#181F26] dark:text-[#E6EDF3] border border-[#E2E8E5] dark:border-[#2A323D]"
+                                    >
+                                        {b}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Two-Column Directory: Assigned Mentors & C2S Groups */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            {/* Assigned Mentors */}
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-1.5">
+                                    Assigned Mentors ({mentors.length})
+                                </p>
+                                {mentors.length === 0 ? (
+                                    <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] italic">No mentors currently assigned.</p>
+                                ) : (
+                                    <div className="rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] divide-y divide-[#E2E8E5] dark:divide-[#2A323D] overflow-hidden">
+                                        {mentors.map((m, idx) => (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => setViewingMentor(m)}
+                                                className="w-full text-left px-3.5 py-2 flex items-center justify-between gap-2 bg-white dark:bg-[#1A2026] hover:bg-[#F8FAFC] dark:hover:bg-[#222933] transition-colors cursor-pointer group"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div
+                                                        className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 ${idx % 2 === 0 ? 'bg-[#181F26] dark:bg-[#2A323D]' : 'bg-[#0E5B52]'
+                                                            }`}
+                                                    >
+                                                        {m.initials}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] truncate">{m.name}</p>
+                                                        <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4] truncate">
+                                                            {m.totalGroups} group{m.totalGroups !== 1 ? 's' : ''} · {m.activeMentees} active mentee{m.activeMentees !== 1 ? 's' : ''}
+                                                        </p>
+                                                        <p className="text-[0.75rem] text-[#64748B] dark:text-[#9BA7B4] whitespace-nowrap tabular-nums">
+                                                            <span className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{m.workerId}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <svg
+                                                    width="15"
+                                                    height="15"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.1"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    aria-hidden="true"
+                                                    className="text-[#94A3B8] group-hover:text-[#181F26] dark:group-hover:text-[#E6EDF3] transition-colors shrink-0"
+                                                >
+                                                    <polyline points="9 18 15 12 9 6" />
+                                                </svg>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* C2S Groups */}
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-1.5">
+                                    C2S Groups ({clusterGroups.length > 0 ? clusterGroups.length : cluster.totalGroups})
+                                </p>
+                                {clusterGroups.length === 0 ? (
+                                    <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D] px-3.5 py-2.5 text-xs text-[#475569] dark:text-[#9BA7B4]">
+                                        {cluster.communityBased} Community-based · {cluster.churchBased} Church-based group{cluster.churchBased !== 1 ? 's' : ''}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] divide-y divide-[#E2E8E5] dark:divide-[#2A323D] overflow-hidden">
+                                        {clusterGroups.map((g) => (
+                                            <div key={g.id} className="px-3.5 py-2 flex items-center justify-between gap-3 bg-white dark:bg-[#1A2026]">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] truncate">{g.name}</p>
+                                                    <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4] truncate">
+                                                        {g.barangay} · Mentor: {g.mentor}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className="text-[11px] font-semibold text-[#475569] dark:text-[#9BA7B4]">
+                                                        {g.members}/{g.capacity}
+                                                    </span>
+                                                    <span
+                                                        data-pill="true"
+                                                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.status === 'Open'
+                                                            ? 'bg-[rgba(14,91,82,0.10)] text-[#0E5B52] dark:bg-[rgba(42,157,143,0.16)] dark:text-[#5EEAD4]'
+                                                            : 'bg-[#F1F5F9] text-[#64748B] dark:bg-[#222933] dark:text-[#9BA7B4]'
+                                                            }`}
+                                                    >
+                                                        {g.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-        </div>
+        </>
     );
 }
 
@@ -270,10 +590,6 @@ function ClustersTab() {
         };
     }, [openBarangayId]);
 
-    if (viewing) {
-        return <ClusterDetailPanel cluster={viewing} onClose={() => setViewing(null)} />;
-    }
-
     const q = search.trim().toLowerCase();
     const filteredClusters = MH_CLUSTERS.filter((c) => {
         if (!q) return true;
@@ -289,7 +605,7 @@ function ClustersTab() {
         <div>
             <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Clusters</h1>
+                    <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Clusters</h1>
                     <p className="text-sm text-gray-400 mt-1">All Outreach Clusters under the ministry.</p>
                 </div>
                 <div className="relative w-full sm:w-72">
@@ -319,39 +635,47 @@ function ClustersTab() {
                         return (
                             <div key={c.id} className="h-full bg-white rounded-2xl border border-gray-200 p-6 flex flex-col justify-between gap-4">
                                 <div className="flex flex-col gap-4">
-                                    {/* Top row: Cluster name + Interactive Barangay Pill */}
+                                    {/* Top row: Cluster name + Interactive Barangay Pill + Actions */}
                                     <div className="flex items-center justify-between gap-2">
-                                        <h3 className="font-bold text-gray-900 text-lg leading-tight">{c.name}</h3>
-                                        <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-                                            <button
-                                                type="button"
-                                                aria-expanded={isBrgyOpen}
-                                                onClick={() => setOpenBarangayId((prev) => (prev === c.id ? null : c.id))}
-                                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] hover:bg-[#FDE68A]/70 whitespace-nowrap transition-colors cursor-pointer"
-                                            >
-                                                <span>{c.barangays.length} Barangays</span>
-                                                <svg className={`w-3 h-3 transition-transform duration-150 ${isBrgyOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                    <polyline points="6 9 12 15 18 9" />
-                                                </svg>
-                                            </button>
-                                            {isBrgyOpen && (
-                                                <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E7E5E4] dark:border-[#334155] p-3 shadow-lg shadow-stone-900/5 z-20">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B665F] dark:text-slate-400 mb-2">
-                                                        Covered Barangays ({c.barangays.length})
-                                                    </p>
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {c.barangays.map((b) => (
-                                                            <span
-                                                                key={b}
-                                                                data-pill="true"
-                                                                className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F5F2EC] dark:bg-[#0F172A] text-[#292524] dark:text-slate-200 border border-[#E7E5E4] dark:border-[#334155]"
-                                                            >
-                                                                {b}
-                                                            </span>
-                                                        ))}
+                                        <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">{c.name}</h3>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    aria-expanded={isBrgyOpen}
+                                                    onClick={() => setOpenBarangayId((prev) => (prev === c.id ? null : c.id))}
+                                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] hover:bg-[#FDE68A]/70 whitespace-nowrap transition-colors cursor-pointer"
+                                                >
+                                                    <span>{c.barangays.length} Barangays</span>
+                                                    <svg className={`w-3 h-3 transition-transform duration-150 ${isBrgyOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                        <polyline points="6 9 12 15 18 9" />
+                                                    </svg>
+                                                </button>
+                                                {isBrgyOpen && (
+                                                    <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E7E5E4] dark:border-[#334155] p-3 shadow-lg shadow-stone-900/5 z-20">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B665F] dark:text-slate-400 mb-2">
+                                                            Covered Barangays ({c.barangays.length})
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {c.barangays.map((b) => (
+                                                                <span
+                                                                    key={b}
+                                                                    data-pill="true"
+                                                                    className="inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F5F2EC] dark:bg-[#0F172A] text-[#292524] dark:text-slate-200 border border-[#E7E5E4] dark:border-[#334155]"
+                                                                >
+                                                                    {b}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
+                                            <ActionMenu
+                                                ariaLabel={`${c.name} actions`}
+                                                items={[
+                                                    { label: 'View Cluster', icon: ActionIcons.view, onClick: () => setViewing(c) },
+                                                ]}
+                                            />
                                         </div>
                                     </div>
 
@@ -403,16 +727,14 @@ function ClustersTab() {
                                         </div>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setViewing(c)}
-                                    className="w-full py-2.5 px-4 text-sm font-medium text-white rounded-xl bg-[#D97706] hover:bg-[#B45309] whitespace-nowrap transition-colors shadow-sm"
-                                >
-                                    View Cluster
-                                </button>
                             </div>
                         );
                     })}
                 </div>
+            )}
+
+            {viewing && (
+                <ClusterDetailModal cluster={viewing} onClose={() => setViewing(null)} />
             )}
         </div>
     );
@@ -421,10 +743,11 @@ function ClustersTab() {
 // ─── Coordinators Tab ─────────────────────────────────────────────────────────
 function CoordinatorsTab() {
     const [search, setSearch] = useState('');
-    const filtered = MH_COORDINATORS.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.cluster.toLowerCase().includes(search.toLowerCase()));
+    const q = search.toLowerCase();
+    const filtered = MH_COORDINATORS.filter((c) => c.name.toLowerCase().includes(q) || c.cluster.toLowerCase().includes(q) || c.workerId.toLowerCase().includes(q));
     return (
         <div>
-            <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">C2S Coordinators</h1><p className="text-sm text-gray-400 mt-1">All coordinators across the Outreach Ministry.</p></div>
+            <div className="mb-6"><h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">C2S Coordinators</h1><p className="text-sm text-gray-400 mt-1">All coordinators across the Outreach Ministry.</p></div>
             <div className="flex items-center gap-3 mb-5">
                 <div className="relative flex-1 max-w-xs">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
@@ -444,6 +767,7 @@ function CoordinatorsTab() {
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{c.status}</span>
                         </div>
                         <p className="text-xs text-gray-500">{c.cluster}</p>
+                        <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{c.workerId}</p>
                         <div className="flex gap-4 mt-1">
                             <div>
                                 <p className="text-[10px] text-gray-400 uppercase tracking-widest">Assigned</p>
@@ -460,18 +784,27 @@ function CoordinatorsTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Coordinator Name', 'Cluster', 'Assigned Potential Mentees', 'Active Mentors', 'Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 first:pl-6 last:pr-6 py-3.5 whitespace-nowrap">{h}</th>))}</tr>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[22%]" />
+                            <col className="w-[21%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[17%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[13%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Coordinator Name', 'Worker ID', 'Cluster', 'Assigned Potential Mentees', 'Active Mentors', 'Status'].map((h, idx, arr) => (<th key={h} className={`text-[12px] font-bold uppercase tracking-widest px-6 py-4 ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map((c) => (
-                                <tr key={c.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div><span className="font-semibold text-gray-900">{c.name}</span></div></td>
-                                    <td className="px-4 py-3.5 text-gray-600">{c.cluster}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{c.assignedPotentialMentees}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{c.activeMentors}</td>
-                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap"><span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{c.status}</span></td>
+                                <tr key={c.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left"><div className="flex items-center justify-start gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div><span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">{c.name}</span></div></td>
+                                    <td className="px-6 py-4 text-left"><span className="font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{c.workerId}</span></td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{c.cluster}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] font-semibold text-left tabular-nums">{c.assignedPotentialMentees}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] font-semibold text-left tabular-nums">{c.activeMentors}</td>
+                                    <td className="px-6 py-4 table-col-center text-center"><span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{c.status}</span></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -487,10 +820,11 @@ function CoordinatorsTab() {
 function MentorsTab() {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
-    const filtered = MH_ALL_MENTORS.filter((m) => (m.name.toLowerCase().includes(search.toLowerCase()) || m.cluster.toLowerCase().includes(search.toLowerCase())) && (filter === 'All' || m.status === filter));
+    const q = search.toLowerCase();
+    const filtered = MH_ALL_MENTORS.filter((m) => (m.name.toLowerCase().includes(q) || m.cluster.toLowerCase().includes(q) || m.workerId.toLowerCase().includes(q)) && (filter === 'All' || m.status === filter));
     return (
         <div>
-            <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentors</h1><p className="text-sm text-gray-400 mt-1">All mentors across the Outreach Ministry.</p></div>
+            <div className="mb-6"><h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Mentors</h1><p className="text-sm text-gray-400 mt-1">All mentors across the Outreach Ministry.</p></div>
             <div className="flex flex-wrap items-center gap-3 mb-5">
                 <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
@@ -501,7 +835,7 @@ function MentorsTab() {
                     onChange={(e) => setFilter(e.target.value as 'All' | 'Active' | 'Inactive')}
                     className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
-                    <option value="All">All Status</option>
+                    <option value="All">All Statuses</option>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                 </CustomSelect>
@@ -519,6 +853,7 @@ function MentorsTab() {
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span>
                         </div>
                         <p className="text-xs text-gray-500">{m.cluster}</p>
+                        <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{m.workerId}</p>
                         <div className="flex gap-4 mt-1">
                             <div>
                                 <p className="text-[10px] text-gray-400 uppercase tracking-widest">Groups</p>
@@ -535,18 +870,27 @@ function MentorsTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Name', 'Cluster', 'Total Groups', 'Active Mentees', 'Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 first:pl-6 last:pr-6 py-3.5 whitespace-nowrap">{h}</th>))}</tr>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[22%]" />
+                            <col className="w-[21%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[16%]" />
+                            <col className="w-[13%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Name', 'Worker ID', 'Cluster', 'Total Groups', 'Active Mentees', 'Status'].map((h, idx, arr) => (<th key={h} className={`text-[12px] font-bold uppercase tracking-widest px-6 py-4 ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.cluster}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{m.totalGroups}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{m.activeMentees}</td>
-                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap"><span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span></td>
+                                <tr key={m.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left"><div className="flex items-center justify-start gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div><span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">{m.name}</span></div></td>
+                                    <td className="px-6 py-4 text-left"><span className="font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{m.workerId}</span></td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.cluster}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] font-semibold text-left tabular-nums">{m.totalGroups}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] font-semibold text-left tabular-nums">{m.activeMentees}</td>
+                                    <td className="px-6 py-4 table-col-center text-center"><span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -561,42 +905,38 @@ function MentorsTab() {
 // ─── Potential Mentees Tab ────────────────────────────────────────────────────
 function PotentialMenteesTab() {
     const [clusterFilter, setClusterFilter] = useState('All');
-    const [coordFilter, setCoordFilter] = useState('All');
-    const [mentorFilter, setMentorFilter] = useState('All');
     const [barangayFilter, setBarangayFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
 
     const clusters = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.cluster)))];
-    const coordinators = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.coordinator)))];
-    const mentors = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.mentor).filter((x) => x !== '—')))];
     const barangays = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.barangay)))];
     const statuses = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'];
 
     const filtered = MH_POTENTIAL_MENTEES.filter((m) =>
         (clusterFilter === 'All' || m.cluster === clusterFilter) &&
-        (coordFilter === 'All' || m.coordinator === coordFilter) &&
-        (mentorFilter === 'All' || m.mentor === mentorFilter) &&
         (barangayFilter === 'All' || m.barangay === barangayFilter) &&
         (statusFilter === 'All' || m.status === statusFilter)
     );
 
-    function Sel({ label, val, opts, onChange }: { label: string; val: string; opts: string[]; onChange: (v: string) => void }) {
+    function Sel({ allLabel, val, opts, onChange }: { allLabel: string; val: string; opts: string[]; onChange: (v: string) => void }) {
         return (
-            <CustomSelect value={val} onChange={(e) => onChange(e.target.value)} className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-700 w-full sm:w-auto">
-                {opts.map((o) => <option key={o} value={o}>{o === 'All' ? `${label}: All` : o}</option>)}
+            <CustomSelect
+                value={val}
+                onChange={(e) => onChange(e.target.value)}
+                className="text-xs font-semibold border border-[#E2E8E5] rounded-xl px-3.5 py-2 bg-white text-[#181F26] focus:outline-none w-full sm:w-auto min-w-[140px]"
+            >
+                {opts.map((o) => <option key={o} value={o}>{o === 'All' ? allLabel : o}</option>)}
             </CustomSelect>
         );
     }
 
     return (
         <div>
-            <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential Mentees</h1><p className="text-sm text-gray-400 mt-1">Master list of all potential mentees across the Outreach Ministry.</p></div>
-            <div className="flex flex-wrap gap-2 mb-5">
-                <Sel label="Cluster" val={clusterFilter} opts={clusters} onChange={setClusterFilter} />
-                <Sel label="Coordinator" val={coordFilter} opts={coordinators} onChange={setCoordFilter} />
-                <Sel label="Mentor" val={mentorFilter} opts={mentors} onChange={setMentorFilter} />
-                <Sel label="Barangay" val={barangayFilter} opts={barangays} onChange={setBarangayFilter} />
-                <Sel label="Status" val={statusFilter} opts={statuses} onChange={setStatusFilter} />
+            <div className="mb-6"><h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Potential Mentees</h1><p className="text-sm text-gray-400 mt-1">Master list of all potential mentees across the Outreach Ministry.</p></div>
+            <div className="flex flex-wrap items-center gap-2.5 mb-5">
+                <Sel allLabel="All Clusters" val={clusterFilter} opts={clusters} onChange={setClusterFilter} />
+                <Sel allLabel="All Barangays" val={barangayFilter} opts={barangays} onChange={setBarangayFilter} />
+                <Sel allLabel="All Statuses" val={statusFilter} opts={statuses} onChange={setStatusFilter} />
             </div>
             {/* Mobile cards */}
             <div className="flex flex-col gap-3 sm:hidden">
@@ -625,23 +965,35 @@ function PotentialMenteesTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Name', 'Age', 'Gender', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Source', 'Status', 'Submitted'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>))}</tr>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[15%]" />
+                            <col className="w-[5%]" />
+                            <col className="w-[7%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[10%]" />
+                            <col className="w-[10%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[9%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Name', 'Age', 'Gender', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Source', 'Status', 'Submitted'].map((h) => (<th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.age}</td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.gender}</td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.cluster}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.mentor}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.barangay}</td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap"><span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#E0F2FE] text-[#0369A1]' : 'bg-[#D97706] text-white'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span></td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap"><span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span></td>
-                                    <td className="pl-4 pr-6 py-3.5 text-gray-400 whitespace-nowrap">{m.dateSubmitted}</td>
+                                <tr key={m.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left"><div className="flex items-center justify-start gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">{m.name}</span></div></td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.age}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.gender}</td>
+                                    <td className="px-6 py-4 text-[#181F26] dark:text-[#E6EDF3] font-semibold text-left">{m.cluster}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.coordinator}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.mentor}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.barangay}</td>
+                                    <td className="px-6 py-4 text-left"><span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#E0F2FE] text-[#0369A1]' : 'bg-[#D97706] text-white'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span></td>
+                                    <td className="px-6 py-4 text-left"><span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span></td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.dateSubmitted}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -661,7 +1013,7 @@ function ActiveMenteesTab() {
 
     return (
         <div>
-            <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Active Mentees</h1><p className="text-sm text-gray-400 mt-1">Master list of all active mentees across the Outreach Ministry.</p></div>
+            <div className="mb-6"><h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Active Mentees</h1><p className="text-sm text-gray-400 mt-1">Master list of all active mentees across the Outreach Ministry.</p></div>
             <div className="flex flex-wrap items-center gap-3 mb-5">
                 <CustomSelect
                     value={clusterFilter}
@@ -706,20 +1058,29 @@ function ActiveMenteesTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Name', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Module', 'Progress'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 first:pl-6 last:pr-6 py-3.5 whitespace-nowrap">{h}</th>))}</tr>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[19%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[16%]" />
+                            <col className="w-[15%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[14%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Name', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Module', 'Progress'].map((h) => (<th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.cluster}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.mentor}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.barangay}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.module}</td>
-                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap"><div className="flex items-center gap-2"><div className="w-20 sm:w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0"><div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} /></div><span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress}%</span></div></td>
+                                <tr key={m.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left"><div className="flex items-center justify-start gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">{m.name}</span></div></td>
+                                    <td className="px-6 py-4 text-[#181F26] dark:text-[#E6EDF3] font-semibold text-left">{m.cluster}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.coordinator}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.mentor}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.barangay}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.module}</td>
+                                    <td className="px-6 py-4 text-left"><div className="flex items-center justify-start gap-2"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[56px]"><div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} /></div><span className="text-[11px] font-semibold text-[#64748B] dark:text-[#9BA7B4] shrink-0 tabular-nums">{m.progress}%</span></div></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -772,20 +1133,8 @@ const MONTHLY_REPORT_HISTORY: MonthlyReport[] = [
 ];
 const CLUSTER_PERF = MH_CLUSTERS.map((c) => ({ name: c.name.replace('Cluster ', ''), mentors: c.totalMentors, active: c.totalActiveMentees, potential: c.totalPotentialMentees }));
 
-function ReportsTab() {
-    const [reportType, setReportType] = useState<ReportType>('monthly');
+function ReportsTab({ reportType }: { reportType: ReportType }) {
     const [mapFilter, setMapFilter] = useState<'All' | 'Open' | 'Full'>('All');
-
-    const reportTypes: { key: ReportType; label: string }[] = [
-        { key: 'monthly', label: 'Monthly' },
-        { key: 'quarterly', label: 'Quarterly' },
-        { key: 'annual', label: 'Annual' },
-        { key: 'coordinator', label: 'Per Coordinator' },
-        { key: 'cluster', label: 'Per Cluster' },
-        { key: 'mentor', label: 'Per Mentor' },
-        { key: 'community', label: 'Community Outreach' },
-        { key: 'maps', label: 'Interactive Maps' },
-    ];
 
     const barangayCounts: Record<string, number> = {};
     MH_CLUSTERS.forEach((c) => {
@@ -842,35 +1191,56 @@ function ReportsTab() {
     return (
         <div>
             <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-                <div><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Reports</h1><p className="text-sm text-gray-400 mt-1">Generate and view Outreach Ministry reports.</p></div>
+                <div><h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Reports</h1><p className="text-sm text-gray-400 mt-1">Generate and view Outreach Ministry reports.</p></div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={handleExportCsv}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 text-[0.8125rem] font-semibold text-[#181F26] dark:text-[#E6EDF3] border border-[#E2E8E5] dark:border-[#2A323D] rounded-[0.625rem] bg-white dark:bg-[#1A2026] hover:bg-[#F8FAFC] dark:hover:bg-[#222933] leading-none transition-colors cursor-pointer"
                     >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>Export CSV / Excel
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
+                        Export CSV / Excel
                     </button>
                 </div>
             </div>
-            <div className="flex flex-wrap gap-2 mb-6">
-                {reportTypes.map((r) => (
-                    <button key={r.key} onClick={() => setReportType(r.key)} className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${reportType === r.key ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{r.label}</button>
-                ))}
-            </div>
+            {reportType !== 'maps' && (
+                <div className="c2s-kpi-shell mb-6">
+                    <div className="c2s-kpi-grid">
+                        {[
+                            { value: MH_CLUSTERS.length, label: 'Total Clusters', sub: 'Active', icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z' },
+                            { value: MH_ALL_MENTORS.filter((m) => m.status === 'Active').length, label: 'Active Mentors', sub: 'Outreach Ministry', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                            { value: MH_ACTIVE_MENTEES_LIST.length, label: 'Active Mentees', sub: '+3 this month', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                            { value: MH_POTENTIAL_MENTEES.length, label: 'Potential Mentees', sub: 'Awaiting process', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+                        ].map((s) => (
+                            <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                                <div className="c2s-kpi-card-top">
+                                    <p className="c2s-kpi-label">{s.label}</p>
+                                    <div className="kpi-icon-badge c2s-kpi-badge">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                    </div>
+                                </div>
+                                <div className="c2s-kpi-bottom">
+                                    <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                                    <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5">{s.sub}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
             {(reportType === 'monthly' || reportType === 'quarterly' || reportType === 'annual') && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <p className="text-sm font-semibold text-gray-800 mb-4">Outreach Ministry Growth — {reportType.charAt(0).toUpperCase() + reportType.slice(1)}</p>
                     <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={REPORT_GROWTH_DATA} margin={{ top: 10, right: 20, left: -16, bottom: 0 }}>
-                            <defs><linearGradient id="mgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#D97706" stopOpacity={0.15} /><stop offset="95%" stopColor="#D97706" stopOpacity={0} /></linearGradient></defs>
+                            <defs><linearGradient id="mgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0E5B52" stopOpacity={0.16} /><stop offset="95%" stopColor="#0E5B52" stopOpacity={0} /></linearGradient></defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                             <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                             <Tooltip contentStyle={TOOLTIP_STYLE} />
                             <Legend iconType="plainline" iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                            <Area type="monotone" dataKey="mentees" name="Active Mentees" stroke="#D97706" strokeWidth={2} fill="url(#mgFill)" dot={false} />
-                            <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#0284C7" strokeWidth={2} dot={false} />
+                            <Area type="monotone" dataKey="mentees" name="Active Mentees" stroke="#0E5B52" strokeWidth={2.2} fill="url(#mgFill)" dot={false} />
+                            <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#181F26" strokeWidth={2} dot={false} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
@@ -884,7 +1254,7 @@ function ReportsTab() {
                             <h2 className="font-bold text-gray-900 text-base">Monthly Report History</h2>
                             <p className="text-xs text-gray-400 mt-0.5">All submitted and draft monthly reports</p>
                         </div>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#D97706] text-white">{MONTHLY_REPORT_HISTORY.filter(r => r.status === 'Submitted').length} submitted</span>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#181F26] dark:bg-[#242D37] text-white">{MONTHLY_REPORT_HISTORY.filter(r => r.status === 'Submitted').length} submitted</span>
                     </div>
                     <div className="overflow-x-auto sm:hidden">
                         {/* Mobile cards */}
@@ -899,10 +1269,10 @@ function ReportsTab() {
                                             }`}>{r.status}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
-                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Clusters </span><span className="font-semibold text-gray-700 text-xs">{r.clusters}</span></div>
-                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Mentors </span><span className="font-semibold text-[#D97706] text-xs">{r.mentors}</span></div>
-                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Active </span><span className="font-semibold text-[#0284C7] text-xs">{r.activeMentees}</span></div>
-                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Potential </span><span className="font-semibold text-[#e67700] text-xs">{r.potentialMentees}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Clusters </span><span className="font-semibold text-[#181F26] dark:text-[#E6EDF3] text-xs">{r.clusters}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Mentors </span><span className="font-semibold text-[#181F26] dark:text-[#E6EDF3] text-xs">{r.mentors}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Active </span><span className="font-semibold text-[#0E5B52] dark:text-[#5EEAD4] text-xs">{r.activeMentees}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Potential </span><span className="font-semibold text-[#181F26] dark:text-[#E6EDF3] text-xs">{r.potentialMentees}</span></div>
                                         <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">New Groups </span><span className="font-semibold text-gray-600 text-xs">{r.newGroups}</span></div>
                                         <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Modules </span><span className="font-semibold text-gray-600 text-xs">{r.completedModules}</span></div>
                                     </div>
@@ -915,32 +1285,44 @@ function ReportsTab() {
                         </div>
                     </div>
                     <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full table-auto text-sm">
+                            <colgroup>
+                                <col className="w-[12%]" />
+                                <col className="w-[8%]" />
+                                <col className="w-[8%]" />
+                                <col className="w-[10%]" />
+                                <col className="w-[8%]" />
+                                <col className="w-[9%]" />
+                                <col className="w-[9%]" />
+                                <col className="w-[10%]" />
+                                <col className="w-[16%]" />
+                                <col className="w-[10%]" />
+                            </colgroup>
                             <thead>
-                                <tr className="bg-[#f8f9fc] border-b border-gray-100">
+                                <tr className="table-header-row">
                                     {['Month', 'Clusters', 'Mentors', 'Active Mentees', 'Potential', 'New Groups', 'Modules Done', 'Status', 'Submitted By', 'Date'].map(h => (
-                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
+                                        <th key={h} className="px-6 py-4 text-left font-bold uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody>
                                 {MONTHLY_REPORT_HISTORY.map((r, i) => (
-                                    <tr key={i} className="hover:bg-[#fafbff] transition-colors">
-                                        <td className="pl-6 pr-4 py-3.5 font-semibold text-gray-900 whitespace-nowrap">{r.month}</td>
-                                        <td className="px-4 py-3.5 text-center font-semibold text-gray-700">{r.clusters}</td>
-                                        <td className="px-4 py-3.5 text-center font-semibold text-[#D97706]">{r.mentors}</td>
-                                        <td className="px-4 py-3.5 text-center font-semibold text-[#0284C7]">{r.activeMentees}</td>
-                                        <td className="px-4 py-3.5 text-center font-semibold text-[#e67700]">{r.potentialMentees}</td>
-                                        <td className="px-4 py-3.5 text-center text-gray-600">{r.newGroups}</td>
-                                        <td className="px-4 py-3.5 text-center text-gray-600">{r.completedModules}</td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${r.status === 'Submitted' ? 'bg-[#16a34a] text-white' :
+                                    <tr key={i} className="transition-colors">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{r.month}</td>
+                                        <td className="px-6 py-4 text-left text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{r.clusters}</td>
+                                        <td className="px-6 py-4 text-left text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{r.mentors}</td>
+                                        <td className="px-6 py-4 text-left font-semibold text-[#0E5B52] dark:text-[#5EEAD4] tabular-nums">{r.activeMentees}</td>
+                                        <td className="px-6 py-4 text-left text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{r.potentialMentees}</td>
+                                        <td className="px-6 py-4 text-left text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{r.newGroups}</td>
+                                        <td className="px-6 py-4 text-left text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{r.completedModules}</td>
+                                        <td className="px-6 py-4 text-left">
+                                            <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${r.status === 'Submitted' ? 'bg-[#16a34a] text-white' :
                                                 r.status === 'Pending' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' :
                                                     'bg-gray-400 text-white'
                                                 }`}>{r.status}</span>
                                         </td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-500">{r.submittedBy}</td>
-                                        <td className="pl-4 pr-6 py-3.5 text-xs text-gray-400 whitespace-nowrap">{r.submittedDate}</td>
+                                        <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left">{r.submittedBy}</td>
+                                        <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{r.submittedDate}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -958,26 +1340,64 @@ function ReportsTab() {
                             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                             <Tooltip contentStyle={TOOLTIP_STYLE} />
                             <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                            <Bar dataKey="active" name="Active Mentees" fill="#D97706" radius={[3, 3, 0, 0]} barSize={22} />
-                            <Bar dataKey="potential" name="Potential Mentees" fill="#e67700" fillOpacity={0.7} radius={[3, 3, 0, 0]} barSize={22} />
-                            <Bar dataKey="mentors" name="Mentors" fill="#0284C7" fillOpacity={0.6} radius={[3, 3, 0, 0]} barSize={22} />
+                            <Bar dataKey="active" name="Active Mentees" fill="#0E5B52" radius={[3, 3, 0, 0]} barSize={22} />
+                            <Bar dataKey="potential" name="Potential Mentees" fill="#181F26" radius={[3, 3, 0, 0]} barSize={22} />
+                            <Bar dataKey="mentors" name="Mentors" fill="#64748B" fillOpacity={0.7} radius={[3, 3, 0, 0]} barSize={22} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             )}
             {reportType === 'community' && (
-                <div className="grid gap-4 mb-6 items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))' }}>
-                    {MH_CLUSTERS.map((c) => (
-                        <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <p className="font-semibold text-gray-900 text-sm mb-3">{c.name}</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><p className="text-[9px] text-gray-400 uppercase tracking-widest">Community</p><p className="font-bold text-[#D97706]">{c.communityBased}</p></div>
-                                <div><p className="text-[9px] text-gray-400 uppercase tracking-widest">Church</p><p className="font-bold text-[#0284C7]">{c.churchBased}</p></div>
-                                <div><p className="text-[9px] text-gray-400 uppercase tracking-widest">Active</p><p className="font-bold text-[#1971c2]">{c.totalActiveMentees}</p></div>
-                                <div><p className="text-[9px] text-gray-400 uppercase tracking-widest">Potential</p><p className="font-bold text-[#e67700]">{c.totalPotentialMentees}</p></div>
+                <div className="grid gap-5 items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }}>
+                    {MH_CLUSTERS.map((c) => {
+                        const totalGroups = c.communityBased + c.churchBased;
+                        return (
+                            <div
+                                key={c.id}
+                                className="bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] flex flex-col justify-between"
+                                style={{
+                                    borderRadius: '1rem',
+                                    padding: '1.5rem',
+                                    borderTop: '3px solid #0E5B52',
+                                    boxShadow: '0 4px 14px -4px rgba(15, 23, 42, 0.05)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between gap-3 mb-4">
+                                    <h3 className="text-base font-bold text-[#181F26] dark:text-[#E6EDF3] leading-tight">
+                                        {c.name}
+                                    </h3>
+                                    <span
+                                        data-pill="true"
+                                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#0E5B52]/10 text-[#0E5B52] dark:bg-[#2A9D8F]/15 dark:text-[#5EEAD4] whitespace-nowrap shrink-0 tabular-nums"
+                                    >
+                                        {totalGroups} {totalGroups === 1 ? 'Group' : 'Groups'}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'Community', value: c.communityBased },
+                                        { label: 'Church', value: c.churchBased },
+                                        { label: 'Active', value: c.totalActiveMentees },
+                                        { label: 'Potential', value: c.totalPotentialMentees },
+                                    ].map((m) => (
+                                        <div
+                                            key={m.label}
+                                            data-settings-card="true"
+                                            className="bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D]"
+                                            style={{ borderRadius: '0.75rem', padding: '0.75rem 1rem' }}
+                                        >
+                                            <p className="text-[0.6875rem] font-bold uppercase tracking-[0.05em] text-[#64748B] dark:text-[#9BA7B4] mb-1">
+                                                {m.label}
+                                            </p>
+                                            <p className="text-xl font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-tight tabular-nums">
+                                                {m.value}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
             {reportType === 'maps' && (
@@ -1034,22 +1454,6 @@ function ReportsTab() {
                     </div>
                 </div>
             )}
-            {reportType !== 'maps' && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                        { value: MH_CLUSTERS.length, color: '#D97706', label: 'Total Clusters', sub: 'Active' },
-                        { value: MH_ALL_MENTORS.filter((m) => m.status === 'Active').length, color: '#0284C7', label: 'Active Mentors', sub: 'Outreach Ministry' },
-                        { value: MH_ACTIVE_MENTEES_LIST.length, color: '#1971c2', label: 'Active Mentees', sub: '+3 this month' },
-                        { value: MH_POTENTIAL_MENTEES.length, color: '#e67700', label: 'Potential Mentees', sub: 'Awaiting process' },
-                    ].map((s) => (
-                        <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                            <p className="text-sm font-semibold text-gray-800">{s.label}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }
@@ -1069,7 +1473,7 @@ function NotificationsTab() {
     return (
         <div>
             <div className="flex flex-wrap items-start justify-between gap-2 mb-6">
-                <div><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Notifications</h1><p className="text-sm text-gray-400 mt-1">{unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}</p></div>
+                <div><h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Notifications</h1><p className="text-sm text-gray-400 mt-1">{unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}</p></div>
                 {unreadCount > 0 && <button onClick={() => setNotifs((p) => p.map((n) => ({ ...n, read: true })))} className="text-xs font-semibold text-[#D97706] hover:underline">Mark all as read</button>}
             </div>
             <div className="flex flex-col gap-3">
@@ -1115,7 +1519,7 @@ export default function DepartmentHeadDashboard() {
 
     const mhItem = (key: NavKey, badge?: number) => {
         const found = MH_NAV.find(n => n.key === key)!;
-        return { key: found.key, label: found.label, icon: found.icon, badge };
+        return { key: found.key, label: found.label, icon: found.icon, iconKind: found.iconKind, badge };
     };
 
     const mhNavEntries: SidebarNavEntry[] = [
@@ -1132,7 +1536,24 @@ export default function DepartmentHeadDashboard() {
                 items: [mhItem('potential', MH_POTENTIAL_MENTEES.length), mhItem('mentees', MH_ACTIVE_MENTEES_LIST.length)],
             },
         },
-        { kind: 'item', item: mhItem('reports') },
+        {
+            kind: 'group',
+            group: {
+                id: 'reports',
+                label: 'Reports',
+                icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z',
+                items: [
+                    mhItem('reports_monthly'),
+                    mhItem('reports_quarterly'),
+                    mhItem('reports_annual'),
+                    mhItem('reports_coordinator'),
+                    mhItem('reports_cluster'),
+                    mhItem('reports_mentor'),
+                    mhItem('reports_community'),
+                    mhItem('reports_maps'),
+                ],
+            },
+        },
         { kind: 'item', item: mhItem('notifications', unreadCount) },
     ];
 
@@ -1174,11 +1595,12 @@ export default function DepartmentHeadDashboard() {
             </aside>
 
             {/* ── Main content ── */}
-            <div className={`w-full ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} pb-16 min-w-0 overflow-x-hidden transition-[margin] duration-200`}>
+            <div className={`w-full flex-1 ${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} pb-16 min-w-0 overflow-x-hidden transition-[margin] duration-200`}>
 
                 <DashboardTopHeader
-                    pageTitle={settingsSection ? 'Settings' : MH_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                    pageTitle={settingsSection === 'profile' ? 'My Profile' : settingsSection ? 'Settings' : MH_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
                     onOpenMenu={() => setSidebarOpen(true)}
+                    onOpenProfile={() => { setSettingsSection('profile'); setSidebarOpen(false); }}
                 />
 
                 <div className="pt-4 md:pt-5 px-4 sm:px-6">
@@ -1192,7 +1614,9 @@ export default function DepartmentHeadDashboard() {
                             {activeNav === 'mentors' && <MentorsTab />}
                             {activeNav === 'potential' && <PotentialMenteesTab />}
                             {activeNav === 'mentees' && <ActiveMenteesTab />}
-                            {activeNav === 'reports' && <ReportsTab />}
+                            {activeNav.startsWith('reports_') && (
+                                <ReportsTab reportType={activeNav.replace('reports_', '') as ReportType} />
+                            )}
                             {activeNav === 'notifications' && <NotificationsTab />}
                         </>
                     )}

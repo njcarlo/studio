@@ -1,6 +1,10 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ModernDatePicker from '@/components/ModernDatePicker';
+import ActionMenu, { ActionIcons } from '@/components/ActionMenu';
+import ConfirmModal from '@/components/ConfirmModal';
+import MentorProfileModal from '@/components/MentorProfileModal';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -9,6 +13,7 @@ import {
 } from '@/lib/data';
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
+import DashboardWelcomeBanner from '@/components/DashboardWelcomeBanner';
 import type { ReactNode } from 'react';
 import { SidebarCollapseButton, SidebarNavList, SidebarSettingsDropdown, SettingsPageView, useScrollToTop, type MySettingsSection, type SidebarNavEntry } from '@/components/SettingsModal';
 import { SidebarBrandHeader, DashboardTopHeader } from '@/components/DashboardHeader';
@@ -39,6 +44,15 @@ const STATUS_STYLE: Record<string, string> = {
     'Interview Completed': 'bg-[#D97706] text-white',
     'Accepted': 'bg-[#166534] text-white',
 };
+
+export type CoordReportSection = 'assignment' | 'monthly' | 'barangay' | 'mentor';
+
+const COORD_REPORT_NAV_ITEMS: { key: `reports_${CoordReportSection}`; label: string; iconKind: 'stroke'; icon: string }[] = [
+    { key: 'reports_assignment', label: 'Assignment Reports', iconKind: 'stroke', icon: 'M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+    { key: 'reports_monthly', label: 'Monthly Potential', iconKind: 'stroke', icon: 'M3 17l6-6 4 4 8-8 M17 7h4v4' },
+    { key: 'reports_barangay', label: 'Per Barangay', iconKind: 'stroke', icon: 'M3 21h18 M5 21V7l7-4 7 4v14 M9 21v-6h6v6' },
+    { key: 'reports_mentor', label: 'Per Mentor', iconKind: 'stroke', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
+];
 
 // ─── Nav ─────────────────────────────────────────────────────────────────────
 const COORD_NAV = [
@@ -73,28 +87,32 @@ function InterviewModal({ name, onClose }: { name: string; onClose: () => void }
                     </div>
                     <div className="flex flex-col gap-3">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Interview Date</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                            <label htmlFor="interview-date-picker" className="block text-xs font-semibold text-gray-700 mb-1">Interview Date</label>
+                            <ModernDatePicker
+                                id="interview-date-picker"
+                                value={date}
+                                onChange={setDate}
+                                placeholder="Select interview date"
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Interview Time</label>
                             <input type="time" value={time} onChange={e => setTime(e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52]" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
                             <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
                                 placeholder="Interview notes or preparation..."
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none" />
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52] resize-none" />
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="button" onClick={onClose} className="flex-1 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] px-[1.375rem] py-[0.625rem] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">Cancel</button>
                         <button
+                            type="button"
                             onClick={() => { setDone(true); setTimeout(onClose, 900); }}
-                            className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors"
-                            style={{ background: done ? '#22c55e' : '#D97706' }}>
+                            className="flex-1 text-sm font-bold text-white px-[1.375rem] py-[0.625rem] rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
                             {done ? 'Scheduled!' : 'Schedule Interview'}
                         </button>
                     </div>
@@ -152,12 +170,12 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {
                         ))}
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="button" onClick={onClose} className="flex-1 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] px-[1.375rem] py-[0.625rem] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">Cancel</button>
                         <button
+                            type="button"
                             onClick={() => { if (selected) { onAssign(mentee.id, selected); onClose(); } }}
                             disabled={!selected}
-                            className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
-                            style={{ background: '#D97706' }}>
+                            className="flex-1 text-sm font-bold text-white px-[1.375rem] py-[0.625rem] rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed">
                             Assign
                         </button>
                     </div>
@@ -246,10 +264,10 @@ function ViewDetailsModal({ mentee, onClose, onAssign, onRecommend }: {
                 </div>
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-                    <button onClick={onAssign} className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg transition-colors" style={{ background: '#D97706' }}>
+                    <button type="button" onClick={onAssign} className="flex-1 text-sm font-bold text-white px-[1.375rem] py-[0.625rem] rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
                         Assign to Mentor
                     </button>
-                    <button onClick={onRecommend} className="flex-1 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-gray-300 py-2.5 rounded-lg transition-colors">
+                    <button type="button" onClick={onRecommend} className="flex-1 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] hover:bg-gray-50 dark:hover:bg-[#222933] px-[1.375rem] py-[0.625rem] rounded-xl focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
                         Recommend Group
                     </button>
                 </div>
@@ -290,12 +308,12 @@ function RecommendGroupModal({ mentee, groups, onClose, onConfirm }: {
                         ))}
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 px-4 py-2.5 rounded-lg">Cancel</button>
+                        <button type="button" onClick={onClose} className="flex-1 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] px-[1.375rem] py-[0.625rem] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">Cancel</button>
                         <button
+                            type="button"
                             onClick={() => { if (selected) { setDone(true); setTimeout(() => { onConfirm(mentee.id, selected); onClose(); }, 800); } }}
                             disabled={!selected}
-                            className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
-                            style={{ background: done ? '#22c55e' : '#D97706' }}>
+                            className="flex-1 text-sm font-bold text-white px-[1.375rem] py-[0.625rem] rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed">
                             {done ? 'Recommended!' : 'Confirm'}
                         </button>
                     </div>
@@ -363,7 +381,7 @@ function PotentialMenteesTab({
             )}
 
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential Mentees</h1>
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Potential Mentees</h1>
                 <p className="text-sm text-gray-400 mt-1">All incoming potential mentees for this cluster.</p>
             </div>
 
@@ -380,7 +398,7 @@ function PotentialMenteesTab({
                     className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
                     {STATUS_FILTERS.map(f => (
-                        <option key={f} value={f}>{f === 'All' ? 'All Status' : f}</option>
+                        <option key={f} value={f}>{f === 'All' ? 'All Statuses' : f}</option>
                     ))}
                 </CustomSelect>
             </div>
@@ -396,6 +414,13 @@ function PotentialMenteesTab({
                                 <p className="text-[11px] text-gray-400">{m.age} · {m.gender} · {m.barangay}</p>
                             </div>
                             <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${STATUS_STYLE[m.status]}`}>{m.status}</span>
+                            <ActionMenu
+                                ariaLabel={`${m.name} actions`}
+                                items={[
+                                    { label: 'View', icon: ActionIcons.view, onClick: () => setViewingMentee(m) },
+                                    { label: 'Schedule Interview', icon: ActionIcons.calendar, tone: 'positive', onClick: () => setInterviewMentee(m) },
+                                ]}
+                            />
                         </div>
                         <div className="text-xs text-gray-600">
                             <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Preferred Groups</p>
@@ -404,11 +429,6 @@ function PotentialMenteesTab({
                         <div className="flex items-center gap-3 text-[11px]">
                             <span className={`font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>{m.groupType}</span>
                             <span className="text-gray-400">{m.dateSubmitted}</span>
-                        </div>
-                        <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
-                            <button onClick={() => setViewingMentee(m)} className="text-xs font-semibold text-[#D97706] hover:underline">View</button>
-                            <span className="text-gray-200">|</span>
-                            <button onClick={() => setInterviewMentee(m)} className="text-xs font-semibold text-[#D97706] hover:underline">Schedule Interview</button>
                         </div>
                     </div>
                 ))}
@@ -422,59 +442,70 @@ function PotentialMenteesTab({
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
-                            {['Name', 'Preferred Group (max 2)', 'Barangay', 'Type', 'Date Submitted', 'Status', 'Actions'].map(h => (
-                                <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {filtered.map(m => (
-                            <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                <td className="pl-6 pr-4 py-3.5">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
-                                        <div>
-                                            <p className="font-semibold text-gray-900 text-xs">{m.name}</p>
-                                            <p className="text-[10px] text-gray-400">{m.age} · {m.gender}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3.5">
-                                    <div className="flex flex-col gap-0.5">
-                                        {m.preferredGroups.map((g, i) => (
-                                            <span key={i} className="text-[11px] text-gray-700 leading-snug">
-                                                <span className="text-gray-400 mr-1">{i + 1}.</span>{g}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3.5 text-xs text-gray-600">{m.barangay}</td>
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                    <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${m.groupType === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>
-                                        {m.groupType}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{m.dateSubmitted}</td>
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                    <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${STATUS_STYLE[m.status]}`}>{m.status}</span>
-                                </td>
-                                <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                    <div className="flex items-center gap-1.5">
-                                        <button onClick={() => setViewingMentee(m)} className="text-[11px] font-semibold text-[#D97706] hover:underline">View</button>
-                                        <span className="text-gray-200">|</span>
-                                        <button onClick={() => setInterviewMentee(m)} className="text-[11px] font-semibold text-[#D97706] hover:underline">Schedule Interview</button>
-                                    </div>
-                                </td>
+                    <table className="w-full table-auto text-sm">
+                        <colgroup>
+                            <col className="w-[20%]" />
+                            <col className="w-[21%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[8%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">
+                                {['Name', 'Preferred Group (max 2)', 'Barangay', 'Type', 'Date Submitted', 'Status', 'Actions'].map((h, idx, arr) => (
+                                    <th key={h} className={`px-6 py-4 font-semibold ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
+                                ))}
                             </tr>
-                        ))}
-                        {filtered.length === 0 && (
-                            <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">No potential mentees found</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {filtered.map(m => (
+                                <tr key={m.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="flex items-center justify-start gap-2.5">
+                                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
+                                            <div className="text-left min-w-0">
+                                                <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-xs">{m.name}</p>
+                                                <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4]">{m.age} · {m.gender}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="flex flex-col items-start gap-0.5">
+                                            {m.preferredGroups.map((g, i) => (
+                                                <span key={i} className="text-[11px] text-[#181F26] dark:text-[#E6EDF3] leading-snug text-left">
+                                                    <span className="text-[#64748B] dark:text-[#9BA7B4] mr-1">{i + 1}.</span>{g}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] text-left">{m.barangay}</td>
+                                    <td className="px-6 py-4 text-left">
+                                        <span className={`inline-flex items-center justify-center text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${m.groupType === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>
+                                            {m.groupType}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.dateSubmitted}</td>
+                                    <td className="px-6 py-4 text-left">
+                                        <span className={`inline-flex items-center justify-center text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${STATUS_STYLE[m.status]}`}>{m.status}</span>
+                                    </td>
+                                    <td className="px-6 py-4 table-col-center text-center">
+                                        <ActionMenu
+                                            ariaLabel={`${m.name} actions`}
+                                            items={[
+                                                { label: 'View', icon: ActionIcons.view, onClick: () => setViewingMentee(m) },
+                                                { label: 'Schedule Interview', icon: ActionIcons.calendar, tone: 'positive', onClick: () => setInterviewMentee(m) },
+                                            ]}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                            {filtered.length === 0 && (
+                                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-[#64748B]">No potential mentees found</td></tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -485,15 +516,38 @@ function PotentialMenteesTab({
 function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+    const [viewingMentor, setViewingMentor] = useState<CoordMentor | null>(null);
     const filtered = mentors.filter(m => {
         const ms = search.toLowerCase();
         return (filter === 'All' || m.status === filter) &&
-            (m.name.toLowerCase().includes(ms) || m.group.toLowerCase().includes(ms) || m.barangay.toLowerCase().includes(ms));
+            (m.name.toLowerCase().includes(ms) || m.group.toLowerCase().includes(ms) || m.barangay.toLowerCase().includes(ms) || m.workerId.toLowerCase().includes(ms));
     });
     return (
         <div>
+            {viewingMentor && (
+                <MentorProfileModal
+                    mentor={{
+                        id: viewingMentor.id,
+                        workerId: viewingMentor.workerId,
+                        workerIdCreatedAt: viewingMentor.workerIdCreatedAt,
+                        initials: viewingMentor.initials,
+                        name: viewingMentor.name,
+                        avatar: viewingMentor.color,
+                        group: viewingMentor.group,
+                        barangay: viewingMentor.barangay,
+                        phone: viewingMentor.phone,
+                        email: viewingMentor.email,
+                        activeMentees: viewingMentor.activeMentees,
+                        attendance: 88,
+                        completion: 80,
+                        devotion: 76,
+                        status: viewingMentor.status,
+                    }}
+                    onClose={() => setViewingMentor(null)}
+                />
+            )}
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentors</h1>
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Mentors</h1>
                 <p className="text-sm text-gray-400 mt-1">All mentors within the cluster.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -507,7 +561,7 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                     onChange={e => setFilter(e.target.value as any)}
                     className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
-                    <option value="All">All Status</option>
+                    <option value="All">All Statuses</option>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                 </CustomSelect>
@@ -525,8 +579,17 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                                             <p className="font-bold text-gray-900 text-base leading-tight">{m.name}</p>
                                             <p className="text-xs text-gray-400 mt-0.5">{m.group} · {m.barangay}</p>
                                         </div>
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span>
+                                            <ActionMenu
+                                                ariaLabel={`${m.name} actions`}
+                                                items={[
+                                                    { label: 'View Profile', icon: ActionIcons.view, onClick: () => setViewingMentor(m) },
+                                                ]}
+                                            />
+                                        </div>
                                     </div>
+                                    <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums mt-1.5">{m.workerId}</p>
                                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-[11px] text-gray-500 min-w-0">
                                         <span className="whitespace-nowrap">📞 {m.phone}</span>
                                         <span className="break-all">✉ {m.email}</span>
@@ -578,7 +641,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
     return (
         <div>
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">C2S Groups</h1>
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">C2S Groups</h1>
                 <p className="text-sm text-gray-400 mt-1">All groups within the cluster.</p>
             </div>
             <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -596,7 +659,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                     onChange={e => setStatusFilter(e.target.value as any)}
                     className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[130px]"
                 >
-                    <option value="All">All Status</option>
+                    <option value="All">All Statuses</option>
                     <option value="Open">Open</option>
                     <option value="Full">Full</option>
                     <option value="Closed">Closed</option>
@@ -635,51 +698,62 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                            {['Group Name', 'Mentor', 'Barangay', 'Type', 'Members', 'Capacity', 'Available', 'Status', 'Schedule'].map(h => (
-                                <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {filtered.map(g => {
-                            const pct = Math.round((g.members / g.capacity) * 100);
-                            return (
-                                <tr key={g.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5 font-semibold text-gray-900 text-sm">{g.name}</td>
-                                    <td className="px-4 py-3.5">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
-                                            <span className="text-xs text-gray-700">{g.mentor}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3.5 text-xs text-gray-600">{g.barangay}</td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
-                                    </td>
-                                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#D97706' }} />
+                    <table className="w-full table-auto text-sm">
+                        <colgroup>
+                            <col className="w-[14%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[11%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">
+                                {['Group Name', 'Mentor', 'Barangay', 'Type', 'Members', 'Capacity', 'Available', 'Status', 'Schedule'].map(h => (
+                                    <th key={h} className="px-6 py-4 text-left font-semibold">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map(g => {
+                                const pct = Math.round((g.members / g.capacity) * 100);
+                                return (
+                                    <tr key={g.id} className="transition-colors">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-sm text-left">{g.name}</td>
+                                        <td className="px-6 py-4 text-left">
+                                            <div className="flex items-center justify-start gap-2">
+                                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
+                                                <span className="text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3]">{g.mentor}</span>
                                             </div>
-                                            <span className="text-xs font-semibold text-gray-700">{g.members}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3.5 text-xs text-center text-gray-600 whitespace-nowrap">{g.capacity}</td>
-                                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                        <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#D97706]' : 'text-[#e67700]'}`}>{g.availableSlots}</span>
-                                    </td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-1 rounded-full leading-none ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' : 'bg-gray-400 text-white'}`}>{g.status}</span>
-                                    </td>
-                                    <td className="pl-4 pr-6 py-3.5 text-xs text-gray-500 whitespace-nowrap">{g.schedule}</td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left">{g.barangay}</td>
+                                        <td className="px-6 py-4 text-left">
+                                            <span className={`inline-flex items-center justify-center text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#D97706] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-left">
+                                            <div className="flex items-center justify-start gap-2">
+                                                <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
+                                                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#D97706' }} />
+                                                </div>
+                                                <span className="text-xs font-semibold text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{g.members}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{g.capacity}</td>
+                                        <td className="px-6 py-4 text-left tabular-nums">
+                                            <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#D97706]' : 'text-[#e67700]'}`}>{g.availableSlots}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-left">
+                                            <span className={`inline-flex items-center justify-center text-[10px] font-bold px-2.5 py-1 rounded-full leading-none ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]' : 'bg-gray-400 text-white'}`}>{g.status}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left">{g.schedule}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -709,39 +783,48 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
         <div>
             <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
                 <div>
-                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Reports</h1>
+                    <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Reports</h1>
                     <p className="text-xs text-gray-400 mt-0.5">{clusterName}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={handleExportCsv}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 text-[0.8125rem] font-semibold text-[#181F26] dark:text-[#E6EDF3] border border-[#E2E8E5] dark:border-[#2A323D] rounded-[0.625rem] bg-white dark:bg-[#1A2026] hover:bg-[#F8FAFC] dark:hover:bg-[#222933] leading-none transition-colors cursor-pointer"
                     >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
                         Export CSV / Excel
                     </button>
                 </div>
             </div>
 
-            {/* Charts (passed from dashboard/page.tsx) */}
-            {reportsContent}
-
             {/* Summary stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-10">
-                {[
-                    { value: COORD_POTENTIAL_MENTEES.length, label: 'Total Potential', sub: 'All statuses', color: '#D97706' },
-                    { value: COORD_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, label: 'New This Week', sub: 'Not yet processed', color: '#D97706' },
-                    { value: COORD_MENTORS.filter(m => m.status === 'Active').length, label: 'Active Mentors', sub: 'Available', color: '#D97706' },
-                    { value: COORD_GROUPS.filter(g => g.status === 'Open').length, label: 'Open Groups', sub: 'Accepting now', color: '#1971c2' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-sm font-semibold text-gray-800">{s.label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { value: COORD_POTENTIAL_MENTEES.length, label: 'Total Potential', sub: 'All statuses', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                        { value: COORD_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, label: 'New This Week', sub: 'Not yet processed', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+                        { value: COORD_MENTORS.filter(m => m.status === 'Active').length, label: 'Active Mentors', sub: 'Available', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                        { value: COORD_GROUPS.filter(g => g.status === 'Open').length, label: 'Open Groups', sub: 'Accepting now', icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                                <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5">{s.sub}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
+
+            {/* Charts (passed from dashboard/page.tsx) */}
+            <div className="mb-10">{reportsContent}</div>
 
             {/* ── Interactive Map section ── */}
             <div className="mb-4">
@@ -823,7 +906,7 @@ function CoordMapTab({ groups }: { groups: CoordGroup[] }) {
         <div>
             <div className="flex items-start justify-between mb-6">
                 <div>
-                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Interactive Map</h1>
+                    <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Interactive Map</h1>
                     <p className="text-sm text-gray-400 mt-1">Community-based group distribution within the cluster — powered by OpenStreetMap.</p>
                 </div>
             </div>
@@ -933,7 +1016,7 @@ function CoordNotifsTab() {
         <div>
             <div className="flex items-start justify-between mb-6">
                 <div>
-                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Notifications</h1>
+                    <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Notifications</h1>
                     <p className="text-sm text-gray-400 mt-1">{unread} unread</p>
                 </div>
                 {unread > 0 && (
@@ -1012,6 +1095,7 @@ function PotentialC2SGroupsTab() {
     }
 
     function requestAction(app: HubApplication, action: 'Approved' | 'Rejected') {
+        setViewing(null);
         setConfirm({ id: app.id, name: app.name, action });
     }
 
@@ -1024,44 +1108,30 @@ function PotentialC2SGroupsTab() {
     return (
         <div>
             {/* ── Confirmation dialog ── */}
-            {confirm && (
-                <>
-                    <div className="fixed inset-0 z-[9999] bg-black/50" onClick={() => setConfirm(null)} />
-                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={() => setConfirm(null)}>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${confirm.action === 'Approved' ? 'bg-[#FEF3C7]' : 'bg-[#fee2e2]'}`}>
-                                {confirm.action === 'Approved'
-                                    ? <svg className="w-6 h-6 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-                                    : <svg className="w-6 h-6 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
-                                }
-                            </div>
-                            <div className="text-center">
-                                <h3 className="text-base font-bold text-gray-900 mb-1">
-                                    {confirm.action === 'Approved' ? 'Approve Application?' : 'Reject Application?'}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                    {confirm.action === 'Approved'
-                                        ? <>Are you sure you want to <span className="font-semibold text-[#D97706]">approve</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
-                                        : <>Are you sure you want to <span className="font-semibold text-[#D97706]">reject</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
-                                    }
-                                </p>
-                            </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => setConfirm(null)}
-                                    className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => updateStatus(confirm.id, confirm.action)}
-                                    className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors"
-                                    style={{ background: confirm.action === 'Approved' ? '#D97706' : '#D97706' }}>
-                                    {confirm.action === 'Approved' ? 'Yes, Approve' : 'Yes, Reject'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
+            <ConfirmModal
+                open={Boolean(confirm)}
+                variant={confirm?.action === 'Rejected' ? 'danger' : 'default'}
+                icon={confirm?.action === 'Rejected' ? 'warning' : 'check'}
+                title={confirm?.action === 'Approved' ? 'Approve Application?' : 'Reject Application?'}
+                description={
+                    confirm?.action === 'Approved' ? (
+                        <>
+                            Are you sure you want to approve the C2S home application of <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{confirm?.name}</strong>?
+                        </>
+                    ) : (
+                        <>
+                            Are you sure you want to reject the C2S home application of <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{confirm?.name}</strong>?
+                        </>
+                    )
+                }
+                cancelLabel="Cancel"
+                confirmLabel={confirm?.action === 'Approved' ? 'Yes, Approve' : 'Yes, Reject'}
+                onCancel={() => setConfirm(null)}
+                onConfirm={() => {
+                    if (!confirm) return;
+                    updateStatus(confirm.id, confirm.action);
+                }}
+            />
 
             {/* Detail slide-over */}
             {viewing && (
@@ -1112,16 +1182,16 @@ function PotentialC2SGroupsTab() {
                         {viewing.status === 'Pending' && (
                             <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
                                 <button
-                                    onClick={() => requestAction(viewing, 'Approved')}
-                                    className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg"
-                                    style={{ background: '#D97706' }}>
-                                    Approve
+                                    type="button"
+                                    onClick={() => requestAction(viewing, 'Rejected')}
+                                    className="flex-1 text-sm font-bold text-red-600 border border-red-200 bg-white dark:bg-[#1A2026] hover:bg-red-50 px-[1.375rem] py-[0.625rem] rounded-xl transition-colors cursor-pointer">
+                                    Reject
                                 </button>
                                 <button
-                                    onClick={() => requestAction(viewing, 'Rejected')}
-                                    className="flex-1 text-sm font-semibold text-white py-2.5 rounded-lg"
-                                    style={{ background: '#D97706' }}>
-                                    Reject
+                                    type="button"
+                                    onClick={() => requestAction(viewing, 'Approved')}
+                                    className="flex-1 text-sm font-bold text-white px-[1.375rem] py-[0.625rem] rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
+                                    Approve
                                 </button>
                             </div>
                         )}
@@ -1139,7 +1209,7 @@ function PotentialC2SGroupsTab() {
             )}
 
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential C2S Home</h1>
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Potential C2S Home</h1>
                 <p className="text-sm text-gray-400 mt-1">Applications to host a Connect2Souls devotion hub.</p>
             </div>
 
@@ -1155,7 +1225,7 @@ function PotentialC2SGroupsTab() {
                     onChange={e => setFilter(e.target.value as any)}
                     className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[140px]"
                 >
-                    <option value="All">All Status</option>
+                    <option value="All">All Statuses</option>
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
@@ -1192,53 +1262,72 @@ function PotentialC2SGroupsTab() {
                                 </div>
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="text-[11px] text-gray-400">{a.submitted}</span>
-                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
+                                        <ActionMenu
+                                            ariaLabel={`${a.name} actions`}
+                                            items={[
+                                                { label: 'View', icon: ActionIcons.view, onClick: () => setViewing(a) },
+                                            ]}
+                                        />
+                                    </div>
                                 </div>
-                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#D97706] border border-[#D97706] px-3 py-1.5 rounded-lg hover:bg-[#FEF3C7] transition-colors">View</button>
                             </div>
                         ))}
                     </div>
                     {/* Desktop table */}
                     <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
                         <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
-                                    {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
-                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {filtered.map(a => (
-                                    <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="pl-6 pr-4 py-3.5">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-7 h-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
-                                                    {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
-                                                    <p className="text-[10px] text-gray-400">{a.phone}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-600 whitespace-nowrap">{a.schedule}</td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-600 text-center whitespace-nowrap">{a.potential}</td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
-                                        </td>
-                                        <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5">
-                                                <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#D97706] hover:underline">View</button>
-                                            </div>
-                                        </td>
+                            <table className="w-full table-auto text-sm">
+                                <colgroup>
+                                    <col className="w-[22%]" />
+                                    <col className="w-[13%]" />
+                                    <col className="w-[19%]" />
+                                    <col className="w-[10%]" />
+                                    <col className="w-[13%]" />
+                                    <col className="w-[14%]" />
+                                    <col className="w-[9%]" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="table-header-row">
+                                        {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map((h, idx, arr) => (
+                                            <th key={h} className={`px-6 py-4 font-semibold ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filtered.map(a => (
+                                        <tr key={a.id} className="transition-colors">
+                                            <td className="px-6 py-4 text-left">
+                                                <div className="flex items-center justify-start gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
+                                                        {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div className="text-left min-w-0">
+                                                        <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-xs">{a.name}</p>
+                                                        <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4]">{a.phone}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] text-left">{a.barangay}</td>
+                                            <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left">{a.schedule}</td>
+                                            <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{a.potential}</td>
+                                            <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{a.submitted}</td>
+                                            <td className="px-6 py-4 text-left">
+                                                <span className={`inline-flex items-center justify-center leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
+                                            </td>
+                                            <td className="px-6 py-4 table-col-center text-center">
+                                                <ActionMenu
+                                                    ariaLabel={`${a.name} actions`}
+                                                    items={[
+                                                        { label: 'View', icon: ActionIcons.view, onClick: () => setViewing(a) },
+                                                    ]}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </>
@@ -1248,7 +1337,15 @@ function PotentialC2SGroupsTab() {
 }
 
 // ─── Main Coordinator Dashboard ───────────────────────────────────────────────
-export default function CoordinatorDashboard({ onLogout, reportsContent }: { onLogout: () => void; reportsContent?: ReactNode }) {
+export default function CoordinatorDashboard({
+    onLogout,
+    reportsContent,
+    renderReportsContent,
+}: {
+    onLogout: () => void;
+    reportsContent?: ReactNode;
+    renderReportsContent?: (tab: CoordReportSection) => ReactNode;
+}) {
     const { user } = useAuth();
     const [activeNav, setActiveNav] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1337,11 +1434,19 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                                 icon: COORD_NAV.find(n => n.key === 'groups')!.icon,
                                 items: [
                                     COORD_NAV.find(n => n.key === 'groups')!,
-                                    { ...COORD_NAV.find(n => n.key === 'potential_c2s')!, badge: hubPendingCount, badgeColor: '#d97706' },
+                                    { ...COORD_NAV.find(n => n.key === 'potential_c2s')!, badge: hubPendingCount, badgeColor: '#334155' },
                                 ],
                             },
                         },
-                        { kind: 'item', item: COORD_NAV.find(n => n.key === 'reports')! },
+                        {
+                            kind: 'group',
+                            group: {
+                                id: 'reports',
+                                label: 'Reports',
+                                icon: COORD_NAV.find(n => n.key === 'reports')!.icon,
+                                items: COORD_REPORT_NAV_ITEMS,
+                            },
+                        },
                         { kind: 'item', item: { ...COORD_NAV.find(n => n.key === 'notifs')!, badge: unreadCount } },
                     ] as SidebarNavEntry[]}
                     activeKey={!settingsSection ? activeNav : null}
@@ -1361,8 +1466,17 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
 
                 <DashboardTopHeader
-                    pageTitle={settingsSection ? 'Settings' : COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                    pageTitle={
+                        settingsSection === 'profile'
+                            ? 'My Profile'
+                            : settingsSection
+                            ? 'Settings'
+                            : activeNav.startsWith('reports_')
+                                ? (COORD_REPORT_NAV_ITEMS.find(r => r.key === activeNav)?.label ?? 'Reports')
+                                : COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'
+                    }
                     onOpenMenu={() => setSidebarOpen(true)}
+                    onOpenProfile={() => { setSettingsSection('profile'); setSidebarOpen(false); }}
                     onLogout={onLogout}
                 />
 
@@ -1374,10 +1488,7 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                             {/* -- Dashboard -- */}
                             {activeNav === 'dashboard' && (
                                 <div>
-                                    <div className="mb-5">
-                                        <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
-                                        <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
-                                    </div>
+                                    <DashboardWelcomeBanner fallbackRole="c2s_coordinator" />
                                     <SharedDashboardTab data={CHURCH_WIDE_DATA} />
                                 </div>
                             )}
@@ -1403,15 +1514,25 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                             {activeNav === 'groups' && <GroupsTab groups={COORD_GROUPS} />}
 
                             {/* ── Reports Tab ── */}
-                            {activeNav === 'reports' && <CoordReportsTab clusterName={clusterName} groups={COORD_GROUPS} reportsContent={reportsContent} />}
+                            {activeNav.startsWith('reports_') && (
+                                <CoordReportsTab
+                                    clusterName={clusterName}
+                                    groups={COORD_GROUPS}
+                                    reportsContent={
+                                        renderReportsContent
+                                            ? renderReportsContent(activeNav.replace('reports_', '') as CoordReportSection)
+                                            : reportsContent
+                                    }
+                                />
+                            )}
 
                             {/* ── Notifications Tab ── */}
                             {activeNav === 'notifs' && <CoordNotifsTab />}
                         </>
                     )}
 
-                        </div>{/* end inner pt-5 div */}
-                </div>
+                </div>{/* end inner pt-5 div */}
             </div>
-            );
+        </div>
+    );
 }

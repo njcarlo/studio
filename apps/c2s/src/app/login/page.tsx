@@ -43,6 +43,15 @@ export default function LoginPage() {
 
     return (
         <div className="force-light relative min-h-screen-dvh flex flex-col overflow-x-hidden">
+            {/* 2-Color Top Accent Bar (Coral Pink & Cyan Teal) */}
+            <div
+                aria-hidden="true"
+                className="fixed top-0 left-0 right-0 z-50 h-[7px] grid grid-cols-2"
+            >
+                <div className="bg-[#E11D48]" />
+                <div className="bg-[#14B8A6]" />
+            </div>
+
             {/* Full-screen background photo */}
             <Image
                 src="/cog-bg.png"
@@ -58,30 +67,30 @@ export default function LoginPage() {
             />
 
             {/* Centered page content */}
-            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 w-full max-w-[420px] mx-auto">
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-center py-8 sm:py-12 w-full">
 
-                {/* Frosted glassmorphism login card */}
+                {/* Dark frosted glassmorphism login card */}
                 <div
-                    className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-[0_28px_68px_rgba(15,23,42,0.48)]"
+                    className="w-[calc(100%-2rem)] min-[480px]:w-full max-w-[29rem] mx-auto overflow-hidden transition-shadow duration-300"
                     style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.64)',
-                        backdropFilter: 'blur(20px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                        border: '1px solid rgba(255, 255, 255, 0.58)',
+                        backgroundColor: 'rgba(18, 24, 33, 0.72)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
                         borderRadius: '20px',
-                        boxShadow: '0 24px 60px rgba(15, 23, 42, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.35)',
                     }}
                 >
-                    <div className="px-6 sm:px-8 pt-7 pb-6 sm:pb-7">
+                    <div className="px-6 min-[480px]:px-9 sm:px-10 pt-9 pb-8">
                         {/* Header area */}
-                        <div className="text-center mb-5">
+                        <div className="text-center mb-7">
                             {/* Circular logo */}
                             <div
-                                className="w-24 h-24 rounded-full mx-auto mb-3.5 flex items-center justify-center overflow-hidden p-2"
+                                className="w-24 h-24 rounded-full mx-auto mb-5 flex items-center justify-center overflow-hidden p-2"
                                 style={{
                                     backgroundColor: '#FFFFFF',
                                     border: '2px solid rgba(255, 255, 255, 0.9)',
-                                    boxShadow: '0 8px 22px rgba(15, 23, 42, 0.14)',
+                                    boxShadow: '0 8px 22px rgba(0, 0, 0, 0.28)',
                                 }}
                             >
                                 <Image
@@ -95,9 +104,9 @@ export default function LoginPage() {
                             </div>
 
                             <p
-                                className="font-bold uppercase"
+                                className="font-bold uppercase mb-2"
                                 style={{
-                                    color: '#0F766E',
+                                    color: '#5EEAD4',
                                     fontSize: '11px',
                                     letterSpacing: '0.08em',
                                     lineHeight: 1.4,
@@ -106,9 +115,9 @@ export default function LoginPage() {
                                 Church of God Dasmariñas
                             </p>
                             <h1
-                                className="font-extrabold tracking-tight mt-1"
+                                className="font-extrabold tracking-tight mb-2"
                                 style={{
-                                    color: '#0F172A',
+                                    color: '#FFFFFF',
                                     fontSize: '20px',
                                     lineHeight: 1.25,
                                 }}
@@ -116,24 +125,24 @@ export default function LoginPage() {
                                 Login to your account
                             </h1>
                             <p
-                                className="mt-1 font-medium"
+                                className="font-medium"
                                 style={{
-                                    color: '#334155',
+                                    color: '#E6EDF3',
                                     fontSize: '13px',
                                     lineHeight: 1.45,
                                 }}
                             >
-                                Enter your Worker ID and password to continue
+                                Enter your Worker ID and password
                             </p>
                         </div>
 
-                        <form data-no-confirm onSubmit={handleSubmit} className="space-y-4">
+                        <form data-no-confirm onSubmit={handleSubmit} className="space-y-5">
                             {/* Worker ID */}
                             <div>
                                 <label
                                     htmlFor="worker-id"
-                                    className="block font-bold mb-1.5"
-                                    style={{ color: '#0F172A', fontSize: '0.8125rem' }}
+                                    className="block font-bold mb-2"
+                                    style={{ color: '#E6EDF3', fontSize: '0.8125rem' }}
                                 >
                                     Worker ID
                                 </label>
@@ -153,25 +162,25 @@ export default function LoginPage() {
                                         placeholder="e.g. 145021"
                                         style={{
                                             color: '#0F172A',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.88)',
-                                            borderColor: 'rgba(255, 255, 255, 0.75)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                            borderColor: 'rgba(255, 255, 255, 0.25)',
                                             borderRadius: '10px',
                                             height: '44px',
                                             fontSize: '1rem',
-                                            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
+                                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.14)',
                                         }}
-                                        className="w-full border pl-9 pr-3.5 placeholder:text-slate-400 transition-all duration-200 hover:bg-white/95 hover:border-[#0D9488]/60 focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-4 focus:ring-[#14B8A6]/20"
+                                        className="w-full border pl-9 pr-3.5 placeholder:text-slate-400 transition-all duration-200 hover:bg-white hover:border-[#14B8A6]/70 focus:outline-none focus:bg-white focus:border-[#14B8A6] focus:ring-4 focus:ring-[#14B8A6]/25"
                                     />
                                 </div>
                             </div>
 
                             {/* Password */}
                             <div>
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <div className="flex items-center justify-between gap-2 mb-2">
                                     <label
                                         htmlFor="worker-password"
                                         className="font-bold"
-                                        style={{ color: '#0F172A', fontSize: '0.8125rem' }}
+                                        style={{ color: '#E6EDF3', fontSize: '0.8125rem' }}
                                     >
                                         Password
                                     </label>
@@ -179,7 +188,7 @@ export default function LoginPage() {
                                         type="button"
                                         onClick={() => setShowPwHelp((prev) => !prev)}
                                         className="font-semibold hover:underline transition-colors"
-                                        style={{ color: '#0F766E', fontSize: '0.75rem' }}
+                                        style={{ color: '#5EEAD4', fontSize: '0.75rem' }}
                                     >
                                         Forgot Password?
                                     </button>
@@ -200,14 +209,14 @@ export default function LoginPage() {
                                         placeholder="Enter your password"
                                         style={{
                                             color: '#0F172A',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.88)',
-                                            borderColor: 'rgba(255, 255, 255, 0.75)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                            borderColor: 'rgba(255, 255, 255, 0.25)',
                                             borderRadius: '10px',
                                             height: '44px',
                                             fontSize: '1rem',
-                                            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
+                                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.14)',
                                         }}
-                                        className="w-full border pl-9 pr-10 placeholder:text-slate-400 transition-all duration-200 hover:bg-white/95 hover:border-[#0D9488]/60 focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-4 focus:ring-[#14B8A6]/20"
+                                        className="w-full border pl-9 pr-10 placeholder:text-slate-400 transition-all duration-200 hover:bg-white hover:border-[#14B8A6]/70 focus:outline-none focus:bg-white focus:border-[#14B8A6] focus:ring-4 focus:ring-[#14B8A6]/25"
                                     />
                                     <button
                                         type="button"
@@ -228,24 +237,24 @@ export default function LoginPage() {
                                     </button>
                                 </div>
                                 {showPwHelp && (
-                                    <p className="mt-2 text-xs text-slate-700 bg-white/90 border border-white/80 rounded-lg px-3 py-2 leading-relaxed shadow-sm">
+                                    <p className="mt-2 text-xs text-[#E6EDF3] bg-slate-900/75 border border-white/15 rounded-lg px-3 py-2 leading-relaxed shadow-sm">
                                         Please contact your C2S Coordinator or Admin to reset your password.
                                     </p>
                                 )}
                             </div>
 
                             {/* Left-aligned checkbox row */}
-                            <div className="flex items-center pt-0.5">
+                            <div className="flex items-center pt-1 pb-1">
                                 <label className="group flex items-center gap-2 cursor-pointer select-none">
                                     <input
                                         type="checkbox"
                                         checked={keepSigned}
                                         onChange={(e) => setKeepSigned(e.target.checked)}
-                                        className="w-4 h-4 rounded border-slate-400 bg-white/90 accent-[#0D9488] cursor-pointer"
+                                        className="w-4 h-4 rounded border-white/30 bg-white/95 accent-[#0E5B52] cursor-pointer"
                                     />
                                     <span
-                                        className="text-slate-800 font-medium group-hover:text-slate-950 transition-colors duration-150"
-                                        style={{ fontSize: '0.8125rem' }}
+                                        className="font-medium transition-colors duration-150 group-hover:text-white"
+                                        style={{ color: '#E6EDF3', fontSize: '0.8125rem' }}
                                     >
                                         Keep me signed in
                                     </span>
@@ -308,11 +317,11 @@ export default function LoginPage() {
                     </p>
                     <Link
                         href="/c2s-finder"
-                        className="group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold text-[#5EEAD4] hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/15 transition-all duration-200"
-                        style={{ fontSize: '0.75rem' }}
+                        className="group inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-semibold text-white bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 transition-all duration-200"
+                        style={{ fontSize: '0.75rem', color: '#FFFFFF' }}
                     >
-                        <span className="transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
-                        <span>Back to C2S Finder</span>
+                        <span className="text-white transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+                        <span className="text-white">Back to C2S Finder</span>
                     </Link>
                 </div>
             </div>

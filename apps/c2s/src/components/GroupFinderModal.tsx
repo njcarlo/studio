@@ -45,8 +45,8 @@ function PeopleIcon() {
     );
 }
 
-function Select({ label, value, onChange, options, className = '' }: {
-    label: string; value: string;
+function Select({ label, allLabel, value, onChange, options, className = '' }: {
+    label: string; allLabel?: string; value: string;
     onChange: (v: string) => void; options: string[]; className?: string;
 }) {
     return (
@@ -57,7 +57,7 @@ function Select({ label, value, onChange, options, className = '' }: {
                 onChange={(e) => onChange(e.target.value)}
                 className="w-full"
             >
-                {options.map((o) => <option key={o} value={o}>{o}</option>)}
+                {options.map((o) => <option key={o} value={o}>{o === 'All' && allLabel ? allLabel : o}</option>)}
             </CustomSelect>
         </div>
     );
@@ -72,15 +72,15 @@ function GroupCard({ group, selected, onSelect }: { group: C2SGroup; selected: b
             }`}
         >
             {/* Tags + status */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex flex-wrap gap-1">
+            <div className="flex items-start justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
                     {group.tags.map((t) => (
-                        <span key={t.label} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.color}`}>
+                        <span key={t.label} className={`inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${t.color}`}>
                             {t.label}
                         </span>
                     ))}
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 whitespace-nowrap ${
                     group.status === 'Open'
                         ? 'border-[#D97706] text-[#D97706]'
                         : 'border-gray-300 text-gray-400'
@@ -155,18 +155,13 @@ export default function GroupFinderModal({ onClose }: Props) {
             <div className="relative rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
 
                 {/* ── Header ── */}
-                <div className="bg-white px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 pr-12 border-b border-gray-100 shrink-0">
-                    {/* "Find your community" pill */}
-                    <div className="inline-flex items-center bg-[#D97706] text-white text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full mb-2 sm:mb-3">
-                        Find your community
-                    </div>
-
+                <div className="bg-white px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 pr-12 border-b border-[#E2E8E5] shrink-0">
                     {/* c2s logo + "Group Finder" title */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 mb-1">
-                        <img src="/c2s.png" alt="C2S" className="w-9 h-9 sm:w-12 sm:h-12 object-contain shrink-0" />
-                        <h1 className="text-xl sm:text-2xl font-black text-gray-900">Group Finder</h1>
+                    <div className="flex items-center gap-3 sm:gap-4 mb-1.5">
+                        <img src="/c2s.png" alt="C2S" className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain shrink-0" />
+                        <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-extrabold uppercase tracking-[0.02em] text-[#181F26] leading-tight">Group Finder</h1>
                     </div>
-                    <p className="text-xs sm:text-sm text-gray-500 leading-snug">
+                    <p className="text-xs sm:text-sm text-[#64748B] leading-snug">
                         Discover a Connect2Souls group near you in Dasmariñas City — built for real friendships,
                         growth in faith, and a place to belong.
                     </p>
@@ -193,10 +188,10 @@ export default function GroupFinderModal({ onClose }: Props) {
                             </div>
 
                             {/* Filter dropdowns */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                <Select label="Age Group"        value={ageGroup}  onChange={setAgeGroup}  options={AGE_GROUPS} />
-                                <Select label="Meetup Day"       value={meetupDay} onChange={setMeetupDay} options={MEETUP_DAYS} />
-                                <Select label="Barangay / Subdivision" value={barangay}  onChange={setBarangay}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                <Select label="Age Group"        allLabel="All Age Groups"  value={ageGroup}  onChange={setAgeGroup}  options={AGE_GROUPS} />
+                                <Select label="Meetup Day"       allLabel="All Meetup Days" value={meetupDay} onChange={setMeetupDay} options={MEETUP_DAYS} />
+                                <Select label="Barangay / Subdivision" allLabel="All Barangays" value={barangay}  onChange={setBarangay}
                                     options={['All', ...BARANGAYS]} className="col-span-2 sm:col-span-1" />
                             </div>
                         </div>

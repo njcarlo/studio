@@ -95,11 +95,10 @@ export default function MenteeDetailsModal({ mentee, onClose, onAccept, onRecomm
                 </div>
 
                 {/* Footer actions */}
-                <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
+                <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0">
                     <button
                         onClick={() => { onAccept(); }}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white rounded-lg transition-colors"
-                        style={{ background: '#D97706' }}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white rounded-lg bg-[#0E5B52] hover:bg-[#0A463F] transition-colors cursor-pointer"
                     >
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>

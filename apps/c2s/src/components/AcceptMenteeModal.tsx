@@ -1,5 +1,7 @@
 'use client';
 
+import ConfirmModal from '@/components/ConfirmModal';
+
 interface Props {
     menteeName: string;
     groupName: string;
@@ -9,56 +11,35 @@ interface Props {
 
 export default function AcceptMenteeModal({ menteeName, groupName, onCancel, onConfirm }: Props) {
     return (
-        <>
-            {/* Backdrop */}
-            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onCancel} />
-
-            {/* Dialog */}
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                <div
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 flex flex-col gap-5"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* Title */}
-                    <h2 className="text-xl font-semibold text-gray-900">Accept Mentee?</h2>
-
-                    {/* Body text */}
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                        Are you sure you want to accept <span className="font-bold text-gray-900">{menteeName}</span> into
-                        your C2S Group <span className="font-bold text-gray-900">{groupName}</span>?
+        <ConfirmModal
+            open
+            variant="default"
+            icon="check"
+            title="Accept Mentee?"
+            description={
+                <>
+                    Are you sure you want to accept <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{menteeName}</strong> into
+                    your C2S Group <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{groupName}</strong>?
+                </>
+            }
+            extra={
+                <div className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 bg-[#FAF8F5] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D]">
+                    <svg className="w-4 h-4 text-[#0E5B52] dark:text-[#2A9D8F] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+                    </svg>
+                    <p className="text-xs text-[#475569] dark:text-[#9BA7B4] leading-relaxed">
+                        <span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">Reminder: </span>
+                        Mentors should personally meet the potential mentee before accepting the mentoring request to ensure readiness for discipleship.
                     </p>
-
-                    {/* Reminder banner */}
-                    <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-[#FEF3C7] border border-[#F59E0B]">
-                        <svg className="w-4 h-4 text-[#92400E] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                        </svg>
-                        <div>
-                            <p className="text-xs font-bold text-[#92400E] mb-0.5">Reminder</p>
-                            <p className="text-xs text-[#92400E] leading-relaxed">
-                                Mentors should personally meet the potential mentee before accepting the mentoring request.
-                                This helps ensure both mentor and mentee are ready for discipleship.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-3 pt-1">
-                        <button
-                            onClick={onCancel}
-                            className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={() => { onConfirm(); onCancel(); }}
-                            className="px-6 py-2 text-sm font-semibold text-white rounded-lg bg-[#D97706] hover:bg-[#B45309] transition-colors"
-                        >
-                            Accept
-                        </button>
-                    </div>
                 </div>
-            </div>
-        </>
+            }
+            cancelLabel="Cancel"
+            confirmLabel="Accept"
+            onCancel={onCancel}
+            onConfirm={() => {
+                onConfirm();
+                onCancel();
+            }}
+        />
     );
 }

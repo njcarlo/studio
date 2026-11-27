@@ -821,6 +821,8 @@ export interface EndorsedGroup {
 
 export interface EndorsedWorker {
     id: string;
+    workerId: string;
+    workerIdCreatedAt: string;
     name: string;
     initials: string;
     endorsedSince: string;
@@ -850,7 +852,7 @@ export const ENDORSED_GROUPS: EndorsedGroup[] = [
 
 export const ENDORSED_WORKERS: EndorsedWorker[] = [
     {
-        id: 'ew1', name: 'Rachel Bautista', initials: 'RB',
+        id: 'ew1', workerId: 'W-0101', workerIdCreatedAt: '2026-01-14T09:00:00Z', name: 'Rachel Bautista', initials: 'RB',
         endorsedSince: 'Jan 2026', module: 'Module 2', lesson: 'Lesson 2', progress: 35,
         assignedGroup: 'Faith Forward', connectedSince: 'Jan 2026',
         currentModule: 'Module 2 — Life of a Winner', currentLesson: 'Lesson 2: The "I" That Matters Most',
@@ -866,7 +868,7 @@ export const ENDORSED_WORKERS: EndorsedWorker[] = [
         ],
     },
     {
-        id: 'ew2', name: 'Daniel Reyes', initials: 'DR',
+        id: 'ew2', workerId: 'W-0102', workerIdCreatedAt: '2026-01-18T10:00:00Z', name: 'Daniel Reyes', initials: 'DR',
         endorsedSince: 'Jan 2026', module: 'Module 2', lesson: 'Lesson 2', progress: 35,
         assignedGroup: 'Kingdom Builders', connectedSince: 'Jan 2026',
         currentModule: 'Module 2 — Life of a Winner', currentLesson: 'Lesson 2: The "I" That Matters Most',
@@ -887,6 +889,8 @@ export const ENDORSED_WORKERS: EndorsedWorker[] = [
 
 export interface C2SCoordinator {
     id: string;
+    workerId: string;
+    workerIdCreatedAt: string;
     initials: string;
     name: string;
     color: string;
@@ -902,7 +906,7 @@ export interface C2SCoordinator {
 
 export const CH_COORDINATORS: C2SCoordinator[] = [
     {
-        id: 'co1', initials: 'RC', name: 'Rosa Castillo', color: '#1E293B',
+        id: 'co1', workerId: 'W-0041', workerIdCreatedAt: '2024-02-01T10:00:00Z', initials: 'RC', name: 'Rosa Castillo', color: '#1E293B',
         barangay: 'Burol', phone: '+63 917 100 2001', email: 'rosa.c@cogdasmarinas.org',
         assignedPotential: 8, pendingAssignments: 2, avgAssignmentDays: 3,
         status: 'Active',
@@ -913,7 +917,7 @@ export const CH_COORDINATORS: C2SCoordinator[] = [
         ],
     },
     {
-        id: 'co2', initials: 'BM', name: 'Ben Macaraeg', color: '#0284C7',
+        id: 'co2', workerId: 'W-0042', workerIdCreatedAt: '2024-02-01T10:30:00Z', initials: 'BM', name: 'Ben Macaraeg', color: '#0284C7',
         barangay: 'Paliparan III', phone: '+63 918 200 3002', email: 'ben.m@cogdasmarinas.org',
         assignedPotential: 5, pendingAssignments: 1, avgAssignmentDays: 4,
         status: 'Active',
@@ -923,7 +927,7 @@ export const CH_COORDINATORS: C2SCoordinator[] = [
         ],
     },
     {
-        id: 'co3', initials: 'SA', name: 'Sofia Aguila', color: '#e91e8c',
+        id: 'co3', workerId: 'W-0045', workerIdCreatedAt: '2024-02-05T11:00:00Z', initials: 'SA', name: 'Sofia Aguila', color: '#e91e8c',
         barangay: 'Sampaloc I', phone: '+63 919 300 4003', email: 'sofia.a@cogdasmarinas.org',
         assignedPotential: 6, pendingAssignments: 3, avgAssignmentDays: 5,
         status: 'Active',
@@ -957,6 +961,8 @@ export interface ClusterMentorMentee {
 
 export interface ClusterMentor {
     id: string;
+    workerId: string;
+    workerIdCreatedAt: string;
     initials: string;
     name: string;
     color: string;
@@ -977,7 +983,7 @@ export interface ClusterMentor {
 
 export const CH_MENTORS: ClusterMentor[] = [
     {
-        id: 'cm1', initials: 'JD', name: 'Juan Dela Cruz', color: '#1E293B',
+        id: 'cm1', workerId: 'W-0071', workerIdCreatedAt: '2024-03-01T09:00:00Z', initials: 'JD', name: 'Juan Dela Cruz', color: '#1E293B',
         group: 'Orchard Residences', barangay: 'Burol',
         phone: '+63 917 123 4567', email: 'juan.dc@cogdasmarinas.org',
         numberOfGroups: 3, activeMentees: 5, groupCapacity: 12,
@@ -996,7 +1002,7 @@ export const CH_MENTORS: ClusterMentor[] = [
         ],
     },
     {
-        id: 'cm2', initials: 'PS', name: 'Pedro Santos', color: '#e91e8c',
+        id: 'cm2', workerId: 'W-0072', workerIdCreatedAt: '2024-03-01T09:15:00Z', initials: 'PS', name: 'Pedro Santos', color: '#e91e8c',
         group: 'DBB-B', barangay: 'Paliparan III',
         phone: '+63 918 234 5678', email: 'pedro.s@cogdasmarinas.org',
         numberOfGroups: 3, activeMentees: 4, groupCapacity: 11,
@@ -1014,7 +1020,7 @@ export const CH_MENTORS: ClusterMentor[] = [
         ],
     },
     {
-        id: 'cm3', initials: 'MR', name: 'Maria Reyes', color: '#0284C7',
+        id: 'cm3', workerId: 'W-0073', workerIdCreatedAt: '2024-03-01T09:30:00Z', initials: 'MR', name: 'Maria Reyes', color: '#0284C7',
         group: 'Greenfields 1', barangay: 'Sampaloc I',
         phone: '+63 919 345 6789', email: 'maria.r@cogdasmarinas.org',
         numberOfGroups: 2, activeMentees: 3, groupCapacity: 7,
@@ -1030,7 +1036,7 @@ export const CH_MENTORS: ClusterMentor[] = [
         ],
     },
     {
-        id: 'cm4', initials: 'LS', name: 'Lena Santos', color: '#e67700',
+        id: 'cm4', workerId: 'W-0075', workerIdCreatedAt: '2024-04-01T10:00:00Z', initials: 'LS', name: 'Lena Santos', color: '#e67700',
         group: 'Salitran Heights', barangay: 'Salitran III',
         phone: '+63 920 456 7890', email: 'lena.s@cogdasmarinas.org',
         numberOfGroups: 1, activeMentees: 2, groupCapacity: 10,
@@ -1334,6 +1340,8 @@ export const COORD_POTENTIAL_MENTEES: CoordPotentialMentee[] = [
 
 export interface CoordMentor {
     id: string;
+    workerId: string;
+    workerIdCreatedAt: string;
     initials: string;
     name: string;
     color: string;
@@ -1349,25 +1357,25 @@ export interface CoordMentor {
 
 export const COORD_MENTORS: CoordMentor[] = [
     {
-        id: 'cm1', initials: 'JD', name: 'Juan Dela Cruz', color: '#1E293B',
+        id: 'cm1', workerId: 'W-0071', workerIdCreatedAt: '2024-03-01T09:00:00Z', initials: 'JD', name: 'Juan Dela Cruz', color: '#1E293B',
         group: 'Orchard Residences', barangay: 'Burol',
         phone: '+63 917 123 4567', email: 'juan.dc@cogdasmarinas.org',
         activeMentees: 5, groupCapacity: 12, availableSlots: 7, status: 'Active',
     },
     {
-        id: 'cm2', initials: 'PS', name: 'Pedro Santos', color: '#e91e8c',
+        id: 'cm2', workerId: 'W-0072', workerIdCreatedAt: '2024-03-01T09:15:00Z', initials: 'PS', name: 'Pedro Santos', color: '#e91e8c',
         group: 'DBB-B', barangay: 'Paliparan III',
         phone: '+63 918 234 5678', email: 'pedro.s@cogdasmarinas.org',
         activeMentees: 4, groupCapacity: 11, availableSlots: 7, status: 'Active',
     },
     {
-        id: 'cm3', initials: 'MR', name: 'Maria Reyes', color: '#0284C7',
+        id: 'cm3', workerId: 'W-0073', workerIdCreatedAt: '2024-03-01T09:30:00Z', initials: 'MR', name: 'Maria Reyes', color: '#0284C7',
         group: 'Greenfields 1', barangay: 'Sampaloc I',
         phone: '+63 919 345 6789', email: 'maria.r@cogdasmarinas.org',
         activeMentees: 3, groupCapacity: 7, availableSlots: 4, status: 'Active',
     },
     {
-        id: 'cm4', initials: 'LS', name: 'Lena Santos', color: '#e67700',
+        id: 'cm4', workerId: 'W-0075', workerIdCreatedAt: '2024-04-01T10:00:00Z', initials: 'LS', name: 'Lena Santos', color: '#e67700',
         group: 'Salitran Heights', barangay: 'Salitran III',
         phone: '+63 920 456 7890', email: 'lena.s@cogdasmarinas.org',
         activeMentees: 2, groupCapacity: 10, availableSlots: 0, status: 'Inactive',
@@ -1579,6 +1587,8 @@ export const MH_CLUSTERS: OutreachCluster[] = [
 
 export interface MHCoordinator {
     id: string;
+    workerId: string;
+    workerIdCreatedAt: string;
     initials: string;
     name: string;
     color: string;
@@ -1589,16 +1599,18 @@ export interface MHCoordinator {
 }
 
 export const MH_COORDINATORS: MHCoordinator[] = [
-    { id: 'mhco1', initials: 'RC', name: 'Rosa Castillo',      color: '#e91e8c', cluster: 'Cluster 1', assignedPotentialMentees: 8,  activeMentors: 4, status: 'Active' },
-    { id: 'mhco2', initials: 'BM', name: 'Ben Macaraeg',       color: '#0284C7', cluster: 'Cluster 2', assignedPotentialMentees: 6,  activeMentors: 3, status: 'Active' },
-    { id: 'mhco3', initials: 'SA', name: 'Sofia Aguila',       color: '#0284C7', cluster: 'Cluster 3', assignedPotentialMentees: 10, activeMentors: 5, status: 'Active' },
-    { id: 'mhco4', initials: 'PB', name: 'Patricia Bautista',  color: '#e67700', cluster: 'Cluster 4', assignedPotentialMentees: 7,  activeMentors: 4, status: 'Active' },
-    { id: 'mhco5', initials: 'FR', name: 'Ferdinand Ramos',    color: '#1E293B', cluster: 'Cluster 5', assignedPotentialMentees: 5,  activeMentors: 3, status: 'Active' },
-    { id: 'mhco6', initials: 'MS', name: 'Maricel Santos',     color: '#1971c2', cluster: 'Cluster 6', assignedPotentialMentees: 9,  activeMentors: 4, status: 'Active' },
+    { id: 'mhco1', workerId: 'W-0041', workerIdCreatedAt: '2024-02-01T10:00:00Z', initials: 'RC', name: 'Rosa Castillo',      color: '#e91e8c', cluster: 'Cluster 1', assignedPotentialMentees: 8,  activeMentors: 4, status: 'Active' },
+    { id: 'mhco2', workerId: 'W-0042', workerIdCreatedAt: '2024-02-01T10:30:00Z', initials: 'BM', name: 'Ben Macaraeg',       color: '#0284C7', cluster: 'Cluster 2', assignedPotentialMentees: 6,  activeMentors: 3, status: 'Active' },
+    { id: 'mhco3', workerId: 'W-0045', workerIdCreatedAt: '2024-02-05T11:00:00Z', initials: 'SA', name: 'Sofia Aguila',       color: '#0284C7', cluster: 'Cluster 3', assignedPotentialMentees: 10, activeMentors: 5, status: 'Active' },
+    { id: 'mhco4', workerId: 'W-0046', workerIdCreatedAt: '2024-02-01T11:00:00Z', initials: 'PB', name: 'Patricia Bautista',  color: '#e67700', cluster: 'Cluster 4', assignedPotentialMentees: 7,  activeMentors: 4, status: 'Active' },
+    { id: 'mhco5', workerId: 'W-0048', workerIdCreatedAt: '2024-02-05T13:00:00Z', initials: 'FR', name: 'Ferdinand Ramos',    color: '#1E293B', cluster: 'Cluster 5', assignedPotentialMentees: 5,  activeMentors: 3, status: 'Active' },
+    { id: 'mhco6', workerId: 'W-0049', workerIdCreatedAt: '2024-02-05T13:30:00Z', initials: 'MS', name: 'Maricel Santos',     color: '#1971c2', cluster: 'Cluster 6', assignedPotentialMentees: 9,  activeMentors: 4, status: 'Active' },
 ];
 
 export interface MHMentor {
     id: string;
+    workerId: string;
+    workerIdCreatedAt: string;
     initials: string;
     name: string;
     color: string;
@@ -1611,29 +1623,29 @@ export interface MHMentor {
 }
 
 export const MH_ALL_MENTORS: MHMentor[] = [
-    { id: 'mhm1',  initials: 'JD', name: 'Juan Dela Cruz',      color: '#1E293B', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0001', dateAssigned: 'Jan 10, 2024' },
-    { id: 'mhm2',  initials: 'PS', name: 'Pedro Santos',        color: '#e91e8c', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0002', dateAssigned: 'Feb 5, 2024'  },
-    { id: 'mhm3',  initials: 'MR', name: 'Maria Reyes',         color: '#0284C7', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0003', dateAssigned: 'Mar 1, 2024'  },
-    { id: 'mhm4',  initials: 'LS', name: 'Lena Santos',         color: '#e67700', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0004', dateAssigned: 'Apr 15, 2024' },
-    { id: 'mhm5',  initials: 'AL', name: 'Ana Lim',             color: '#0284C7', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0005', dateAssigned: 'Jan 20, 2024' },
-    { id: 'mhm6',  initials: 'CV', name: 'Carmen Villanueva',   color: '#0284C7', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0006', dateAssigned: 'Feb 10, 2024' },
-    { id: 'mhm7',  initials: 'RB', name: 'Rico Bautista',       color: '#1971c2', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0007', dateAssigned: 'Mar 5, 2024'  },
-    { id: 'mhm8',  initials: 'EC', name: 'Ernesto Cruz',        color: '#1E293B', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0008', dateAssigned: 'Jan 8, 2024'  },
-    { id: 'mhm9',  initials: 'LT', name: 'Luz Torres',          color: '#e91e8c', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0009', dateAssigned: 'Feb 14, 2024' },
-    { id: 'mhm10', initials: 'NF', name: 'Noel Flores',         color: '#0284C7', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0010', dateAssigned: 'Mar 20, 2024' },
-    { id: 'mhm11', initials: 'AM', name: 'Alma Mendoza',        color: '#e67700', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0011', dateAssigned: 'Apr 1, 2024'  },
-    { id: 'mhm12', initials: 'DG', name: 'Dante Garcia',        color: '#0284C7', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Inactive', phone: '+63 917 000 0012', dateAssigned: 'May 5, 2024'  },
-    { id: 'mhm13', initials: 'CP', name: 'Carlos Pineda',       color: '#1971c2', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0013', dateAssigned: 'Jan 15, 2024' },
-    { id: 'mhm14', initials: 'FV', name: 'Fe Villarin',         color: '#e91e8c', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0014', dateAssigned: 'Feb 20, 2024' },
-    { id: 'mhm15', initials: 'BN', name: 'Bobby Natividad',     color: '#0284C7', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0015', dateAssigned: 'Mar 10, 2024' },
-    { id: 'mhm16', initials: 'GQ', name: 'Gloria Quizon',       color: '#1E293B', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0016', dateAssigned: 'Apr 25, 2024' },
-    { id: 'mhm17', initials: 'TC', name: 'Tomas Castillo',      color: '#e67700', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0017', dateAssigned: 'Jan 30, 2024' },
-    { id: 'mhm18', initials: 'RI', name: 'Rowena Ignacio',      color: '#0284C7', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0018', dateAssigned: 'Feb 28, 2024' },
-    { id: 'mhm19', initials: 'VB', name: 'Victor Bernardo',     color: '#1971c2', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 2, status: 'Active',   phone: '+63 917 000 0019', dateAssigned: 'Mar 15, 2024' },
-    { id: 'mhm20', initials: 'HM', name: 'Helen Macapagal',     color: '#1E293B', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0020', dateAssigned: 'Jan 5, 2024'  },
-    { id: 'mhm21', initials: 'JP', name: 'Joel Panganiban',     color: '#e91e8c', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0021', dateAssigned: 'Feb 12, 2024' },
-    { id: 'mhm22', initials: 'RA', name: 'Rosario Aquino',      color: '#0284C7', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0022', dateAssigned: 'Mar 22, 2024' },
-    { id: 'mhm23', initials: 'EE', name: 'Eduardo Esperanza',   color: '#e67700', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0023', dateAssigned: 'Apr 10, 2024' },
+    { id: 'mhm1',  workerId: 'W-0071', workerIdCreatedAt: '2024-03-01T09:00:00Z', initials: 'JD', name: 'Juan Dela Cruz',      color: '#1E293B', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0001', dateAssigned: 'Jan 10, 2024' },
+    { id: 'mhm2',  workerId: 'W-0072', workerIdCreatedAt: '2024-03-01T09:15:00Z', initials: 'PS', name: 'Pedro Santos',        color: '#e91e8c', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0002', dateAssigned: 'Feb 5, 2024'  },
+    { id: 'mhm3',  workerId: 'W-0073', workerIdCreatedAt: '2024-03-01T09:30:00Z', initials: 'MR', name: 'Maria Reyes',         color: '#0284C7', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0003', dateAssigned: 'Mar 1, 2024'  },
+    { id: 'mhm4',  workerId: 'W-0075', workerIdCreatedAt: '2024-04-01T10:00:00Z', initials: 'LS', name: 'Lena Santos',         color: '#e67700', cluster: 'Cluster 1', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0004', dateAssigned: 'Apr 15, 2024' },
+    { id: 'mhm5',  workerId: 'W-0065', workerIdCreatedAt: '2024-01-20T09:00:00Z', initials: 'AL', name: 'Ana Lim',             color: '#0284C7', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0005', dateAssigned: 'Jan 20, 2024' },
+    { id: 'mhm6',  workerId: 'W-0074', workerIdCreatedAt: '2024-02-10T14:00:00Z', initials: 'CV', name: 'Carmen Villanueva',   color: '#0284C7', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0006', dateAssigned: 'Feb 10, 2024' },
+    { id: 'mhm7',  workerId: 'W-0076', workerIdCreatedAt: '2024-03-05T09:00:00Z', initials: 'RB', name: 'Rico Bautista',       color: '#1971c2', cluster: 'Cluster 2', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0007', dateAssigned: 'Mar 5, 2024'  },
+    { id: 'mhm8',  workerId: 'W-0077', workerIdCreatedAt: '2024-01-08T09:00:00Z', initials: 'EC', name: 'Ernesto Cruz',        color: '#1E293B', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0008', dateAssigned: 'Jan 8, 2024'  },
+    { id: 'mhm9',  workerId: 'W-0078', workerIdCreatedAt: '2024-02-14T09:00:00Z', initials: 'LT', name: 'Luz Torres',          color: '#e91e8c', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0009', dateAssigned: 'Feb 14, 2024' },
+    { id: 'mhm10', workerId: 'W-0079', workerIdCreatedAt: '2024-03-20T09:00:00Z', initials: 'NF', name: 'Noel Flores',         color: '#0284C7', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0010', dateAssigned: 'Mar 20, 2024' },
+    { id: 'mhm11', workerId: 'W-0080', workerIdCreatedAt: '2024-04-01T09:00:00Z', initials: 'AM', name: 'Alma Mendoza',        color: '#e67700', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0011', dateAssigned: 'Apr 1, 2024'  },
+    { id: 'mhm12', workerId: 'W-0081', workerIdCreatedAt: '2024-05-05T09:00:00Z', initials: 'DG', name: 'Dante Garcia',        color: '#0284C7', cluster: 'Cluster 3', totalGroups: 1, activeMentees: 3, status: 'Inactive', phone: '+63 917 000 0012', dateAssigned: 'May 5, 2024'  },
+    { id: 'mhm13', workerId: 'W-0082', workerIdCreatedAt: '2024-01-15T09:00:00Z', initials: 'CP', name: 'Carlos Pineda',       color: '#1971c2', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0013', dateAssigned: 'Jan 15, 2024' },
+    { id: 'mhm14', workerId: 'W-0083', workerIdCreatedAt: '2024-02-20T09:00:00Z', initials: 'FV', name: 'Fe Villarin',         color: '#e91e8c', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0014', dateAssigned: 'Feb 20, 2024' },
+    { id: 'mhm15', workerId: 'W-0084', workerIdCreatedAt: '2024-03-10T09:00:00Z', initials: 'BN', name: 'Bobby Natividad',     color: '#0284C7', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0015', dateAssigned: 'Mar 10, 2024' },
+    { id: 'mhm16', workerId: 'W-0085', workerIdCreatedAt: '2024-04-25T09:00:00Z', initials: 'GQ', name: 'Gloria Quizon',       color: '#1E293B', cluster: 'Cluster 4', totalGroups: 1, activeMentees: 2, status: 'Inactive', phone: '+63 917 000 0016', dateAssigned: 'Apr 25, 2024' },
+    { id: 'mhm17', workerId: 'W-0086', workerIdCreatedAt: '2024-01-30T09:00:00Z', initials: 'TC', name: 'Tomas Castillo',      color: '#e67700', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0017', dateAssigned: 'Jan 30, 2024' },
+    { id: 'mhm18', workerId: 'W-0087', workerIdCreatedAt: '2024-02-28T09:00:00Z', initials: 'RI', name: 'Rowena Ignacio',      color: '#0284C7', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0018', dateAssigned: 'Feb 28, 2024' },
+    { id: 'mhm19', workerId: 'W-0088', workerIdCreatedAt: '2024-03-15T09:00:00Z', initials: 'VB', name: 'Victor Bernardo',     color: '#1971c2', cluster: 'Cluster 5', totalGroups: 1, activeMentees: 2, status: 'Active',   phone: '+63 917 000 0019', dateAssigned: 'Mar 15, 2024' },
+    { id: 'mhm20', workerId: 'W-0089', workerIdCreatedAt: '2024-01-05T09:00:00Z', initials: 'HM', name: 'Helen Macapagal',     color: '#1E293B', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 5, status: 'Active',   phone: '+63 917 000 0020', dateAssigned: 'Jan 5, 2024'  },
+    { id: 'mhm21', workerId: 'W-0090', workerIdCreatedAt: '2024-02-12T09:00:00Z', initials: 'JP', name: 'Joel Panganiban',     color: '#e91e8c', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 4, status: 'Active',   phone: '+63 917 000 0021', dateAssigned: 'Feb 12, 2024' },
+    { id: 'mhm22', workerId: 'W-0091', workerIdCreatedAt: '2024-03-22T09:00:00Z', initials: 'RA', name: 'Rosario Aquino',      color: '#0284C7', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0022', dateAssigned: 'Mar 22, 2024' },
+    { id: 'mhm23', workerId: 'W-0092', workerIdCreatedAt: '2024-04-10T09:00:00Z', initials: 'EE', name: 'Eduardo Esperanza',   color: '#e67700', cluster: 'Cluster 6', totalGroups: 1, activeMentees: 3, status: 'Active',   phone: '+63 917 000 0023', dateAssigned: 'Apr 10, 2024' },
 ];
 
 export interface MHPotentialMentee {

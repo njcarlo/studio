@@ -1,6 +1,7 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ModernDatePicker, { formatIsoDate, parseIsoDate } from '@/components/ModernDatePicker';
 import { useState } from 'react';
 import type { Mentee } from '@/lib/data';
 
@@ -85,30 +86,17 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
         const fullName = `${firstName.trim()} ${lastName.trim()}`;
         const initials = `${firstName.trim()[0] ?? ''}${lastName.trim()[0] ?? ''}`.toUpperCase();
 
-        // Calculate age from birthday
+        // Calculate age and formatted display from location-agnostic calendar date (no UTC shift)
         let age = 0;
-        if (birthday) {
-            const birth = new Date(birthday);
-            const today = new Date();
-            age = today.getFullYear() - birth.getFullYear();
-            const m = today.getMonth() - birth.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-            if (age < 0) age = 0;
-        }
-
-        // Format birthday for display (mm/dd/yyyy)
         let birthdayDisplay = '';
-        if (birthday) {
-            const parts = birthday.split('-');
-            if (parts.length === 3) {
-                birthdayDisplay = `${parts[1]}/${parts[2]}/${parts[0]}`;
-            } else {
-                birthdayDisplay = new Date(birthday).toLocaleDateString('en-US', {
-                    month: '2-digit',
-                    day: '2-digit',
-                    year: 'numeric',
-                });
-            }
+        const parsedBirth = birthday ? parseIsoDate(birthday) : null;
+        if (parsedBirth) {
+            const today = new Date();
+            age = today.getFullYear() - parsedBirth.year;
+            const m = (today.getMonth() + 1) - parsedBirth.month;
+            if (m < 0 || (m === 0 && today.getDate() < parsedBirth.day)) age--;
+            if (age < 0) age = 0;
+            birthdayDisplay = `${String(parsedBirth.month).padStart(2, '0')}/${String(parsedBirth.day).padStart(2, '0')}/${parsedBirth.year}`;
         }
 
         const now = new Date();
@@ -167,11 +155,16 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
             className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
             onClick={(e) => {
-                if (e.target === e.currentTarget && !isSubmitting) onClose();
+                if (e.target !== e.currentTarget) return;
+                if (showPrivacyPolicy) {
+                    setShowPrivacyPolicy(false);
+                    return;
+                }
+                if (!isSubmitting) onClose();
             }}
         >
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-200"
+                className={`bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-200 ${showPrivacyPolicy ? 'hidden' : ''}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close Button */}
@@ -185,20 +178,20 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                     ×
                 </button>
 
-                <form onSubmit={handleSubmit} className="p-5 sm:p-7">
+                <form onSubmit={handleSubmit} className="p-5 sm:p-6">
                     {/* Header */}
-                    <div className="mb-6">
-                        <h2 className="text-xl font-black text-gray-900 mb-1">Add Mentee</h2>
+                    <div className="mb-4">
+                        <h2 className="text-xl font-black text-gray-900 mb-1.5">Add Mentee</h2>
                         <p className="text-sm text-gray-500">
                             Add a new mentee to your mentoring group.
                         </p>
                     </div>
 
                     {/* First Name + Last Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                First Name <span className="text-[#D97706]">*</span>
+                                First Name <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
                             <input
                                 type="text"
@@ -209,7 +202,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.firstName && !isFirstNameValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#D97706]'
+                                        : 'border-gray-200 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52]'
                                 }`}
                             />
                             {touched.firstName && !isFirstNameValid && (
@@ -218,7 +211,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Last Name <span className="text-[#D97706]">*</span>
+                                Last Name <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
                             <input
                                 type="text"
@@ -229,7 +222,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.lastName && !isLastNameValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#D97706]'
+                                        : 'border-gray-200 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52]'
                                 }`}
                             />
                             {touched.lastName && !isLastNameValid && (
@@ -242,7 +235,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email Address <span className="text-[#D97706]">*</span>
+                                Email Address <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
                             <input
                                 type="email"
@@ -253,7 +246,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.email && !isEmailFieldValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#D97706]'
+                                        : 'border-gray-200 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52]'
                                 }`}
                             />
                             {touched.email && !isEmailFieldValid && (
@@ -264,7 +257,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone Number <span className="text-[#D97706]">*</span>
+                                Phone Number <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
                             <input
                                 type="tel"
@@ -275,7 +268,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                 className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
                                     touched.phone && !isPhoneValid
                                         ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
-                                        : 'border-gray-200 focus:ring-[#D97706]'
+                                        : 'border-gray-200 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52]'
                                 }`}
                             />
                             {touched.phone && !isPhoneValid && (
@@ -287,20 +280,23 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                     {/* Birthday + Gender */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Birthday <span className="text-[#D97706]">*</span>
+                            <label htmlFor="add-mentee-birthday" className="block text-sm font-medium text-gray-700 mb-1">
+                                Birthday <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
-                            <input
-                                type="date"
+                            <ModernDatePicker
+                                id="add-mentee-birthday"
+                                name="birthday"
                                 value={birthday}
-                                onChange={(e) => setBirthday(e.target.value)}
+                                onChange={setBirthday}
                                 onBlur={() => markTouched('birthday')}
-                                placeholder="mm/dd/yyyy"
-                                className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
-                                    touched.birthday && !isBirthdayValid
-                                        ? 'border-red-400 focus:ring-red-400 bg-red-50/20 text-gray-700'
-                                        : 'border-gray-200 focus:ring-[#D97706] text-gray-700'
-                                }`}
+                                placeholder="Select birthday"
+                                max={formatIsoDate({
+                                    year: new Date().getFullYear(),
+                                    month: new Date().getMonth() + 1,
+                                    day: new Date().getDate(),
+                                })}
+                                hasError={Boolean(touched.birthday && !isBirthdayValid)}
+                                required
                             />
                             {touched.birthday && !isBirthdayValid && (
                                 <p className="text-xs text-red-500 mt-1">Birthday is required.</p>
@@ -308,7 +304,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Gender <span className="text-[#D97706]">*</span>
+                                Gender <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                             </label>
                             <CustomSelect
                                 value={gender}
@@ -336,14 +332,14 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                             placeholder="Facebook URL"
                             value={facebook}
                             onChange={(e) => setFacebook(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-400 text-gray-800"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52] placeholder:text-gray-400 text-gray-800"
                         />
                     </div>
 
                     {/* First Time Attended Church Of God (Month & Year) */}
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            First Time Attended Church Of God (Month &amp; Year) <span className="text-[#D97706]">*</span>
+                            First Time Attended Church Of God (Month &amp; Year) <span className="text-[#0E5B52] dark:text-[#5EEAD4]">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-4">
                             <CustomSelect
@@ -384,13 +380,13 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Add any initial notes or questions about this mentee..."
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none text-gray-800 placeholder:text-gray-400"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5B52]/25 focus:border-[#0E5B52] resize-none text-gray-800 placeholder:text-gray-400"
                         />
                     </div>
 
                     {/* Privacy Agreement */}
                     <div className="mb-6">
-                        <div className="flex items-start gap-2.5 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
+                        <div className="flex items-start gap-2.5 bg-[#F8FAFC] dark:bg-[#222933] p-3.5 rounded-xl border border-[#E2E8E5] dark:border-[#2A323D]">
                             <input
                                 id="add-mentee-privacy"
                                 type="checkbox"
@@ -399,9 +395,9 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                     setAgreed(e.target.checked);
                                     markTouched('agreed');
                                 }}
-                                className="mt-0.5 w-4 h-4 accent-[#D97706] cursor-pointer shrink-0 rounded"
+                                className="mt-0.5 w-4 h-4 accent-[#0E5B52] cursor-pointer shrink-0 rounded"
                             />
-                            <label htmlFor="add-mentee-privacy" className="text-xs text-gray-600 cursor-pointer select-none leading-relaxed">
+                            <label htmlFor="add-mentee-privacy" className="text-xs text-[#64748B] dark:text-[#9BA7B4] cursor-pointer select-none leading-relaxed">
                                 I agree to the{' '}
                                 <button
                                     type="button"
@@ -409,7 +405,7 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                                         e.preventDefault();
                                         setShowPrivacyPolicy(true);
                                     }}
-                                    className="text-[#D97706] font-semibold underline hover:opacity-80 transition-opacity"
+                                    className="text-[#0E5B52] dark:text-[#5EEAD4] font-semibold underline hover:opacity-80 transition-opacity cursor-pointer"
                                 >
                                     Data privacy Policy
                                 </button>
@@ -427,14 +423,14 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                             type="button"
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="px-6 py-2.5 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
+                            className="h-[2.375rem] px-5 py-2 rounded-[0.625rem] border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] text-[0.8125rem] font-semibold text-[#181F26] dark:text-[#E6EDF3] hover:bg-[#F8FAFC] dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center leading-none"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={!isFormValid || isSubmitting}
-                            className="px-8 py-2.5 rounded-full text-sm font-bold text-white transition-all shadow-sm flex items-center justify-center min-w-[125px] bg-[#1d6fd8] hover:bg-[#1558b0] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="h-[2.375rem] px-5 py-2 rounded-[0.625rem] text-[0.8125rem] font-semibold text-white transition-all shadow-sm inline-flex items-center justify-center leading-none bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <span className="flex items-center gap-2">
@@ -452,50 +448,49 @@ export default function AddMenteeModal({ onClose, onSuccess, defaultGroup = 'Orc
                 </form>
             </div>
 
-            {/* Privacy Policy Modal */}
+            {/* Privacy Policy Modal (swaps inside single active backdrop) */}
             {showPrivacyPolicy && (
                 <div
-                    className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center p-4"
-                    onClick={() => setShowPrivacyPolicy(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative max-h-[80vh] overflow-y-auto animate-in fade-in duration-200"
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative max-h-[80vh] overflow-y-auto animate-in fade-in duration-200"
-                        onClick={(e) => e.stopPropagation()}
+                    <button
+                        type="button"
+                        onClick={() => setShowPrivacyPolicy(false)}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-light"
+                        aria-label="Close privacy policy"
                     >
+                        ×
+                    </button>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Data Privacy Policy</h3>
+                    <p className="text-xs text-gray-500 mb-4">Church of God Dasmariñas — Connect2Souls Discipleship Ministry</p>
+                    <div className="text-xs text-gray-600 space-y-3 leading-relaxed">
+                        <p>
+                            Church of God Dasmariñas is committed to protecting the privacy and personal data of all members and mentees in accordance with the Data Privacy Act of 2012 (RA 10173).
+                        </p>
+                        <p>
+                            <strong>1. Information Collection:</strong> Information collected through this form (such as full name, contact details, birth date, and spiritual journey milestones) is used strictly for discipleship tracking, spiritual mentoring, and pastoral care.
+                        </p>
+                        <p>
+                            <strong>2. Data Protection:</strong> Personal information is handled with strict confidentiality and accessible only by authorized church mentors, coordinators, and ministry leaders.
+                        </p>
+                        <p>
+                            <strong>3. Consent:</strong> By agreeing to this policy, you consent to the collection and processing of the mentee information for church discipleship and community activities.
+                        </p>
+                    </div>
+                    <div className="mt-6 flex justify-end">
                         <button
-                            onClick={() => setShowPrivacyPolicy(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-light"
+                            type="button"
+                            onClick={() => {
+                                setAgreed(true);
+                                setShowPrivacyPolicy(false);
+                            }}
+                            className="px-[1.375rem] py-[0.625rem] rounded-xl text-xs font-bold text-white bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                         >
-                            ×
+                            I Understand &amp; Agree
                         </button>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">Data Privacy Policy</h3>
-                        <p className="text-xs text-gray-500 mb-4">Church of God Dasmariñas — Connect2Souls Discipleship Ministry</p>
-                        <div className="text-xs text-gray-600 space-y-3 leading-relaxed">
-                            <p>
-                                Church of God Dasmariñas is committed to protecting the privacy and personal data of all members and mentees in accordance with the Data Privacy Act of 2012 (RA 10173).
-                            </p>
-                            <p>
-                                <strong>1. Information Collection:</strong> Information collected through this form (such as full name, contact details, birth date, and spiritual journey milestones) is used strictly for discipleship tracking, spiritual mentoring, and pastoral care.
-                            </p>
-                            <p>
-                                <strong>2. Data Protection:</strong> Personal information is handled with strict confidentiality and accessible only by authorized church mentors, coordinators, and ministry leaders.
-                            </p>
-                            <p>
-                                <strong>3. Consent:</strong> By agreeing to this policy, you consent to the collection and processing of the mentee information for church discipleship and community activities.
-                            </p>
-                        </div>
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setAgreed(true);
-                                    setShowPrivacyPolicy(false);
-                                }}
-                                className="px-5 py-2 rounded-full text-xs font-bold text-white bg-[#D97706] hover:bg-[#B45309] transition-colors"
-                            >
-                                I Understand &amp; Agree
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

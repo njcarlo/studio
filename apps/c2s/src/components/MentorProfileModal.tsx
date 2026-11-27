@@ -1,7 +1,11 @@
 'use client';
 
+import { WorkerSinceValue } from '@/components/WorkerIdentityBits';
+
 interface MentorProfile {
     id: string;
+    workerId?: string;
+    workerIdCreatedAt?: string;
     initials: string;
     name: string;
     avatar: string;
@@ -65,7 +69,7 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                                         : 'bg-gray-400 text-white'
                                 }`}>{mentor.status}</span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">{mentor.id}</p>
+                            <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] mt-0.5 tabular-nums">{mentor.workerId ?? mentor.id}</p>
                         </div>
                     </div>
 
@@ -73,6 +77,14 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                     <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
+                            <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                <span className="text-xs text-gray-500">Worker ID</span>
+                                <span className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{mentor.workerId ?? mentor.id}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                <span className="text-xs text-gray-500">Worker Since (ID Issued)</span>
+                                <WorkerSinceValue createdAt={mentor.workerIdCreatedAt} className="text-xs justify-end" />
+                            </div>
                             {[
                                 { label: 'Group',      value: mentor.group },
                                 { label: 'Barangay',   value: mentor.barangay },

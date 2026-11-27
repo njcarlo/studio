@@ -1,11 +1,22 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ConfirmModal from '@/components/ConfirmModal';
+import { WorkerSinceValue } from '@/components/WorkerIdentityBits';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { useTheme } from '@/lib/theme-context';
 import { useFontSize, FONT_SIZE_MIN, FONT_SIZE_MAX, FONT_SIZE_DEFAULT, FONT_SIZE_PRESETS } from '@/lib/font-size-context';
 
-export type MySettingsSection = 'display' | 'change-password' | 'login-security' | 'help' | 'report';
+export type MySettingsSection = 'profile' | 'display' | 'change-password' | 'login-security' | 'help' | 'report';
+
+const ROLE_DISPLAY_LABEL: Record<string, string> = {
+    admin: 'C2S Admin',
+    ministry_head: 'Ministry Head',
+    cluster_head: 'Cluster Head',
+    c2s_coordinator: 'C2S Coordinator',
+    mentor: 'Mentor',
+};
 
 const MOCK_DEVICES = [
     { id: '1', name: 'Chrome on Windows', location: 'Dasmariñas, Cavite', time: 'Active now', current: true },
@@ -14,6 +25,7 @@ const MOCK_DEVICES = [
 ];
 
 export const MY_SETTINGS_ITEMS: { key: MySettingsSection; label: string; sub: string }[] = [
+    { key: 'profile', label: 'My Profile', sub: 'View your Worker ID, issue date, role, and account details.' },
     { key: 'display', label: 'Display & Font Size', sub: 'Customize theme appearance and interface text size.' },
     { key: 'change-password', label: 'Change Password', sub: 'Update your account password to keep your account secure.' },
     { key: 'login-security', label: 'Login Security', sub: 'Review active sessions and manage logged-in devices.' },
@@ -38,6 +50,7 @@ export interface SidebarNavItem {
     key: string;
     label: string;
     icon: string;
+    iconKind?: 'fill' | 'stroke';
     badge?: number;
     badgeColor?: string;
 }
@@ -62,7 +75,7 @@ export function SidebarNavList({
     activeKey,
     onSelect,
     collapsed = false,
-    accentColor = '#D97706',
+    accentColor = '#FFFFFF',
 }: {
     entries: SidebarNavEntry[];
     activeKey: string | null;
@@ -87,6 +100,32 @@ export function SidebarNavList({
         onSelect(key);
     }
 
+    function renderIcon(icon: string, iconKind: 'fill' | 'stroke' | undefined, size: number, active: boolean) {
+        if (iconKind === 'stroke') {
+            return (
+                <svg
+                    className="shrink-0"
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d={icon} />
+                </svg>
+            );
+        }
+        return (
+            <svg className="shrink-0" width={size} height={size} viewBox="0 0 24 24" fill={active ? accentColor : '#9BA7B4'} aria-hidden="true">
+                <path d={icon} />
+            </svg>
+        );
+    }
+
     return (
         <nav className={`flex-1 overflow-y-auto scrollbar-none ${collapsed ? 'px-3 md:px-2' : 'px-3'}`}>
             {/* Expanded & Mobile Drawer View (with category dropdowns) */}
@@ -106,14 +145,12 @@ export function SidebarNavList({
                                         : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'
                                 }`}
                             >
-                                <svg className="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill={isActive ? accentColor : '#aaa'}>
-                                    <path d={item.icon} />
-                                </svg>
+                                {renderIcon(item.icon, item.iconKind, 18, isActive)}
                                 <span className="flex-1 truncate">{item.label}</span>
                                 {item.badge !== undefined && item.badge > 0 && (
                                     <span
                                         className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-white shrink-0"
-                                        style={{ background: item.badgeColor ?? '#D97706' }}
+                                        style={{ background: item.badgeColor ?? '#334155' }}
                                     >
                                         {item.badge}
                                     </span>
@@ -126,7 +163,7 @@ export function SidebarNavList({
                     const groupActive = group.items.some(i => i.key === activeKey);
                     const isOpen = Boolean(openGroups[group.id]);
                     const totalBadge = group.items.reduce((sum, i) => sum + (i.badge ?? 0), 0);
-                    const badgeBg = group.items.find(i => (i.badge ?? 0) > 0)?.badgeColor ?? '#D97706';
+                    const badgeBg = group.items.find(i => (i.badge ?? 0) > 0)?.badgeColor ?? '#334155';
 
                     return (
                         <div key={group.id} className="flex flex-col">
@@ -135,12 +172,12 @@ export function SidebarNavList({
                                 onClick={() => toggleGroup(group.id)}
                                 className={`flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors w-full text-left ${
                                     groupActive || isOpen
-                                        ? 'text-gray-800 dark:text-gray-100 bg-white/50 dark:bg-white/5'
-                                        : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'
+                                        ? 'bg-[#242D37] text-white'
+                                        : 'text-[#9BA7B4] hover:bg-white/60 dark:hover:bg-white/10'
                                 }`}
                             >
                                 <span className="flex items-center gap-3 min-w-0">
-                                    <svg className="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill={groupActive || isOpen ? accentColor : '#aaa'}>
+                                    <svg className="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill={groupActive || isOpen ? accentColor : '#9BA7B4'}>
                                         <path d={group.icon} />
                                     </svg>
                                     <span className="truncate">{group.label}</span>
@@ -181,18 +218,16 @@ export function SidebarNavList({
                                                 onClick={() => handleSelect(sub.key)}
                                                 className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors w-full text-left ${
                                                     isSubActive
-                                                        ? 'nav-item-active text-gray-800 shadow-sm'
-                                                        : 'text-gray-500 hover:bg-white/70 hover:text-gray-800 dark:hover:bg-white/10'
+                                                        ? 'nav-item-active text-white shadow-sm'
+                                                        : 'text-[#9BA7B4] hover:bg-white/70 hover:text-white dark:hover:bg-white/10'
                                                 }`}
                                             >
-                                                <svg className="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill={isSubActive ? accentColor : '#aaa'}>
-                                                    <path d={sub.icon} />
-                                                </svg>
+                                                {renderIcon(sub.icon, sub.iconKind, 16, isSubActive)}
                                                 <span className="flex-1 truncate">{sub.label}</span>
                                                 {sub.badge !== undefined && sub.badge > 0 && (
                                                     <span
                                                         className="ml-auto text-[10px] font-bold min-w-[1.125rem] min-h-[1.125rem] px-1 flex items-center justify-center rounded-full text-white shrink-0"
-                                                        style={{ background: sub.badgeColor ?? '#D97706' }}
+                                                        style={{ background: sub.badgeColor ?? '#334155' }}
                                                     >
                                                         {sub.badge}
                                                     </span>
@@ -231,13 +266,11 @@ export function SidebarNavList({
                                                     : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'
                                             }`}
                                         >
-                                            <svg className="shrink-0 w-5 h-5" width="20" height="20" viewBox="0 0 24 24" fill={isActive ? accentColor : '#aaa'}>
-                                                <path d={item.icon} />
-                                            </svg>
+                                            {renderIcon(item.icon, item.iconKind, 20, isActive)}
                                             {item.badge !== undefined && item.badge > 0 && (
                                                 <span
-                                                    className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full text-white font-bold sidebar-badge-collapsed ring-2 ring-[#f4f5f7] dark:ring-[#111827]"
-                                                    style={{ background: item.badgeColor ?? '#D97706' }}
+                                                    className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full text-white font-bold sidebar-badge-collapsed ring-2 ring-[#181F26]"
+                                                    style={{ background: item.badgeColor ?? '#334155' }}
                                                 >
                                                     {item.badge}
                                                 </span>
@@ -326,12 +359,12 @@ export function SidebarSettingsDropdown({
                 aria-label={label}
                 className={`flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors w-full text-left ${collapsed ? 'md:justify-center md:px-0 md:w-10 md:h-10 md:mx-auto' : ''
                     } ${isAnyActive || (open && !collapsed)
-                        ? 'bg-[#D97706]/10 text-[#D97706]'
+                        ? 'nav-item-active text-white shadow-sm'
                         : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'
                     }`}
             >
                 <span className="flex items-center gap-2.5">
-                    <svg className={`shrink-0 ${collapsed ? 'md:w-5 md:h-5' : ''}`} width="18" height="18" viewBox="0 0 24 24" fill={isAnyActive || (open && !collapsed) ? '#D97706' : '#aaa'}>
+                    <svg className={`shrink-0 ${collapsed ? 'md:w-5 md:h-5' : ''}`} width="18" height="18" viewBox="0 0 24 24" fill={isAnyActive || (open && !collapsed) ? '#FFFFFF' : '#94A3B8'}>
                         <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                     </svg>
                     <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
@@ -358,7 +391,7 @@ export function SidebarSettingsDropdown({
                             type="button"
                             onClick={() => { scrollDashboardToTop(); extraItem.onClick(); }}
                             className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left w-full ${extraItem.active
-                                ? 'bg-[#D97706] text-white shadow-sm'
+                                ? 'bg-[#242D37] text-white shadow-sm'
                                 : 'text-gray-500 hover:bg-white/70 hover:text-gray-800'
                                 }`}
                         >
@@ -373,7 +406,7 @@ export function SidebarSettingsDropdown({
                                 type="button"
                                 onClick={() => { scrollDashboardToTop(); onSelect(item.key); }}
                                 className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left w-full ${active
-                                    ? 'bg-[#D97706] text-white shadow-sm'
+                                    ? 'bg-[#242D37] text-white shadow-sm'
                                     : 'text-gray-500 hover:bg-white/70 hover:text-gray-800'
                                     }`}
                             >
@@ -392,6 +425,7 @@ export function SidebarSettingsDropdown({
  * (matches Image 3 layout, keeping original C2S settings content).
  */
 export function SettingsPageView({ section }: { section: MySettingsSection }) {
+    const { user } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { fontSize, setFontSize } = useFontSize();
 
@@ -410,10 +444,19 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
     // Report state
     const [reportCategory, setReportCategory] = useState<'Bug / Error' | 'Feature Request' | 'Incorrect Data' | 'Other'>('Bug / Error');
     const [reportText, setReportText] = useState('');
+    const [reportError, setReportError] = useState('');
     const [reportSent, setReportSent] = useState(false);
+    const [showReportConfirm, setShowReportConfirm] = useState(false);
 
     // Login security state
     const [devices, setDevices] = useState(MOCK_DEVICES);
+    const [confirmDeviceLogout, setConfirmDeviceLogout] = useState<
+        | { mode: 'single'; id: string; name: string; location: string }
+        | { mode: 'all'; count: number }
+        | null
+    >(null);
+    const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+    const [showEmailConfirm, setShowEmailConfirm] = useState(false);
 
     const isDark = theme === 'dark';
     const fontPct = ((fontSize - FONT_SIZE_MIN) / (FONT_SIZE_MAX - FONT_SIZE_MIN)) * 100;
@@ -433,30 +476,36 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
 
     function handleReport(e: React.FormEvent) {
         e.preventDefault();
-        if (reportText.trim().length < 10) return;
-        setReportSent(true);
-        setReportText('');
+        if (reportText.trim().length < 10) {
+            setReportError('Please describe the problem in detail (at least 10 characters).');
+            return;
+        }
+        setReportError('');
+        setShowReportConfirm(true);
     }
 
-    function logOutDevice(id: string) {
+    function confirmReportSubmit() {
+        setShowReportConfirm(false);
+        setReportSent(true);
+        setReportText('');
+        setReportError('');
+    }
+
+    function logOutDevice(id: string, name?: string) {
         setDevices(prev => prev.filter(d => d.id !== id));
+        setSessionNotice(name ? `Signed out ${name}.` : 'Device session signed out.');
     }
 
     function logOutAll() {
         setDevices(prev => prev.filter(d => d.current));
+        setSessionNotice('Signed out all other recognized device sessions.');
     }
 
-    function renderSectionHeader(badge: string, title: string, description: string) {
+    function renderSectionHeader(_badge: string, title: string, description: string) {
         return (
-            <div>
-                <span
-                    data-pill="true"
-                    className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3"
-                >
-                    {badge}
-                </span>
-                <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">{title}</h2>
-                <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1 leading-relaxed">{description}</p>
+            <div className="mb-6">
+                <h2 className="text-[1.25rem] sm:text-[1.375rem] font-bold tracking-[-0.015em] text-[#0F4C45] dark:text-slate-100 leading-snug mb-[0.375rem]">{title}</h2>
+                <p className="text-[0.9375rem] text-[#6B665F] dark:text-slate-400 leading-[1.5] max-w-[65ch]">{description}</p>
             </div>
         );
     }
@@ -465,15 +514,101 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
         <div className="w-full">
             {/* Page Header */}
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">{meta.label}</h1>
-                <p className="text-sm text-gray-400 mt-1">{meta.sub}</p>
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight mb-[0.375rem]">{meta.label}</h1>
+                <p className="text-[0.9375rem] text-gray-400 leading-[1.5]">{meta.sub}</p>
             </div>
 
             {/* Full-Width Elevated Main Card */}
             <div
-                className="w-full bg-white dark:bg-[#1E293B] rounded-[20px] border border-[#E2E8F0] dark:border-[#334155] p-6 sm:p-8"
+                className="w-full bg-white dark:bg-[#1E293B] rounded-[20px] border border-[#E2E8F0] dark:border-[#334155] p-8"
                 style={{ boxShadow: '0 10px 28px -6px rgba(15, 76, 69, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.04)' }}
             >
+
+                {/* ── 0. My Profile / Account View ── */}
+                {section === 'profile' && user && (
+                    <div className="w-full">
+                        {renderSectionHeader(
+                            'ACCOUNT PROFILE',
+                            'Worker Account & Identity',
+                            'Your official Connect2Souls worker credentials, ministry assignment, and ID issuance record.'
+                        )}
+
+                        <div
+                            data-settings-card="true"
+                            className="mt-6 rounded-2xl border border-[#E2E8E5] dark:border-[#2A323D] bg-[#F8FAFC] dark:bg-[#222933] p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4"
+                        >
+                            <div className="flex items-center gap-4 min-w-0">
+                                <div className="w-14 h-14 rounded-full bg-[#181F26] dark:bg-[#0E5B52] text-white flex items-center justify-center text-[1.0625rem] font-black shrink-0">
+                                    {user.avatar}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="text-[1.125rem] font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-tight truncate">
+                                            {user.name}
+                                        </h3>
+                                        <span
+                                            data-pill="true"
+                                            className="inline-flex items-center text-[0.75rem] font-semibold px-2.5 py-0.5 rounded-full bg-[rgba(14,91,82,0.10)] text-[#0E5B52] dark:bg-[rgba(42,157,143,0.18)] dark:text-[#2DD4BF] whitespace-nowrap"
+                                        >
+                                            {ROLE_DISPLAY_LABEL[user.role] ?? user.role}
+                                        </span>
+                                    </div>
+                                    <p className="text-[0.8125rem] text-[#64748B] dark:text-[#9BA7B4] mt-1 truncate">
+                                        {user.email}
+                                    </p>
+                                </div>
+                            </div>
+                            <span
+                                data-pill="true"
+                                className="inline-flex items-center gap-1.5 text-[0.75rem] font-bold px-3 py-1 rounded-full bg-[#16a34a] text-white shrink-0"
+                            >
+                                Active
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                            <div
+                                data-settings-card="true"
+                                className="rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] px-4 py-3.5"
+                            >
+                                <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-1">
+                                    Worker ID
+                                </p>
+                                <p className="text-[1.0625rem] font-extrabold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">
+                                    {user.workerId ?? '—'}
+                                </p>
+                            </div>
+                            <div
+                                data-settings-card="true"
+                                className="rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] px-4 py-3.5"
+                            >
+                                <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-1">
+                                    Worker Since (ID Issued)
+                                </p>
+                                <WorkerSinceValue createdAt={user.workerIdCreatedAt} className="text-[1rem]" />
+                            </div>
+                            {[
+                                { label: 'Department', value: user.department ?? 'Outreach' },
+                                { label: user.group ? 'Assigned Group' : 'Cluster / Scope', value: user.group ?? user.cluster ?? 'Church-wide' },
+                                { label: 'Account Role', value: ROLE_DISPLAY_LABEL[user.role] ?? user.role },
+                                { label: 'Email Address', value: user.email },
+                            ].map((item) => (
+                                <div
+                                    key={item.label}
+                                    data-settings-card="true"
+                                    className="rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] bg-[#F8FAFC] dark:bg-[#222933] px-4 py-3.5"
+                                >
+                                    <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-[#64748B] dark:text-[#9BA7B4] mb-1">
+                                        {item.label}
+                                    </p>
+                                    <p className="text-[0.875rem] font-semibold text-[#181F26] dark:text-[#E6EDF3] truncate">
+                                        {item.value}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* ── 1. Display & Font Size ── */}
                 {section === 'display' && (
@@ -621,7 +756,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                     value={fontSize}
                                     onChange={e => setFontSize(Number(e.target.value))}
                                     aria-label="Adjust interface font size"
-                                    className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#0D9488]"
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#0E5B52]"
                                     style={{
                                         background: `linear-gradient(to right, ${isDark ? '#2DD4BF' : '#0D9488'} ${fontPct}%, ${isDark ? '#334155' : '#CBD5E1'} ${fontPct}%)`,
                                     }}
@@ -777,7 +912,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
 
                                 <div className="flex justify-end">
-                                    <button type="submit" className="bg-[#0D9488] hover:bg-[#0F4C45] text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-sm">
+                                    <button type="submit" className="bg-[#0E5B52] hover:bg-[#0A463F] dark:bg-[#0E5B52] dark:hover:bg-[#147468] text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-sm cursor-pointer">
                                         Update Password
                                     </button>
                                 </div>
@@ -834,13 +969,30 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                             {devices.some(d => !d.current) && (
                                 <button
                                     type="button"
-                                    onClick={logOutAll}
+                                    onClick={() => setConfirmDeviceLogout({ mode: 'all', count: devices.filter(d => !d.current).length })}
                                     className="px-4 py-2 rounded-xl border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors shrink-0"
                                 >
                                     Log Out All Devices
                                 </button>
                             )}
                         </div>
+
+                        {sessionNotice && (
+                            <div
+                                role="status"
+                                className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[#0E5B52]/20 bg-[#0E5B52]/10 dark:bg-[#2A9D8F]/15 dark:border-[#2A9D8F]/30 px-4 py-2.5 text-xs font-semibold text-[#0E5B52] dark:text-[#5EEAD4]"
+                            >
+                                <span>{sessionNotice}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setSessionNotice(null)}
+                                    className="opacity-70 hover:opacity-100 px-1"
+                                    aria-label="Dismiss notification"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        )}
 
                         {devices.some(d => !d.current) ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
@@ -863,7 +1015,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                         </div>
                                         <button
                                             type="button"
-                                            onClick={() => logOutDevice(d.id)}
+                                            onClick={() => setConfirmDeviceLogout({ mode: 'single', id: d.id, name: d.name, location: d.location })}
                                             className="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors shrink-0"
                                         >
                                             Log out
@@ -876,6 +1028,36 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 No other active sessions.
                             </p>
                         )}
+
+                        <ConfirmModal
+                            open={Boolean(confirmDeviceLogout)}
+                            variant="danger"
+                            icon="warning"
+                            title={confirmDeviceLogout?.mode === 'all' ? 'Log Out All Other Devices?' : 'Log Out Device?'}
+                            description={
+                                confirmDeviceLogout?.mode === 'all' ? (
+                                    <>
+                                        Sign out all <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{confirmDeviceLogout.count}</strong> other recognized sessions? Only your current browser session will remain active.
+                                    </>
+                                ) : confirmDeviceLogout ? (
+                                    <>
+                                        Sign out <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{confirmDeviceLogout.name}</strong> ({confirmDeviceLogout.location})? You will need to log in again on that device.
+                                    </>
+                                ) : ''
+                            }
+                            cancelLabel="Cancel"
+                            confirmLabel={confirmDeviceLogout?.mode === 'all' ? 'Yes, Log Out All' : 'Yes, Log Out'}
+                            onCancel={() => setConfirmDeviceLogout(null)}
+                            onConfirm={() => {
+                                if (!confirmDeviceLogout) return;
+                                if (confirmDeviceLogout.mode === 'all') {
+                                    logOutAll();
+                                } else {
+                                    logOutDevice(confirmDeviceLogout.id, confirmDeviceLogout.name);
+                                }
+                                setConfirmDeviceLogout(null);
+                            }}
+                        />
                     </div>
                 )}
 
@@ -929,16 +1111,41 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                             className="mt-6 rounded-2xl border border-[#E2E8F0] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#0F172A] p-5 flex flex-wrap items-center justify-between gap-4"
                         >
                             <div>
-                                <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">support@c2s.church</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEmailConfirm(true)}
+                                    className="p-0 bg-transparent border-0 text-sm font-bold text-[#0F4C45] dark:text-slate-100 hover:text-[#0E5B52] hover:underline transition-colors cursor-pointer text-left"
+                                >
+                                    support@c2s.church
+                                </button>
                                 <p className="text-xs text-[#6B665F] dark:text-slate-400 mt-0.5">Available Monday – Saturday · 8:00 AM – 6:00 PM</p>
                             </div>
-                            <a
-                                href="mailto:support@c2s.church"
-                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] text-white text-xs font-semibold transition-colors shadow-sm"
+                            <button
+                                type="button"
+                                onClick={() => setShowEmailConfirm(true)}
+                                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#0E5B52] hover:bg-[#0B4A42] text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                             >
                                 Email Support Desk
-                            </a>
+                            </button>
                         </div>
+
+                        <ConfirmModal
+                            open={showEmailConfirm}
+                            variant="default"
+                            icon="mail"
+                            title="Open Email Client?"
+                            description={
+                                <>
+                                    This will launch your default email application addressed to{' '}
+                                    <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">support@c2s.church</strong>.
+                                </>
+                            }
+                            cancelLabel="Cancel"
+                            confirmLabel="Open Email"
+                            confirmHref="mailto:support@c2s.church?subject=Connect2Souls%20Support%20Request"
+                            onCancel={() => setShowEmailConfirm(false)}
+                            onConfirm={() => setShowEmailConfirm(false)}
+                        />
                     </div>
                 )}
 
@@ -962,7 +1169,22 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 </button>
                             </div>
                         ) : (
-                            <form onSubmit={handleReport} className="w-full">
+                            <form data-no-confirm onSubmit={handleReport} className="w-full">
+                                <ConfirmModal
+                                    open={showReportConfirm}
+                                    variant="default"
+                                    icon="check"
+                                    title="Submit Report?"
+                                    description={
+                                        <>
+                                            Send your <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{reportCategory}</strong> report to the Connect2Souls support team?
+                                        </>
+                                    }
+                                    cancelLabel="Cancel"
+                                    confirmLabel="Yes, Submit"
+                                    onCancel={() => setShowReportConfirm(false)}
+                                    onConfirm={confirmReportSubmit}
+                                />
                                 {renderSectionHeader(
                                     'CATEGORY',
                                     'Select Report Category',
@@ -984,19 +1206,19 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                                 onClick={() => setReportCategory(cat.value)}
                                                 className={`relative text-left rounded-2xl p-5 transition-all flex items-start justify-between gap-3 cursor-pointer ${
                                                     selected
-                                                        ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
-                                                        : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                                        ? 'border-2 border-[#0E5B52] ring-4 ring-[#0E5B52]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                                        : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0E5B52]/50'
                                                 }`}
                                             >
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">{cat.value}</p>
-                                                    <p className="text-xs text-[#6B665F] dark:text-slate-400 mt-1">{cat.desc}</p>
+                                                    <p className="text-sm font-bold text-[#181F26] dark:text-slate-100">{cat.value}</p>
+                                                    <p className="text-xs text-[#64748B] dark:text-slate-400 mt-1">{cat.desc}</p>
                                                 </div>
                                                 <span
                                                     data-pill="true"
                                                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                                                         selected
-                                                            ? 'bg-[#0D9488] text-white'
+                                                            ? 'bg-[#0E5B52] text-white'
                                                             : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
                                                     }`}
                                                 >
@@ -1016,14 +1238,18 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 )}
 
                                 <div className="mt-6">
-                                    <label className="block text-xs font-semibold text-[#0F4C45] dark:text-slate-200 mb-1.5">Description</label>
+                                    <label className="block text-xs font-semibold text-[#181F26] dark:text-slate-200 mb-1.5">Description</label>
                                     <textarea
                                         rows={4}
                                         value={reportText}
-                                        onChange={e => setReportText(e.target.value)}
+                                        onChange={e => {
+                                            setReportText(e.target.value);
+                                            if (reportError && e.target.value.trim().length >= 10) setReportError('');
+                                        }}
                                         placeholder="Describe the problem in detail…"
-                                        className="w-full bg-transparent border border-[#E2E8F0] dark:border-[#334155] rounded-xl px-4 py-3 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 resize-none transition-colors"
+                                        className={`w-full bg-transparent border rounded-xl px-4 py-3 text-sm text-[#181F26] dark:text-slate-100 focus:outline-none focus:ring-2 resize-none transition-colors ${reportError ? 'border-red-400 focus:border-red-500 focus:ring-red-300/30' : 'border-[#E2E8F0] dark:border-[#334155] focus:border-[#0E5B52] focus:ring-[#0E5B52]/20'}`}
                                     />
+                                    {reportError && <p className="text-xs font-semibold text-red-500 mt-1.5">{reportError}</p>}
                                 </div>
 
                                 <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
@@ -1031,8 +1257,7 @@ export function SettingsPageView({ section }: { section: MySettingsSection }) {
                                 <div className="flex justify-end">
                                     <button
                                         type="submit"
-                                        disabled={reportText.trim().length < 10}
-                                        className="bg-[#0D9488] hover:bg-[#0F4C45] disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
+                                        className="bg-[#0E5B52] hover:bg-[#0A463F] dark:bg-[#0E5B52] dark:hover:bg-[#147468] text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-sm cursor-pointer"
                                     >
                                         Submit Report
                                     </button>

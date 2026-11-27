@@ -148,7 +148,7 @@ export default function C2SHubModal({ onClose }: Props) {
                 {/* Close button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-light leading-none"
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-light leading-none p-1"
                     aria-label="Close"
                 >
                     ×
@@ -182,32 +182,34 @@ export default function C2SHubModal({ onClose }: Props) {
                         </div>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="p-4 sm:p-7">
+                    <form onSubmit={handleSubmit} className="p-5 sm:p-6">
                         {/* Header */}
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="w-8 h-8 rounded-lg bg-[#FEF3C7] flex items-center justify-center">
+                            <div className="w-9 h-9 rounded-lg bg-[#FEF3C7] flex items-center justify-center shrink-0">
                                 <svg className="w-4 h-4 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                                 </svg>
                             </div>
                             <div>
                                 <h2 className="text-lg font-black text-gray-900">Make My Home a C2S Hub</h2>
-                                <p className="text-xs text-gray-400">Volunteer your home as a Connect2Souls discipleship hub</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Volunteer your home as a Connect2Souls discipleship hub</p>
                             </div>
                         </div>
 
-                        <hr className="my-5 border-gray-100" />
+                        <hr className="my-8 border-gray-100" />
 
                         {/* ── MEMBER INFORMATION ── */}
-                        <div className="mb-5">
-                            <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
-                                Member Information
-                            </p>
-                            <hr className="border-gray-100 mb-4" />
+                        <div className="mb-8 flex flex-col gap-6">
+                            <div>
+                                <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
+                                    Member Information
+                                </p>
+                                <hr className="border-gray-100" />
+                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-gray-700 mb-2">
                                         Full Name <span className="text-[#f03e5f]">*</span>
                                     </label>
                                     <input
@@ -215,11 +217,11 @@ export default function C2SHubModal({ onClose }: Props) {
                                         type="text"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
+                                        className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-gray-700 mb-2">
                                         Email Address <span className="text-[#f03e5f]">*</span>
                                     </label>
                                     <input
@@ -227,13 +229,13 @@ export default function C2SHubModal({ onClose }: Props) {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
+                                        className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                     />
                                 </div>
                             </div>
 
-                            <div className="w-full sm:max-w-xs">
-                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                            <div className="w-full sm:w-[calc(50%-0.625rem)]">
+                                <label className="block text-xs font-medium text-gray-700 mb-2">
                                     Phone Number <span className="text-[#f03e5f]">*</span>
                                 </label>
                                 <input
@@ -241,20 +243,22 @@ export default function C2SHubModal({ onClose }: Props) {
                                     type="tel"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
+                                    className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                 />
                             </div>
                         </div>
 
                         {/* ── ADDRESS ── */}
-                        <div className="mb-5">
-                            <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
-                                Address
-                            </p>
-                            <hr className="border-gray-100 mb-4" />
+                        <div className="mb-8 flex flex-col gap-6">
+                            <div>
+                                <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
+                                    Address
+                                </p>
+                                <hr className="border-gray-100" />
+                            </div>
 
-                            <div className="mb-4 w-full sm:max-w-xs">
-                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                            <div className="w-full sm:w-[calc(50%-0.625rem)]">
+                                <label className="block text-xs font-medium text-gray-700 mb-2">
                                     Barangay <span className="text-[#f03e5f]">*</span>
                                 </label>
                                 <CustomSelect
@@ -271,7 +275,7 @@ export default function C2SHubModal({ onClose }: Props) {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                <label className="block text-xs font-medium text-gray-700 mb-2">
                                     Complete Home Address <span className="text-[#f03e5f]">*</span>
                                 </label>
                                 <input
@@ -280,21 +284,23 @@ export default function C2SHubModal({ onClose }: Props) {
                                     value={address}
                                     onChange={(e) => setAddress(e.target.value)}
                                     placeholder="House no, Street, Subdivision, Village"
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300"
+                                    className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300"
                                 />
                             </div>
                         </div>
 
                         {/* ── HOSTING INFORMATION ── */}
-                        <div className="mb-5">
-                            <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
-                                Hosting Information
-                            </p>
-                            <hr className="border-gray-100 mb-4" />
+                        <div className="mb-8 flex flex-col gap-6">
+                            <div>
+                                <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mb-3">
+                                    Hosting Information
+                                </p>
+                                <hr className="border-gray-100" />
+                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-gray-700 mb-2">
                                         Can your house host a weekly C2S devotion? <span className="text-[#f03e5f]">*</span>
                                     </label>
                                     <CustomSelect
@@ -307,7 +313,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                     </CustomSelect>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-gray-700 mb-2">
                                         Number of Potential C2S <span className="text-[#f03e5f]">*</span>
                                     </label>
                                     <input
@@ -317,15 +323,15 @@ export default function C2SHubModal({ onClose }: Props) {
                                         value={potential === 0 ? '' : potential}
                                         onChange={(e) => setPotential(Number(e.target.value))}
                                         placeholder="0"
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300"
+                                        className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706] placeholder:text-gray-300"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                                        Preffered Meeting Day <span className="text-[#f03e5f]">*</span>
+                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                        Preferred Meeting Day <span className="text-[#f03e5f]">*</span>
                                     </label>
                                     <CustomSelect
                                         required
@@ -340,8 +346,8 @@ export default function C2SHubModal({ onClose }: Props) {
                                     </CustomSelect>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                                        Preffered Time <span className="text-[#f03e5f]">*</span>
+                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                        Preferred Time <span className="text-[#f03e5f]">*</span>
                                     </label>
                                     <CustomSelect
                                         required
@@ -358,46 +364,45 @@ export default function C2SHubModal({ onClose }: Props) {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                <label className="block text-xs font-medium text-gray-700 mb-2">
                                     Additional note about your house:
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
+                                    className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                                 />
                             </div>
                         </div>
 
                         {/* Privacy checkbox */}
-                        <div className="flex items-start gap-2.5 mb-6">
+                        <div className="flex items-start gap-3 mb-7 bg-[#F8FAFC] dark:bg-[#222933] p-4 rounded-xl border border-[#E2E8E5] dark:border-[#2A323D]">
                             <input
                                 id="privacy"
                                 type="checkbox"
                                 checked={agreed}
                                 onChange={(e) => setAgreed(e.target.checked)}
-                                className="mt-0.5 w-4 h-4 accent-[#f03e5f] cursor-pointer shrink-0"
+                                className="mt-0.5 w-4 h-4 accent-[#0E5B52] cursor-pointer shrink-0 rounded"
                             />
-                            <label htmlFor="privacy" className="text-xs text-gray-600 cursor-pointer">
+                            <label htmlFor="privacy" className="text-xs text-[#64748B] dark:text-[#9BA7B4] cursor-pointer">
                                 I agree to the{' '}
-                                <span className="text-[#f03e5f] underline cursor-pointer">Data privacy Policy</span>
+                                <span className="text-[#0E5B52] dark:text-[#5EEAD4] font-semibold underline cursor-pointer">Data privacy Policy</span>
                                 {' '}of Church of God Dasmariñas.
                             </label>
                         </div>
 
                         {/* Footer buttons */}
-                        <div className="flex justify-end gap-3">
+                        <div className="flex justify-end gap-3.5 pt-2">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-6 py-2.5 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                                className="px-[1.375rem] py-[0.625rem] rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={!agreed}
-                                className="px-6 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                                style={{ background: agreed ? '#D97706' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}
+                                className="px-[1.375rem] py-[0.625rem] rounded-xl text-sm font-bold text-white bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all shadow-sm cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                                 Submit Application
                             </button>

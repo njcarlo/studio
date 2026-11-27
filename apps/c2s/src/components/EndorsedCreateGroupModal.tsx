@@ -72,8 +72,8 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
         <>
             <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
             <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                    <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-gray-100 flex items-start justify-between">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between">
                         <div>
                             <h2 className="text-xl font-semibold text-gray-900">Create New Group</h2>
                             <p className="text-xs text-gray-400 mt-0.5">Changes automatically sync with the Endorsed page.</p>
@@ -81,7 +81,7 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 flex flex-col gap-7">
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 flex flex-col gap-5">
                         {/* Basic Info */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Basic Information</p>
@@ -180,10 +180,9 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                     </div>
 
                     <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
-                        <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                        <button onClick={() => { if (name.trim()) { onCreate(); onClose(); } }} disabled={!name.trim()}
-                            className="px-6 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ background: '#D97706' }}>
+                        <button type="button" onClick={onClose} className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">Cancel</button>
+                        <button type="button" onClick={() => { if (name.trim()) { onCreate(); onClose(); } }} disabled={!name.trim()}
+                            className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed">
                             Create Group
                         </button>
                     </div>

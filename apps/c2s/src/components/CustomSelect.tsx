@@ -126,10 +126,15 @@ export default function CustomSelect({
 
     const currentValue = isControlled ? String(value) : internalValue;
 
-    const selectedOption = useMemo(
-        () => parsedOptions.find((o) => o.value === currentValue),
+    const selectedIdx = useMemo(
+        () => parsedOptions.findIndex((o) => o.value === currentValue),
         [parsedOptions, currentValue],
     );
+    const selectedOption = selectedIdx >= 0 ? parsedOptions[selectedIdx] : undefined;
+
+    function formatOptionLabel(opt: CustomSelectOption) {
+        return opt.label;
+    }
 
     const [isOpen, setIsOpen] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -174,7 +179,7 @@ export default function CustomSelect({
         const openUpward = spaceBelow < 190 && spaceAbove > spaceBelow;
         const maxHeight = Math.max(120, Math.min(272, openUpward ? spaceAbove : spaceBelow));
         const safeWidth = Math.min(Math.max(rect.width, 160), vw - 24);
-        const clampedLeft = Math.max(12, Math.min(rect.left, vw - safeWidth - 12));
+        const clampedLeft = Math.max(12, Math.min(rect.left, vw - Math.min(320, Math.max(safeWidth, 200)) - 12));
 
         const darkActive =
             document.documentElement.classList.contains('dark') &&
@@ -345,7 +350,7 @@ export default function CustomSelect({
         }
     }
 
-    const displayLabel = selectedOption ? selectedOption.label : placeholder;
+    const displayLabel = selectedOption ? formatOptionLabel(selectedOption) : placeholder;
     const isPlaceholder = !selectedOption || (selectedOption.value === '' && selectedOption.disabled);
 
     return (
@@ -386,19 +391,19 @@ export default function CustomSelect({
                     onBlur?.();
                 }}
                 onKeyDown={handleKeyDown}
-                className={`w-full flex items-center justify-between gap-2.5 bg-white dark:bg-[#1E293B] rounded-xl border px-3.5 py-2 text-sm text-left transition-all duration-150 select-none ${
+                className={`w-full h-[2.375rem] flex items-center justify-between gap-2.5 bg-white dark:bg-[#1A2026] rounded-[0.625rem] border px-3.5 text-[0.8125rem] text-left transition-all duration-150 select-none ${
                     disabled
-                        ? 'opacity-55 cursor-not-allowed border-[#E7E5E4] dark:border-[#334155]'
+                        ? 'opacity-55 cursor-not-allowed border-[#E2E8E5] dark:border-[#2A323D]'
                         : isOpen || isFocused
-                            ? 'border-[#D97706] ring-2 ring-[#FEF3C7] dark:border-[#F59E0B] dark:ring-[#D97706]/25 cursor-pointer'
-                            : 'border-[#E7E5E4] dark:border-[#334155] hover:border-[#D6D3D1] dark:hover:border-slate-500 cursor-pointer'
+                            ? 'border-[#0E5B52] ring-2 ring-[#0E5B52]/20 dark:border-[#2DD4BF] dark:ring-[#2DD4BF]/25 cursor-pointer'
+                            : 'border-[#E2E8E5] dark:border-[#2A323D] hover:border-[#CBD5E1] dark:hover:border-slate-500 cursor-pointer'
                 }`}
             >
                 <span
                     className={`truncate ${
                         isPlaceholder
-                            ? 'text-[#6B665F] dark:text-slate-400'
-                            : 'text-[#292524] dark:text-slate-100 font-medium'
+                            ? 'text-gray-500 dark:text-slate-400'
+                            : 'text-[#181F26] dark:text-[#E6EDF3] font-medium'
                     }`}
                 >
                     {displayLabel}
@@ -406,8 +411,8 @@ export default function CustomSelect({
                 <svg
                     className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
                         isOpen
-                            ? 'rotate-180 text-[#D97706] dark:text-[#F59E0B]'
-                            : 'text-[#6B665F] dark:text-slate-400'
+                            ? 'rotate-180 text-[#181F26] dark:text-[#E6EDF3]'
+                            : 'text-gray-500 dark:text-slate-400'
                     }`}
                     viewBox="0 0 24 24"
                     fill="none"
@@ -427,16 +432,18 @@ export default function CustomSelect({
                         ref={popoverRef}
                         id={listboxId}
                         role="listbox"
-                        className={`fixed z-[12000] rounded-xl border p-1.5 shadow-lg shadow-stone-900/5 overflow-y-auto ${
+                        className={`fixed z-[12000] rounded-xl border p-1.5 overflow-y-auto ${
                             isDark
-                                ? 'bg-[#1E293B] border-[#334155] shadow-black/40'
-                                : 'bg-white border-[#E7E5E4]'
+                                ? 'bg-[#1A2026] border-[#2A323D] shadow-lg shadow-black/40'
+                                : 'bg-white border-gray-200 shadow-lg shadow-slate-900/10'
                         }`}
                         style={{
                             top: menuRect.top,
                             bottom: menuRect.bottom,
                             left: menuRect.left,
-                            width: menuRect.width,
+                            minWidth: menuRect.width,
+                            width: 'max-content',
+                            maxWidth: 'min(320px, calc(100vw - 24px))',
                             maxHeight: menuRect.maxHeight,
                         }}
                     >
@@ -445,14 +452,15 @@ export default function CustomSelect({
                             const showGroupHeader = Boolean(opt.group && opt.group !== prevGroup);
                             const isSelected = opt.value === currentValue && !opt.disabled;
                             const isHighlighted = idx === highlightedIdx;
+                            const menuLabel = formatOptionLabel(opt);
 
                             return (
                                 <React.Fragment key={`${opt.value}-${idx}`}>
                                     {showGroupHeader && (
                                         <div
                                             className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${
-                                                isDark ? 'text-slate-400' : 'text-[#6B665F]'
-                                            } ${idx > 0 ? 'mt-1 pt-2 border-t border-[#EFECE6] dark:border-slate-700' : ''}`}
+                                                isDark ? 'text-slate-400' : 'text-gray-500'
+                                            } ${idx > 0 ? 'mt-1 pt-2 border-t border-gray-100 dark:border-[#2A323D]' : ''}`}
                                         >
                                             {opt.group}
                                         </div>
@@ -468,25 +476,25 @@ export default function CustomSelect({
                                         onClick={() => !opt.disabled && selectValue(opt.value)}
                                         className={`w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors ${
                                             opt.disabled
-                                                ? 'opacity-45 cursor-not-allowed text-[#6B665F]'
+                                                ? 'opacity-45 cursor-not-allowed text-gray-400'
                                                 : isSelected
                                                     ? isDark
-                                                        ? 'bg-[#D97706]/20 text-[#FBBF24] font-medium cursor-pointer'
-                                                        : 'bg-[#FEF3C7] text-[#92400E] font-medium cursor-pointer'
+                                                        ? 'bg-[#242D37] text-[#E6EDF3] font-semibold cursor-pointer'
+                                                        : 'bg-[#181F26] text-white font-semibold cursor-pointer'
                                                     : isHighlighted
                                                         ? isDark
-                                                            ? 'bg-white/10 text-slate-100 cursor-pointer'
-                                                            : 'bg-[#F5F2EC] text-[#292524] cursor-pointer'
+                                                            ? 'bg-white/10 text-[#E6EDF3] cursor-pointer'
+                                                            : 'bg-slate-100 text-[#181F26] cursor-pointer'
                                                         : isDark
-                                                            ? 'text-slate-100 hover:bg-white/10 cursor-pointer'
-                                                            : 'text-[#292524] hover:bg-[#F5F2EC] cursor-pointer'
+                                                            ? 'text-[#E6EDF3] hover:bg-white/10 cursor-pointer'
+                                                            : 'text-[#181F26] hover:bg-slate-100 cursor-pointer'
                                         }`}
                                     >
-                                        <span className="truncate">{opt.label}</span>
+                                        <span className="truncate">{menuLabel}</span>
                                         {isSelected && (
                                             <svg
                                                 className={`w-4 h-4 shrink-0 ${
-                                                    isDark ? 'text-[#FBBF24]' : 'text-[#92400E]'
+                                                    isDark ? 'text-[#E6EDF3]' : 'text-white'
                                                 }`}
                                                 viewBox="0 0 24 24"
                                                 fill="none"

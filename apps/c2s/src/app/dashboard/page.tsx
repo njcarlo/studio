@@ -1,6 +1,8 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import DashboardWelcomeBanner from '@/components/DashboardWelcomeBanner';
+import ActionMenu, { ActionIcons } from '@/components/ActionMenu';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -205,36 +207,36 @@ function WorkersMentorsChart() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-gray-100">
+            <div className="rounded-xl border border-gray-100 overflow-x-auto">
                 <table className="w-full table-fixed">
                     <colgroup>
-                        <col className="w-[40%]" />
-                        <col className="w-[20%]" />
-                        <col className="w-[20%]" />
-                        <col className="w-[20%]" />
+                        <col className="w-[34%]" />
+                        <col className="w-[22%]" />
+                        <col className="w-[22%]" />
+                        <col className="w-[22%]" />
                     </colgroup>
                     <thead>
                         <tr className="table-header-row">
-                            <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
-                            <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
-                            <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                            <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Department</th>
+                            <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Workers</th>
+                            <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Mentors</th>
+                            <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {DEPT_COMBINED.map((row, i) => (
+                        {DEPT_COMBINED.map((row) => (
                             <tr key={row.dept} className="table-body-row">
-                                <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-2 py-3.5 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
-                                <td className="px-2 py-3.5 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
-                                <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
+                                <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{row.dept}</td>
+                                <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.workers.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.mentors.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{(row.workers + row.mentors).toLocaleString()}</td>
                             </tr>
                         ))}
                         <tr className="table-total-row">
-                            <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_WORKERS.toLocaleString()}</td>
-                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_MENTORS.toLocaleString()}</td>
-                            <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{COMBINED_GRAND_TOTAL.toLocaleString()}</td>
+                            <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                            <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{COMBINED_TOTAL_WORKERS.toLocaleString()}</td>
+                            <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{COMBINED_TOTAL_MENTORS.toLocaleString()}</td>
+                            <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{COMBINED_GRAND_TOTAL.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -298,56 +300,68 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                 />
             )}
 
-            <div className="h-full bg-white rounded-2xl border border-[#E7E5E4] p-5 sm:p-6 flex flex-col justify-between gap-4 shadow-sm">
+            <div className="c2s-request-card h-full bg-white dark:bg-[#1A2026] rounded-2xl border border-[#E2E8E5] dark:border-[#2A323D] border-t-[3px] border-t-[#0E5B52] dark:border-t-[#2DD4BF] p-5 sm:p-6 flex flex-col justify-between gap-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] hover:shadow-[0_10px_24px_-6px_rgba(15,23,42,0.08)] hover:border-[#CBD5E1] dark:hover:border-[#3A4452] transition-all duration-150">
                 <div className="flex flex-col gap-4">
-                    {/* Row 1: Avatar + name/info + clickable copy-phone + Pending badge */}
-                    <div className="flex items-start gap-3">
-                        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
-                            style={{ background: '#D97706' }}>
+                    {/* Row 1: Avatar + name/info + clickable copy-phone + status pill & ActionMenu */}
+                    <div className="flex items-start gap-3.5">
+                        <div
+                            className="w-11 h-11 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-[#E2E8E5] dark:ring-[#2A323D]"
+                            style={{ background: '#181F26' }}
+                        >
                             {mentee.initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="font-bold text-[#292524] leading-tight truncate">{mentee.name}</p>
-                            <p className="text-xs text-[#6B665F] mt-0.5 leading-snug">{mentee.age} · {mentee.gender}</p>
+                            <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-[0.9375rem] leading-tight truncate">{mentee.name}</p>
+                            <p className="text-xs font-medium text-[#64748B] dark:text-[#9BA7B4] mt-0.5 leading-snug">{mentee.age} · {mentee.gender}</p>
                             <button
                                 type="button"
                                 onClick={handleCopyPhone}
                                 title="Copy phone number"
-                                className="inline-flex items-center gap-1.5 text-xs text-[#6B665F] hover:text-[#D97706] transition-colors whitespace-nowrap leading-snug mt-0.5 cursor-pointer"
+                                className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-[#475569] dark:text-[#CBD5E1] hover:text-[#0E5B52] dark:hover:text-[#2DD4BF] bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D] hover:border-[#0E5B52]/30 dark:hover:border-[#2DD4BF]/40 px-2 py-0.5 rounded-md transition-all whitespace-nowrap leading-snug cursor-pointer tabular-nums"
                             >
                                 <span>{mentee.phone}</span>
                                 {copiedPhone ? (
-                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#15803D]">
+                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#15803D] dark:text-[#34D399]">
                                         <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                             <polyline points="20 6 9 17 4 12" />
                                         </svg>
                                         Copied
                                     </span>
                                 ) : (
-                                    <svg className="w-3 h-3 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <svg className="w-3 h-3 shrink-0 opacity-65" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                     </svg>
                                 )}
                             </button>
                         </div>
-                        <span
-                            data-pill="true"
-                            className="inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] shrink-0 border border-[#FDE68A] whitespace-nowrap"
-                        >
-                            Pending
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                                data-pill="true"
+                                className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#B45309] dark:bg-[rgba(217,119,6,0.18)] dark:text-[#FBBF24] shrink-0 border border-[#FDE68A] dark:border-[rgba(251,191,36,0.28)] whitespace-nowrap"
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] dark:bg-[#FBBF24]" aria-hidden="true" />
+                                Pending
+                            </span>
+                            <ActionMenu
+                                ariaLabel={`${mentee.name} actions`}
+                                items={[
+                                    { label: 'Accept', icon: ActionIcons.approve, tone: 'positive', onClick: () => setShowAccept(true) },
+                                    { label: 'Recommend', icon: ActionIcons.recommend, onClick: () => setShowRecommend(true) },
+                                    { label: 'Details', icon: ActionIcons.view, onClick: () => setShowDetails(true) },
+                                ]}
+                            />
+                        </div>
                     </div>
 
                     {/* Row 2: Source badge + request timestamp */}
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#F1F5F9] dark:border-[#242C36]">
                         <span
                             data-pill="true"
-                            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full whitespace-nowrap ${
-                                mentee.source === 'Recommended'
-                                    ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
-                                    : 'bg-[#E0F2FE] text-[#0369A1] border border-[#BAE6FD]'
-                            }`}
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${mentee.source === 'Recommended'
+                                ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] dark:bg-[rgba(217,119,6,0.16)] dark:text-[#FBBF24] dark:border-[rgba(251,191,36,0.28)]'
+                                : 'bg-[rgba(14,91,82,0.08)] text-[#0E5B52] border border-[rgba(14,91,82,0.18)] dark:bg-[rgba(45,212,191,0.12)] dark:text-[#2DD4BF] dark:border-[rgba(45,212,191,0.25)]'
+                                }`}
                         >
                             {mentee.source === 'Recommended' ? (
                                 <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" /></svg>
@@ -356,8 +370,8 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                             )}
                             {mentee.source}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#6B665F] whitespace-nowrap">
-                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#64748B] dark:text-[#9BA7B4] whitespace-nowrap">
+                            <svg className="w-3.5 h-3.5 shrink-0 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10" />
                                 <polyline points="12 6 12 12 16 14" />
                             </svg>
@@ -365,22 +379,22 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                         </span>
                     </div>
 
-                    {/* Row 3: Unified Warm Sand Details Box (Requested Group + Notes) */}
-                    <div className="bg-[#F5F2EC] rounded-xl p-4 border border-[#E7E5E4] space-y-3">
+                    {/* Row 3: Structured Inset Panel (Requested Group + Notes) */}
+                    <div className="bg-[#F8FAFC] dark:bg-[#13181E] rounded-xl p-4 border border-[#E2E8E5] dark:border-[#2A323D] border-l-[3px] border-l-[#0E5B52] dark:border-l-[#2DD4BF] space-y-3.5">
                         <div>
-                            <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-widest mb-1">Requested Group</p>
-                            <p className="font-bold text-[#292524] text-base leading-snug">{mentee.requestedGroup}</p>
+                            <p className="text-[11px] font-bold text-[#0E5B52] dark:text-[#2DD4BF] uppercase tracking-[0.06em] mb-1">Requested Group</p>
+                            <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-[0.9375rem] leading-snug">{mentee.requestedGroup}</p>
                             {requestedGroupInfo && (
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#6B665F] mt-1.5">
-                                    <span className="inline-flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5 text-[#D97706] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-[#475569] dark:text-[#9BA7B4] mt-2">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] font-medium">
+                                        <svg className="w-3.5 h-3.5 text-[#0E5B52] dark:text-[#2DD4BF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                                             <circle cx="12" cy="10" r="3" />
                                         </svg>
                                         {requestedGroupInfo.location}
                                     </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5 text-[#D97706] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] font-medium">
+                                        <svg className="w-3.5 h-3.5 text-[#0E5B52] dark:text-[#2DD4BF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                                             <line x1="16" y1="2" x2="16" y2="6" />
                                             <line x1="8" y1="2" x2="8" y2="6" />
@@ -393,42 +407,11 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                         </div>
 
                         {mentee.notes && (
-                            <div className="border-t border-[#E7E5E4] pt-3">
-                                <p className="text-[10px] font-bold text-[#6B665F] uppercase tracking-widest mb-1">Notes</p>
-                                <p className="text-xs text-[#292524] leading-relaxed">{mentee.notes}</p>
+                            <div className="border-t border-[#E2E8E5] dark:border-[#2A323D] pt-3">
+                                <p className="text-[11px] font-bold text-[#64748B] dark:text-[#9BA7B4] uppercase tracking-[0.06em] mb-1">Notes</p>
+                                <p className="text-[0.8125rem] text-[#334155] dark:text-[#CBD5E1] leading-relaxed">{mentee.notes}</p>
                             </div>
                         )}
-                    </div>
-                </div>
-
-                {/* Row 4: Action buttons */}
-                <div className="pt-1">
-                    {/* Accept — full-width primary CTA on top row */}
-                    <button
-                        onClick={() => setShowAccept(true)}
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-bold text-white whitespace-nowrap rounded-xl bg-[#D97706] hover:bg-[#B45309] transition-colors shadow-sm"
-                    >
-                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-                        Accept
-                    </button>
-
-                    {/* Secondary actions — 2-column row underneath */}
-                    <div className="grid grid-cols-2 gap-2.5 w-full mt-2.5">
-                        <button
-                            onClick={() => setShowRecommend(true)}
-                            className="flex items-center justify-center gap-1.5 min-w-0 px-3 py-2 text-xs font-semibold text-[#292524] whitespace-nowrap rounded-xl border border-[#E7E5E4] bg-white hover:bg-[#F5F2EC] transition-colors"
-                        >
-                            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
-                            Recommend
-                        </button>
-
-                        <button
-                            onClick={() => setShowDetails(true)}
-                            className="flex items-center justify-center gap-1.5 min-w-0 px-3 py-2 text-xs font-semibold text-[#292524] whitespace-nowrap rounded-xl border border-[#E7E5E4] bg-white hover:bg-[#F5F2EC] transition-colors"
-                        >
-                            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg>
-                            Details
-                        </button>
                     </div>
                 </div>
             </div>
@@ -526,12 +509,13 @@ function MenteesTab({
                 {/* Header row with + Add Mentee button */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentees</h1>
+                        <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Mentees</h1>
                         <p className="text-sm text-gray-400 mt-1">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95"
+                        className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 text-white font-semibold rounded-[0.625rem] text-[0.8125rem] leading-none transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95 cursor-pointer"
                     >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -541,54 +525,60 @@ function MenteesTab({
                 </div>
 
                 {/* -- Stats row -- */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                    {/* Donut card */}
-                    <div className="bg-white rounded-2xl border border-gray-200 px-6 py-6 flex items-center gap-6 sm:shrink-0">
-                        <div className="min-w-0 flex-1 sm:flex-none">
-                            <p className="text-sm font-bold text-gray-800 leading-tight">Mentee Status</p>
-                            <p className="text-[11px] text-gray-400 mb-4">Active vs Inactive</p>
-                            <div className="flex items-center gap-2 text-xs text-gray-700 mb-2">
-                                <span className="w-3 h-3 rounded-full bg-[#3b82f6] shrink-0" />
-                                Active&nbsp;<span className="font-bold">{activeCnt}</span>
+                <div className="c2s-kpi-shell mb-8">
+                    <div className="c2s-kpi-5-grid">
+                        {/* Donut card */}
+                        <div className="kpi-card c2s-kpi-donut-card bg-white rounded-2xl border border-[#E2E8E5] dark:bg-[#1A2026] dark:border-[#2A323D]">
+                            <div className="min-w-0 flex flex-col justify-between gap-2">
+                                <div>
+                                    <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] leading-tight">Mentee Status</p>
+                                    <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-0.5">Active vs Inactive</p>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2 text-xs text-[#181F26] dark:text-[#E6EDF3]">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#0E5B52] dark:bg-[#2A9D8F] shrink-0" />
+                                        <span className="text-[#64748B] dark:text-[#9BA7B4]">Active</span>
+                                        <span className="font-bold tabular-nums">{activeCnt}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-[#64748B] dark:text-[#9BA7B4]">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-gray-200 dark:bg-[#2A323D] shrink-0" />
+                                        <span>Inactive</span>
+                                        <span className="font-bold tabular-nums">{inactiveList.length}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                <span className="w-3 h-3 rounded-full bg-gray-200 shrink-0" />
-                                Inactive&nbsp;<span className="font-bold">{inactiveList.length}</span>
+                            <div className="relative shrink-0 w-[92px] h-[92px] flex items-center justify-center">
+                                <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
+                                    <circle cx="46" cy="46" r="36" fill="none" stroke="#e5e7eb" className="dark:stroke-[#2A323D]" strokeWidth="8" />
+                                    <circle cx="46" cy="46" r="36" fill="none" stroke="#0E5B52" className="dark:stroke-[#2A9D8F]" strokeWidth="8"
+                                        strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 36)} ${(2 * Math.PI * 36) - (activePct / 100) * (2 * Math.PI * 36)}`}
+                                        strokeLinecap="round"
+                                        transform="rotate(-90 46 46)" />
+                                </svg>
+                                <div className="c2s-donut-center">
+                                    <span className="c2s-donut-pct">{activePct}%</span>
+                                    <span className="c2s-donut-sub">ACTIVE</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="relative shrink-0 w-[120px] h-[120px] sm:w-[140px] sm:h-[140px]">
-                            <svg width="120" height="120" viewBox="0 0 140 140" className="sm:hidden">
-                                <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
-                                <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
-                                    strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
-                                    strokeLinecap="butt"
-                                    transform="rotate(-90 70 70)" />
-                            </svg>
-                            <svg width="140" height="140" viewBox="0 0 140 140" className="hidden sm:block">
-                                <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
-                                <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
-                                    strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
-                                    strokeLinecap="butt"
-                                    transform="rotate(-90 70 70)" />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-xl sm:text-2xl font-black text-gray-900 leading-none">{activePct}%</span>
-                                <span className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">ACTIVE</span>
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Stat cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-1 sm:flex sm:flex-1 gap-4 sm:gap-4">
+                        {/* Stat cards */}
                         {[
-                            { label: 'Total Mentees', value: totalMentees, color: '#D97706' },
-                            { label: 'Active', value: activeCnt, color: '#ef4444' },
-                            { label: 'Inactive', value: inactiveCnt, color: '#3b82f6' },
-                            { label: 'Transferred', value: transferredCnt, color: '#0284C7' },
+                            { label: 'Total Mentees', value: totalMentees, icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                            { label: 'Active', value: activeCnt, icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+                            { label: 'Inactive', value: inactiveCnt, icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
+                            { label: 'Transferred', value: transferredCnt, icon: 'M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z' },
                         ].map(s => (
-                            <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 sm:px-7 py-5 flex flex-col justify-center sm:flex-1 dark:bg-gray-800 dark:border-gray-700">
-                                <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2 dark:text-gray-300">{s.label}</p>
-                                <p className="font-black leading-none" style={{ color: s.color, fontSize: 'clamp(1.75rem, 4vw, 2.75rem)' }}>{s.value}</p>
+                            <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5] dark:bg-[#1A2026] dark:border-[#2A323D]">
+                                <div className="c2s-kpi-card-top">
+                                    <p className="c2s-kpi-label">{s.label}</p>
+                                    <div className="kpi-icon-badge c2s-kpi-badge">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                    </div>
+                                </div>
+                                <div className="c2s-kpi-bottom">
+                                    <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -637,65 +627,70 @@ function MenteesTab({
                                                 </div>
                                             </div>
                                             {/* Actions */}
-                                            <div className="flex gap-2">
-                                                <button onClick={() => setViewing(m)}
-                                                    className="flex-1 text-xs font-semibold text-gray-700 border border-gray-200 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                                                    View Profile
-                                                </button>
-                                                <button onClick={() => setShowDevotional(m)}
-                                                    className="flex-1 text-xs font-bold text-white py-2 rounded-lg transition-colors"
-                                                    style={{ background: '#D97706' }}>
-                                                    Update
-                                                </button>
+                                            <div className="flex items-center justify-end">
+                                                <ActionMenu
+                                                    ariaLabel={`${m.name} actions`}
+                                                    items={[
+                                                        { label: 'View Profile', icon: ActionIcons.view, onClick: () => setViewing(m) },
+                                                        { label: 'Update', icon: ActionIcons.edit, tone: 'positive', onClick: () => setShowDevotional(m) },
+                                                    ]}
+                                                />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                                 {/* Desktop table */}
                                 <div className="hidden sm:block overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-gray-100 bg-[#f8f9fc]">
-                                            {['Name', 'Assigned Group', 'Connected Since', 'Devotional Manual Status', 'Progress', 'Actions'].map(h => (
-                                                <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {filteredActive.map((m) => (
-                                            <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                                <td className="pl-6 pr-4 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0"
-                                                            style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
-                                                        <span className="font-bold text-gray-900 text-sm">{m.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-gray-500">{m.assignedGroup}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-500 whitespace-nowrap">{m.connectedSince}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-600">{m.module}, {m.lesson}</td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[60px]">
-                                                            <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} />
-                                                        </div>
-                                                        <span className="text-xs font-semibold text-gray-600 shrink-0">{m.progress}%</span>
-                                                    </div>
-                                                </td>
-                                                <td className="pl-4 pr-6 py-4 whitespace-nowrap">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 hover:underline transition-colors">View Profile</button>
-                                                        <button onClick={() => setShowDevotional(m)}
-                                                            className="text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-colors"
-                                                            style={{ background: '#D97706' }}>
-                                                            Update
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                    <table className="w-full table-auto text-sm">
+                                        <colgroup>
+                                            <col className="w-[20%]" />
+                                            <col className="w-[17%]" />
+                                            <col className="w-[15%]" />
+                                            <col className="w-[22%]" />
+                                            <col className="w-[16%]" />
+                                            <col className="w-[10%]" />
+                                        </colgroup>
+                                        <thead>
+                                            <tr className="table-header-row">
+                                                {['Name', 'Assigned Group', 'Connected Since', 'Devotional Manual Status', 'Progress', 'Actions'].map((h, idx, arr) => (
+                                                    <th key={h} className={`px-6 py-4 font-bold uppercase tracking-widest ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
+                                                ))}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {filteredActive.map((m) => (
+                                                <tr key={m.id} className="transition-colors">
+                                                    <td className="px-6 py-4 text-left">
+                                                        <div className="flex items-center justify-start gap-2.5">
+                                                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0"
+                                                                style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
+                                                            <span className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-sm">{m.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left">{m.assignedGroup}</td>
+                                                    <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.connectedSince}</td>
+                                                    <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left">{m.module}, {m.lesson}</td>
+                                                    <td className="px-6 py-4 text-left">
+                                                        <div className="flex items-center justify-start gap-2">
+                                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[56px]">
+                                                                <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#D97706' }} />
+                                                            </div>
+                                                            <span className="text-xs font-semibold text-[#64748B] dark:text-[#9BA7B4] shrink-0 tabular-nums">{m.progress}%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 table-col-center text-center">
+                                                        <ActionMenu
+                                                            ariaLabel={`${m.name} actions`}
+                                                            items={[
+                                                                { label: 'View Profile', icon: ActionIcons.view, onClick: () => setViewing(m) },
+                                                                { label: 'Update', icon: ActionIcons.edit, tone: 'positive', onClick: () => setShowDevotional(m) },
+                                                            ]}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </>
                         )}
@@ -721,58 +716,14 @@ function MenteesTab({
                                         <span><span className="font-semibold text-gray-400">Inactive: </span>{m.dateInactive}</span>
                                         <span><span className="font-semibold text-gray-400">Last: </span>{m.lastModule}</span>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            const fake: import('@/lib/data').Mentee = {
-                                                id: m.id,
-                                                initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
-                                                name: m.name,
-                                                assignedGroup: m.assignedGroup,
-                                                connectedSince: m.dateInactive,
-                                                module: m.lastModule.split(',')[0]?.trim() ?? 'Module 1',
-                                                lesson: m.lastModule.split(',')[1]?.trim() ?? 'Lesson 1',
-                                                progress: 0,
-                                                email: '—', phone: '—', age: 0,
-                                                birthday: '—', gender: '—', facebook: '—',
-                                                firstAttended: '—',
-                                                currentModule: m.lastModule,
-                                                currentLesson: '',
-                                                mentorNotes: '',
-                                                trainings: [],
-                                            };
-                                            setViewing(fake);
-                                        }}
-                                        className="self-start text-xs font-semibold text-[#D97706] hover:underline"
-                                    >View Profile</button>
-                                </div>
-                            ))}
-                            {inactiveList.length === 0 && (
-                                <div className="p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
-                            )}
-                        </div>
-                        {/* Desktop table */}
-                        <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
-                                    {['Name', 'Assigned Group', 'Date Became Inactive', 'Last Devotional Manual', 'Reason', 'Actions'].map(h => (
-                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3.5 text-left font-semibold">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {inactiveList.map((m) => (
-                                    <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="pl-6 pr-4 py-4 font-semibold text-gray-900">{m.name}</td>
-                                        <td className="px-4 py-4 text-gray-500">{m.assignedGroup}</td>
-                                        <td className="px-4 py-4 text-gray-500 whitespace-nowrap">{m.dateInactive}</td>
-                                        <td className="px-4 py-4 text-gray-500">{m.lastModule}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
-                                        </td>
-                                        <td className="pl-4 pr-6 py-4 whitespace-nowrap">
-                                            <button
-                                                onClick={() => {
+                                    <ActionMenu
+                                        ariaLabel={`${m.name} actions`}
+                                        align="left"
+                                        items={[
+                                            {
+                                                label: 'View Profile',
+                                                icon: ActionIcons.view,
+                                                onClick: () => {
                                                     const fake: import('@/lib/data').Mentee = {
                                                         id: m.id,
                                                         initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
@@ -791,14 +742,79 @@ function MenteesTab({
                                                         trainings: [],
                                                     };
                                                     setViewing(fake);
-                                                }}
-                                                className="text-xs text-gray-500 hover:underline font-medium"
-                                            >View Profile</button>
-                                        </td>
+                                                },
+                                            },
+                                        ]}
+                                    />
+                                </div>
+                            ))}
+                            {inactiveList.length === 0 && (
+                                <div className="p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
+                            )}
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
+                            <table className="w-full table-auto text-sm">
+                                <colgroup>
+                                    <col className="w-[19%]" />
+                                    <col className="w-[18%]" />
+                                    <col className="w-[17%]" />
+                                    <col className="w-[22%]" />
+                                    <col className="w-[14%]" />
+                                    <col className="w-[10%]" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="table-header-row">
+                                        {['Name', 'Assigned Group', 'Date Became Inactive', 'Last Devotional Manual', 'Reason', 'Actions'].map((h, idx, arr) => (
+                                            <th key={h} className={`px-6 py-4 font-semibold ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {inactiveList.map((m) => (
+                                        <tr key={m.id} className="transition-colors">
+                                            <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{m.name}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.assignedGroup}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.dateInactive}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.lastModule}</td>
+                                            <td className="px-6 py-4 text-left">
+                                                <span className={`inline-flex items-center justify-center leading-none text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
+                                            </td>
+                                            <td className="px-6 py-4 table-col-center text-center">
+                                                <ActionMenu
+                                                    ariaLabel={`${m.name} actions`}
+                                                    items={[
+                                                        {
+                                                            label: 'View Profile',
+                                                            icon: ActionIcons.view,
+                                                            onClick: () => {
+                                                                const fake: import('@/lib/data').Mentee = {
+                                                                    id: m.id,
+                                                                    initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+                                                                    name: m.name,
+                                                                    assignedGroup: m.assignedGroup,
+                                                                    connectedSince: m.dateInactive,
+                                                                    module: m.lastModule.split(',')[0]?.trim() ?? 'Module 1',
+                                                                    lesson: m.lastModule.split(',')[1]?.trim() ?? 'Lesson 1',
+                                                                    progress: 0,
+                                                                    email: '—', phone: '—', age: 0,
+                                                                    birthday: '—', gender: '—', facebook: '—',
+                                                                    firstAttended: '—',
+                                                                    currentModule: m.lastModule,
+                                                                    currentLesson: '',
+                                                                    mentorNotes: '',
+                                                                    trainings: [],
+                                                                };
+                                                                setViewing(fake);
+                                                            },
+                                                        },
+                                                    ]}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                         {inactiveList.length === 0 && (
                             <div className="hidden sm:block p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
@@ -828,28 +844,36 @@ function EndorsedTab() {
             <div>
                 <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Endorsed</h1>
+                        <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Endorsed</h1>
                         <p className="text-sm text-gray-400 mt-1">Workers and groups you have endorsed for ministry.</p>
                     </div>
-                    <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 bg-[#D97706] hover:bg-[#B45309] text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+                    <button type="button" onClick={() => setShowCreate(true)} className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 text-white font-semibold rounded-[0.625rem] text-[0.8125rem] leading-none transition-colors shadow-sm cursor-pointer">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
                         New Group
                     </button>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Total Endorsed</p>
-                        <p className="text-4xl font-black text-[#e05c5c]">{ENDORSED_GROUPS.reduce((s, g) => s + g.members, 0) + ENDORSED_WORKERS.length}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Mentor Groups</p>
-                        <p className="text-4xl font-black text-[#4DA6F5]">{ENDORSED_GROUPS.length}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Individual Mentors</p>
-                        <p className="text-4xl font-black text-[#5CB85C]">{ENDORSED_WORKERS.length}</p>
+                <div className="c2s-kpi-shell mb-8">
+                    <div className="c2s-kpi-grid">
+                        {[
+                            { label: 'Total Endorsed', value: ENDORSED_GROUPS.reduce((s, g) => s + g.members, 0) + ENDORSED_WORKERS.length, sub: 'Groups & individual mentors', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z' },
+                            { label: 'Mentor Groups', value: ENDORSED_GROUPS.length, sub: 'Active endorsed groups', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                            { label: 'Individual Mentors', value: ENDORSED_WORKERS.length, sub: 'Training progress tracked', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+                        ].map((s) => (
+                            <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                                <div className="c2s-kpi-card-top">
+                                    <p className="c2s-kpi-label">{s.label}</p>
+                                    <div className="kpi-icon-badge c2s-kpi-badge">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                    </div>
+                                </div>
+                                <div className="c2s-kpi-bottom">
+                                    <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                                    <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5">{s.sub}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -858,20 +882,25 @@ function EndorsedTab() {
                 <div className="grid gap-4 mb-8 items-stretch" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>
                     {ENDORSED_GROUPS.map((g) => (
                         <div key={g.id} className="h-full bg-white rounded-2xl border border-gray-200 p-5 flex flex-col justify-between gap-3">
-                            <p className="font-bold text-gray-900 text-lg">{g.name}</p>
+                            <div className="flex items-start justify-between gap-2">
+                                <p className="font-bold text-gray-900 text-lg truncate">{g.name}</p>
+                                <ActionMenu
+                                    ariaLabel={`${g.name} actions`}
+                                    items={[
+                                        { label: 'View Members', icon: ActionIcons.users, onClick: () => setViewingMembers(g) },
+                                        { label: 'Edit', icon: ActionIcons.edit, onClick: () => setEditingGroup(g) },
+                                    ]}
+                                />
+                            </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                                    <p className="text-lg font-black text-[#D97706]">{g.members}</p>
+                                    <p className="text-lg font-extrabold text-[#181F26] dark:text-[#E6EDF3]">{g.members}</p>
                                     <p className="text-gray-400 text-[10px]">Members</p>
                                 </div>
                                 <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                                    <p className="text-lg font-black text-[#0284C7]">{g.progress}%</p>
+                                    <p className="text-lg font-extrabold text-[#181F26] dark:text-[#E6EDF3]">{g.progress}%</p>
                                     <p className="text-gray-400 text-[10px]">Progress</p>
                                 </div>
-                            </div>
-                            <div className="mt-auto flex flex-wrap items-center gap-2">
-                                <button onClick={() => setViewingMembers(g)} className="flex-1 px-3 text-xs font-semibold text-white py-2 rounded-lg bg-[#D97706] hover:bg-[#B45309] transition-colors">View Members</button>
-                                <button onClick={() => setEditingGroup(g)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:border-gray-300">Edit</button>
                             </div>
                         </div>
                     ))}
@@ -883,11 +912,18 @@ function EndorsedTab() {
                     {ENDORSED_WORKERS.map((w) => (
                         <div key={w.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: '#D97706' }}>{w.initials}</div>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: '#181F26' }}>{w.initials}</div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-gray-900 truncate">{w.name}</p>
-                                    <p className="text-xs text-gray-400">{w.assignedGroup} · Since {w.endorsedSince}</p>
+                                    <p className="text-xs text-gray-400">{w.assignedGroup}</p>
+                                    <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums mt-1">{w.workerId}</p>
                                 </div>
+                                <ActionMenu
+                                    ariaLabel={`${w.name} actions`}
+                                    items={[
+                                        { label: 'View Profile', icon: ActionIcons.view, onClick: () => setViewingWorker(w) },
+                                    ]}
+                                />
                             </div>
                             <div>
                                 <div className="flex items-center justify-between mb-1">
@@ -895,11 +931,8 @@ function EndorsedTab() {
                                     <span className="text-[11px] font-semibold text-gray-700">{w.progress}%</span>
                                 </div>
                                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${w.progress}%`, background: '#D97706' }} />
+                                    <div className="h-full rounded-full" style={{ width: `${w.progress}%`, background: '#0E5B52' }} />
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => setViewingWorker(w)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300">View Profile</button>
                             </div>
                         </div>
                     ))}
@@ -1005,7 +1038,7 @@ function MentorPotentialC2STab() {
             )}
 
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential C2S Groups</h1>
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Potential C2S Groups</h1>
                 <p className="text-sm text-gray-400 mt-1">Applications to host a Connect2Souls devotion hub.</p>
             </div>
 
@@ -1021,7 +1054,7 @@ function MentorPotentialC2STab() {
                     onChange={e => setFilter(e.target.value as any)}
                     className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#D97706] min-w-[140px]"
                 >
-                    <option value="All">All Status</option>
+                    <option value="All">All Statuses</option>
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
@@ -1060,49 +1093,69 @@ function MentorPotentialC2STab() {
                                     <span><span className="font-semibold text-gray-400">Potential: </span>{a.potential}</span>
                                     <span><span className="font-semibold text-gray-400">Date: </span>{a.submitted}</span>
                                 </div>
-                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#D97706] hover:underline">View Details</button>
+                                <ActionMenu
+                                    ariaLabel={`${a.name} actions`}
+                                    align="left"
+                                    items={[
+                                        { label: 'View Details', icon: ActionIcons.view, onClick: () => setViewing(a) },
+                                    ]}
+                                />
                             </div>
                         ))}
                     </div>
                     {/* Desktop table */}
                     <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
                         <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-[#f8f9fc] border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
-                                    {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
-                                        <th key={h} className="px-2.5 first:pl-5 last:pr-5 py-3 text-left font-semibold">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {filtered.map(a => (
-                                    <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="pl-6 pr-4 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
-                                                    {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
-                                                    <p className="text-[10px] text-gray-400">{a.phone}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-600 whitespace-nowrap">{a.schedule}</td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-600 text-center whitespace-nowrap">{a.potential}</td>
-                                        <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
-                                        </td>
-                                        <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                            <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#D97706] hover:underline">View</button>
-                                        </td>
+                            <table className="w-full table-auto text-sm">
+                                <colgroup>
+                                    <col className="w-[22%]" />
+                                    <col className="w-[13%]" />
+                                    <col className="w-[19%]" />
+                                    <col className="w-[10%]" />
+                                    <col className="w-[13%]" />
+                                    <col className="w-[14%]" />
+                                    <col className="w-[9%]" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="table-header-row">
+                                        {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map((h, idx, arr) => (
+                                            <th key={h} className={`px-6 py-4 font-semibold ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filtered.map(a => (
+                                        <tr key={a.id} className="transition-colors">
+                                            <td className="px-6 py-4 text-left">
+                                                <div className="flex items-center justify-start gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full bg-[#FEF3C7] flex items-center justify-center text-[#D97706] text-[10px] font-black shrink-0">
+                                                        {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div className="text-left min-w-0">
+                                                        <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-xs">{a.name}</p>
+                                                        <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4]">{a.phone}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-semibold text-[#181F26] dark:text-[#E6EDF3] text-left">{a.barangay}</td>
+                                            <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left">{a.schedule}</td>
+                                            <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{a.potential}</td>
+                                            <td className="px-6 py-4 text-xs text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{a.submitted}</td>
+                                            <td className="px-6 py-4 text-left">
+                                                <span className={`inline-flex items-center justify-center leading-none text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
+                                            </td>
+                                            <td className="px-6 py-4 table-col-center text-center">
+                                                <ActionMenu
+                                                    ariaLabel={`${a.name} actions`}
+                                                    items={[
+                                                        { label: 'View', icon: ActionIcons.view, onClick: () => setViewing(a) },
+                                                    ]}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </>
@@ -1295,7 +1348,7 @@ function MentorDashboard() {
     ].filter((g) => !deletedGroupIds.includes(g.id));
 
     return (
-        <div className="min-h-screen dashboard-shell overflow-x-hidden" style={{ background: 'var(--bg-page)' }}>
+        <div className="min-h-screen dashboard-shell relative" style={{ background: 'var(--bg-page)' }}>
 
             {/* View Members modal */}
             {viewingGroup && (
@@ -1333,7 +1386,7 @@ function MentorDashboard() {
                 />
             )}
             {/* ── Left Sidebar (full viewport height with brand header) ── */}
-            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-72 md:w-[68px]' : 'w-72'} border-r border-gray-200 flex flex-col pt-0 pb-4 fixed top-0 bottom-0 left-0 ${sidebarOpen ? 'z-50 translate-x-0' : 'z-40 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
+            <aside className={`sidebar-nav ${sidebarCollapsed ? 'w-72 md:w-[68px]' : 'w-72'} border-r flex flex-col pt-0 pb-4 fixed top-0 bottom-0 left-0 ${sidebarOpen ? 'z-50 translate-x-0' : 'z-40 -translate-x-full md:translate-x-0'} transition-all duration-200`}>
                 <SidebarBrandHeader collapsed={sidebarCollapsed} />
 
                 {/* MENU label + collapse toggle */}
@@ -1417,12 +1470,13 @@ function MentorDashboard() {
                 />
             </aside>
 
-            {/* â”€â”€ Main content â”€â”€ */}
-            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} flex-1 pb-16 min-w-0 transition-[margin] duration-200`}>
+            {/* Main content */}
+            <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} pb-16 min-w-0 transition-[margin] duration-200`}>
 
                 <DashboardTopHeader
-                    pageTitle={settingsSection ? 'Settings' : activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
+                    pageTitle={settingsSection === 'profile' ? 'My Profile' : settingsSection ? 'Settings' : activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
                     onOpenMenu={() => setSidebarOpen(true)}
+                    onOpenProfile={() => { setSettingsSection('profile'); setSidebarOpen(false); }}
                 />
 
                 {/* Content with padding */}
@@ -1431,14 +1485,9 @@ function MentorDashboard() {
                         <SettingsPageView section={settingsSection} />
                     ) : (
                         <>
-                            {/* Title â€” only shown on dashboard tab */}
+                            {/* Welcome Banner — shown on dashboard tab */}
                             {activeTab === 'dashboard' && (
-                                <div className="mb-5">
-                                    <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
-                                    <p className="text-sm text-gray-400 mt-0.5">
-                                        Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
-                                    </p>
-                                </div>
+                                <DashboardWelcomeBanner fallbackRole="mentor" />
                             )}
 
                             {/* ── My Groups Tab ── */}
@@ -1474,24 +1523,25 @@ function MentorDashboard() {
                                     {/* Header row */}
                                     <div className="flex flex-wrap items-start justify-between gap-4 mb-8 w-full max-w-full">
                                         <div className="min-w-0 flex-1">
-                                            <h1 className="text-[1.6rem] font-semibold text-[#292524] leading-tight">Connect 2 Souls</h1>
-                                            <p className="text-sm text-[#6B665F] mt-1 whitespace-normal break-words">
+                                            <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Connect 2 Souls</h1>
+                                            <p className="text-sm text-gray-500 mt-1 whitespace-normal break-words">
                                                 Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
                                             </p>
                                         </div>
                                         <button
+                                            type="button"
                                             onClick={() => setShowCreateGroup(true)}
-                                            className="inline-flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm shrink-0 whitespace-nowrap"
+                                            className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 text-white font-semibold rounded-[0.625rem] text-[0.8125rem] leading-none transition-colors shadow-sm shrink-0 whitespace-nowrap cursor-pointer"
                                         >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
                                             Create Group
                                         </button>
                                     </div>
 
                                     {myGroups.length === 0 ? (
-                                        <div className="bg-white rounded-2xl border border-[#E7E5E4] p-12 text-center shadow-sm">
-                                            <p className="font-semibold text-[#292524] text-sm">No groups assigned yet</p>
-                                            <p className="text-xs text-[#6B665F] mt-1">Contact the department head to get assigned to a group.</p>
+                                        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
+                                            <p className="font-semibold text-gray-900 text-sm">No groups assigned yet</p>
+                                            <p className="text-xs text-gray-500 mt-1">Contact the department head to get assigned to a group.</p>
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
@@ -1522,7 +1572,7 @@ function MentorDashboard() {
                                                 const overflowCount = Math.max(0, memberCount - 4);
 
                                                 return (
-                                                    <div key={group.id} className="h-full bg-white rounded-2xl border border-[#E7E5E4] p-6 flex flex-col justify-between gap-5 shadow-sm transition-colors">
+                                                    <div key={group.id} className="h-full bg-white rounded-2xl border border-gray-200 p-6 flex flex-col justify-between gap-5 shadow-sm transition-colors">
                                                         <div className="space-y-4">
                                                             {/* Top row: Category pills + Open badge */}
                                                             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1544,29 +1594,37 @@ function MentorDashboard() {
                                                                         );
                                                                     })}
                                                                 </div>
-                                                                <span
-                                                                    data-pill="true"
-                                                                    className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${
-                                                                        group.status === 'Open'
+                                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                                    <span
+                                                                        data-pill="true"
+                                                                        className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${group.status === 'Open'
                                                                             ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
-                                                                            : 'bg-[#F5F2EC] text-[#6B665F] border border-[#E7E5E4]'
-                                                                    }`}
-                                                                >
-                                                                    <span className={`w-1.5 h-1.5 rounded-full ${group.status === 'Open' ? 'bg-[#16A34A]' : 'bg-[#6B665F]'}`} />
-                                                                    {group.status}
-                                                                </span>
+                                                                            : 'bg-[#FAF8F5] text-gray-500 border border-gray-200'
+                                                                            }`}
+                                                                    >
+                                                                        <span className={`w-1.5 h-1.5 rounded-full ${group.status === 'Open' ? 'bg-[#16A34A]' : 'bg-gray-500'}`} />
+                                                                        {group.status}
+                                                                    </span>
+                                                                    <ActionMenu
+                                                                        ariaLabel={`${group.name} actions`}
+                                                                        items={[
+                                                                            { label: 'View Members', icon: ActionIcons.users, onClick: () => setViewingGroup(group) },
+                                                                            { label: 'Edit', icon: ActionIcons.edit, onClick: () => setEditingGroup(group) },
+                                                                        ]}
+                                                                    />
+                                                                </div>
                                                             </div>
 
                                                             {/* Title & 2-line Description */}
                                                             <div>
-                                                                <h3 className="text-xl font-bold text-[#292524] leading-snug">{group.name}</h3>
-                                                                <p className="text-sm text-[#6B665F] leading-relaxed line-clamp-2 mt-1.5">{group.description}</p>
+                                                                <h3 className="text-xl font-bold text-gray-900 leading-snug">{group.name}</h3>
+                                                                <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mt-1.5">{group.description}</p>
                                                             </div>
 
                                                             {/* Satellite Church Info */}
                                                             {(group.satelliteName || group.satellite) && (
                                                                 <div className="flex items-center gap-2 text-xs font-semibold text-[#92400E] bg-[#FEF3C7] px-3 py-2 rounded-xl border border-[#FDE68A]">
-                                                                    <svg className="w-4 h-4 shrink-0 text-[#D97706]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                                    <svg className="w-4 h-4 shrink-0 text-[#0E5B52]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                                                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                                                                     </svg>
                                                                     <span>
@@ -1575,23 +1633,23 @@ function MentorDashboard() {
                                                                 </div>
                                                             )}
 
-                                                            {/* Warm Sand Details & Capacity Strip */}
-                                                            <div className="bg-[#F5F2EC] rounded-xl p-4 space-y-3 border border-[#E7E5E4]">
+                                                            {/* Details & Capacity Strip */}
+                                                            <div className="bg-[#FAF8F5] rounded-xl p-4 space-y-3 border border-gray-200">
                                                                 <div className="flex flex-col gap-3">
                                                                     <div className="flex items-center gap-3 min-w-0">
-                                                                        <div className="w-8 h-8 rounded-lg bg-white border border-[#E7E5E4] flex items-center justify-center text-[#D97706] shrink-0">
+                                                                        <div className="kpi-icon-badge w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(14, 91, 82, 0.10)', color: '#0E5B52' }}>
                                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                                                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                                                                                 <circle cx="12" cy="10" r="3" />
                                                                             </svg>
                                                                         </div>
                                                                         <div className="min-w-0">
-                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6B665F]">Location</p>
-                                                                            <p className="text-sm font-semibold text-[#292524] break-words">{group.location}</p>
+                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Location</p>
+                                                                            <p className="text-sm font-semibold text-gray-900 break-words">{group.location}</p>
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-3 min-w-0">
-                                                                        <div className="w-8 h-8 rounded-lg bg-white border border-[#E7E5E4] flex items-center justify-center text-[#D97706] shrink-0">
+                                                                        <div className="kpi-icon-badge w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(14, 91, 82, 0.10)', color: '#0E5B52' }}>
                                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                                                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                                                                                 <line x1="16" y1="2" x2="16" y2="6" />
@@ -1600,13 +1658,13 @@ function MentorDashboard() {
                                                                             </svg>
                                                                         </div>
                                                                         <div className="min-w-0">
-                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6B665F]">Schedule</p>
-                                                                            <p className="text-sm font-semibold text-[#292524] break-words">{group.schedule}</p>
+                                                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Schedule</p>
+                                                                            <p className="text-sm font-semibold text-gray-900 break-words">{group.schedule}</p>
                                                                         </div>
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="border-t border-[#E7E5E4] pt-3 space-y-2.5">
+                                                                <div className="border-t border-gray-200 pt-3 space-y-2.5">
                                                                     <div className="flex items-center justify-between gap-3">
                                                                         {memberCount > 0 ? (
                                                                             <div className="flex items-center -space-x-2 shrink-0">
@@ -1614,59 +1672,35 @@ function MentorDashboard() {
                                                                                     <div
                                                                                         key={m.id}
                                                                                         title={m.name}
-                                                                                        className="w-6 h-6 rounded-full bg-[#D97706] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[#F5F2EC]"
+                                                                                        className="w-6 h-6 rounded-full bg-[#0E5B52] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[#FAF8F5]"
                                                                                     >
                                                                                         {m.initials}
                                                                                     </div>
                                                                                 ))}
                                                                                 {overflowCount > 0 && (
-                                                                                    <div className="w-6 h-6 rounded-full bg-[#1B2432] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[#F5F2EC]">
+                                                                                    <div className="w-6 h-6 rounded-full bg-[#181F26] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[#FAF8F5]">
                                                                                         +{overflowCount}
                                                                                     </div>
                                                                                 )}
                                                                             </div>
                                                                         ) : (
-                                                                            <span className="text-xs font-medium text-[#6B665F]">No active mentees yet</span>
+                                                                            <span className="text-xs font-medium text-gray-500">No active mentees yet</span>
                                                                         )}
-                                                                        <span className="text-xs font-bold text-[#292524] whitespace-nowrap shrink-0">
+                                                                        <span className="text-xs font-bold text-gray-900 whitespace-nowrap shrink-0">
                                                                             {memberCount} / {capacity} Members
                                                                         </span>
                                                                     </div>
                                                                     <div className="space-y-1.5">
-                                                                        <p className="text-xs font-medium text-[#6B665F]">Active Mentees</p>
-                                                                        <div className="w-full h-2 rounded-full bg-[#E7E5E4] overflow-hidden">
+                                                                        <p className="text-xs font-medium text-gray-500">Active Mentees</p>
+                                                                        <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
                                                                             <div
-                                                                                className="h-full rounded-full bg-[#D97706] transition-all duration-300"
+                                                                                className="h-full rounded-full bg-[#0E5B52] transition-all duration-300"
                                                                                 style={{ width: `${progressPct}%` }}
                                                                             />
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-
-                                                        {/* Card Footer Actions */}
-                                                        <div className="mt-auto flex items-center gap-2.5 pt-1">
-                                                            <button
-                                                                onClick={() => setViewingGroup(group)}
-                                                                className="flex-1 inline-flex items-center justify-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white rounded-xl py-2.5 px-4 font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
-                                                            >
-                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                                    <circle cx="12" cy="12" r="3" />
-                                                                </svg>
-                                                                View Members
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setEditingGroup(group)}
-                                                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#E7E5E4] text-[#292524] hover:bg-[#F5F2EC] font-medium text-sm transition-colors shrink-0 whitespace-nowrap"
-                                                            >
-                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                                </svg>
-                                                                Edit
-                                                            </button>
                                                         </div>
                                                     </div>
                                                 );
@@ -1697,8 +1731,8 @@ function MentorDashboard() {
                                     <div className="w-full max-w-full overflow-x-hidden">
                                         {/* Header */}
                                         <div className="mb-5">
-                                            <h1 className="text-[1.6rem] font-black text-[#292524] leading-tight">Connect 2 Souls</h1>
-                                            <p className="text-sm text-[#6B665F] mt-1">
+                                            <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Connect 2 Souls</h1>
+                                            <p className="text-sm text-gray-500 mt-1">
                                                 Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.
                                             </p>
                                         </div>
@@ -1724,10 +1758,10 @@ function MentorDashboard() {
                                             </div>
                                         )}
 
-                                        {/* Compact Search & Source Filter Pills */}
-                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                                        {/* Compact Search & Source Filter Dropdown */}
+                                        <div className="flex flex-wrap items-center gap-3 mb-6">
                                             <div className="relative w-full sm:w-72">
-                                                <svg className="w-4 h-4 text-[#6B665F] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                                     <circle cx="11" cy="11" r="8" />
                                                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                                                 </svg>
@@ -1736,35 +1770,26 @@ function MentorDashboard() {
                                                     value={pmSearch}
                                                     onChange={(e) => setPmSearch(e.target.value)}
                                                     placeholder="Search potential mentees..."
-                                                    className="w-full bg-white border border-[#E7E5E4] rounded-xl pl-9 pr-3 py-2 text-sm text-[#292524] placeholder:text-[#6B665F] focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7] transition-colors"
+                                                    className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#FEF3C7] transition-colors"
                                                 />
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                {(['All', 'Group Finder', 'Recommended'] as const).map((pill) => {
-                                                    const active = pmSourceFilter === pill;
-                                                    return (
-                                                        <button
-                                                            key={pill}
-                                                            type="button"
-                                                            onClick={() => setPmSourceFilter(pill)}
-                                                            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap cursor-pointer ${
-                                                                active
-                                                                    ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
-                                                                    : 'bg-white text-[#292524] border-[#E7E5E4] hover:bg-[#F5F2EC]'
-                                                            }`}
-                                                        >
-                                                            {pill}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
+                                            <CustomSelect
+                                                value={pmSourceFilter}
+                                                onChange={(e) => setPmSourceFilter(e.target.value as 'All' | 'Group Finder' | 'Recommended')}
+                                                aria-label="Filter by source"
+                                                className="text-xs font-semibold px-3.5 py-2 rounded-xl border border-[#E2E8E5] bg-white text-[#181F26] focus:outline-none min-w-[155px] w-full sm:w-auto"
+                                            >
+                                                <option value="All">All Sources</option>
+                                                <option value="Group Finder">Group Finder</option>
+                                                <option value="Recommended">Recommended</option>
+                                            </CustomSelect>
                                         </div>
 
                                         {/* Cards grid */}
                                         {filteredPotentialMentees.length === 0 ? (
-                                            <div className="bg-white rounded-2xl border border-[#E7E5E4] p-10 text-center shadow-sm">
-                                                <p className="text-sm font-semibold text-[#292524]">No potential mentees found</p>
-                                                <p className="text-xs text-[#6B665F] mt-1">Try adjusting your search or filter selection.</p>
+                                            <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center shadow-sm">
+                                                <p className="text-sm font-semibold text-gray-900">No potential mentees found</p>
+                                                <p className="text-xs text-gray-500 mt-1">Try adjusting your search or filter selection.</p>
                                             </div>
                                         ) : (
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
@@ -1796,22 +1821,25 @@ function MentorDashboard() {
                                 <MentorPotentialC2STab />
                             )}
 
-                            {/* â”€â”€ Dashboard Tab â”€â”€ */}
+                            {/* Dashboard Tab */}
                             {activeTab === 'dashboard' && <>
                                 {/* Stat cards */}
-                                <div className="grid grid-cols-2 gap-4 mb-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                                     {[
-                                        { label: 'Workers', value: 3455, sub: 'Across all departments', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
-                                        { label: 'Mentors', value: 717, sub: 'Active discipleship mentors', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> },
-                                        { label: 'Mentees', value: 2765, sub: 'Church-wide C2S mentees', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
-                                        { label: 'C2S Groups', value: 179, sub: 'Church & community based', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg> },
+                                        { label: 'Workers', value: 3455, sub: 'Across all departments', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
+                                        { label: 'Mentors', value: 717, sub: 'Active discipleship mentors', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> },
+                                        { label: 'Mentees', value: 2765, sub: 'Church-wide C2S mentees', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg> },
+                                        { label: 'C2S Groups', value: 179, sub: 'Church & community based', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg> },
                                     ].map((s) => (
-                                        <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                            <div className="flex items-start justify-between">
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                                                <span className="opacity-80">{s.icon}</span>
+                                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                                            <div className="c2s-kpi-card-top">
+                                                <span className="c2s-kpi-label">{s.label}</span>
+                                                <div className="kpi-icon-badge c2s-kpi-badge">{s.icon}</div>
                                             </div>
-                                            <div><p className="text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p><p className="text-sm text-gray-400 leading-snug">{s.sub}</p></div>
+                                            <div className="c2s-kpi-bottom">
+                                                <p className="kpi-value c2s-kpi-number">{s.value.toLocaleString()}</p>
+                                                <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5 leading-snug">{s.sub}</p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -1825,54 +1853,54 @@ function MentorDashboard() {
                                     <p className="text-xs text-gray-400 mb-6">Mentee delivery mode across departments.</p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                         <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+                                            <div className="kpi-icon-badge w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(14, 91, 82, 0.10)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0E5B52"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-400 mb-0.5">Face-to-Face</p>
-                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{MENTEES_F2F.toLocaleString()}</p>
+                                                <p className="kpi-value text-[2rem] font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-none">{MENTEES_F2F.toLocaleString()}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_F2F / MENTEES_TOTAL * 100)}% of all mentees</p>
                                             </div>
                                         </div>
                                         <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#f07070"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" /></svg>
+                                            <div className="kpi-icon-badge w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(14, 91, 82, 0.10)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0E5B52"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" /></svg>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-400 mb-0.5">Online</p>
-                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{MENTEES_ONLINE.toLocaleString()}</p>
+                                                <p className="kpi-value text-[2rem] font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-none">{MENTEES_ONLINE.toLocaleString()}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_ONLINE / MENTEES_TOTAL * 100)}% of all mentees</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-gray-100">
+                                    <div className="rounded-xl border border-gray-100 overflow-x-auto">
                                         <table className="w-full table-fixed">
                                             <colgroup>
-                                                <col className="w-[40%]" />
-                                                <col className="w-[20%]" />
-                                                <col className="w-[20%]" />
-                                                <col className="w-[20%]" />
+                                                <col className="w-[34%]" />
+                                                <col className="w-[22%]" />
+                                                <col className="w-[22%]" />
+                                                <col className="w-[22%]" />
                                             </colgroup>
-                                            <thead><tr style={{ background: 'var(--bg-highlight)' }}>
-                                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">F2F</th>
-                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
-                                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                                            <thead><tr className="table-header-row">
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Department</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">F2F</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Online</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Total</th>
                                             </tr></thead>
                                             <tbody>
                                                 {MENTEES_BY_DEPT.map((row) => (
                                                     <tr key={row.dept} className="table-body-row">
-                                                        <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.f2f}</td>
-                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.online}</td>
-                                                        <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
+                                                        <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{row.dept}</td>
+                                                        <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.f2f}</td>
+                                                        <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.online}</td>
+                                                        <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.total}</td>
                                                     </tr>
                                                 ))}
                                                 <tr className="table-total-row">
-                                                    <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
-                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_F2F.toLocaleString()}</td>
-                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_ONLINE.toLocaleString()}</td>
-                                                    <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{MENTEES_TOTAL.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{MENTEES_F2F.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{MENTEES_ONLINE.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{MENTEES_TOTAL.toLocaleString()}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -1885,54 +1913,54 @@ function MentorDashboard() {
                                     <p className="text-xs text-gray-400 mb-6">Where discipleship groups meet.</p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                         <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z" /></svg>
+                                            <div className="kpi-icon-badge w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(14, 91, 82, 0.10)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0E5B52"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z" /></svg>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-400 mb-0.5">Church-based</p>
-                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{C2S_CHURCH}</p>
+                                                <p className="kpi-value text-[2rem] font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-none">{C2S_CHURCH}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">Meeting in COG Satellite Churches</p>
                                             </div>
                                         </div>
                                         <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
+                                            <div className="kpi-icon-badge w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(14, 91, 82, 0.10)' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0E5B52"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-400 mb-0.5">Community-based</p>
-                                                <p className="text-[2rem] font-normal text-gray-900 leading-none">{C2S_COMMUNITY}</p>
+                                                <p className="kpi-value text-[2rem] font-extrabold text-[#181F26] dark:text-[#E6EDF3] leading-none">{C2S_COMMUNITY}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">Meeting in barangays &amp; homes</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-gray-100">
+                                    <div className="rounded-xl border border-gray-100 overflow-x-auto">
                                         <table className="w-full table-fixed">
                                             <colgroup>
-                                                <col className="w-[40%]" />
-                                                <col className="w-[20%]" />
-                                                <col className="w-[20%]" />
-                                                <col className="w-[20%]" />
+                                                <col className="w-[34%]" />
+                                                <col className="w-[22%]" />
+                                                <col className="w-[22%]" />
+                                                <col className="w-[22%]" />
                                             </colgroup>
                                             <thead><tr className="table-header-row">
-                                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church</th>
-                                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community</th>
-                                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Department</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Church</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Community</th>
+                                                <th className="px-6 py-4 text-left text-[12px] font-bold text-white uppercase tracking-wider">Total</th>
                                             </tr></thead>
                                             <tbody>
                                                 {C2S_GROUPS_BY_DEPT.map((row) => (
                                                     <tr key={row.dept} className="table-body-row">
-                                                        <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.church}</td>
-                                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.community}</td>
-                                                        <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
+                                                        <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{row.dept}</td>
+                                                        <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.church}</td>
+                                                        <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.community}</td>
+                                                        <td className="px-6 py-4 text-sm text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{row.total}</td>
                                                     </tr>
                                                 ))}
                                                 <tr className="table-total-row">
-                                                    <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
-                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_CHURCH}</td>
-                                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_COMMUNITY}</td>
-                                                    <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{C2S_TOTAL_ALL}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{C2S_CHURCH}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{C2S_COMMUNITY}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{C2S_TOTAL_ALL}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -1940,266 +1968,232 @@ function MentorDashboard() {
                                 </div>
                             </>}
                         </>
-                        )}
-                        </div>
+                    )}
                 </div>
             </div>
-            );
+        </div>
+    );
 }
 
-            // ── CLUSTER HEAD REPORTS CHARTS ── rendered here so recharts resolves correctly
+// ── CLUSTER HEAD REPORTS CHARTS ── rendered here so recharts resolves correctly
 
 
 
-            const CH_TS = {borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
+const CH_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
 
-            type CHReportTab = 'mentor' | 'coordinator' | 'barangay' | 'growth';
-
-            function CHReportsCharts() {
-    const [tab, setTab] = useState<CHReportTab>('mentor');
-                const tabs: {key: CHReportTab; label: string }[] = [
-                {key: 'mentor', label: 'Per Mentor' },
-                {key: 'coordinator', label: 'Per Coordinator' },
-                {key: 'barangay', label: 'Per Barangay' },
-                {key: 'growth', label: 'Monthly Growth' },
-                ];
-                return (
-                <div>
-                    <div className="flex items-center gap-2 mb-5">
-                        {tabs.map(t => (
-                            <button key={t.key} onClick={() => setTab(t.key)}
-                                className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                        {tab === 'mentor' && (
-                            <>
-                                <p className="text-sm font-semibold text-gray-800 mb-4">Mentor Performance</p>
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <BarChart data={CH_MENTOR_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <Tooltip contentStyle={CH_TS} formatter={(v: any, n: string) => [v, n === 'attendance' ? 'Attendance %' : 'Completion %']} />
-                                        <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                        <Bar dataKey="attendance" name="Attendance %" fill="#D97706" radius={[3, 3, 0, 0]} barSize={22} />
-                                        <Bar dataKey="completion" name="Completion %" fill="#D97706" fillOpacity={0.4} radius={[3, 3, 0, 0]} barSize={22} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </>
-                        )}
-                        {tab === 'coordinator' && (
-                            <>
-                                <p className="text-sm font-semibold text-gray-800 mb-4">Coordinator Activity</p>
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <BarChart data={CH_COORD_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <Tooltip contentStyle={CH_TS} />
-                                        <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                        <Bar dataKey="assigned" name="Assigned Potential" fill="#0284C7" radius={[3, 3, 0, 0]} barSize={22} />
-                                        <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </>
-                        )}
-                        {tab === 'barangay' && (
-                            <>
-                                <p className="text-sm font-semibold text-gray-800 mb-4">Groups per Barangay</p>
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <BarChart data={CH_BARANGAY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <Tooltip contentStyle={CH_TS} />
-                                        <Bar dataKey="members" name="Members" fill="#D97706" radius={[3, 3, 0, 0]} barSize={28} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </>
-                        )}
-                        {tab === 'growth' && (
-                            <>
-                                <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Growth</p>
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <LineChart data={CH_GROWTH_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                        <Tooltip contentStyle={CH_TS} />
-                                        <Legend iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                        <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#D97706" strokeWidth={2} dot={{ r: 4, fill: '#D97706', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                                        <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#D97706" strokeWidth={2} dot={{ r: 4, fill: '#D97706', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </>
-                        )}
-                    </div>
-                </div>
-                );
-}
-
-                // ── COORDINATOR REPORTS CHARTS ── rendered here so recharts resolves correctly
-
-
-
-                const COORD_TS = {borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
-
-                const COORD_ASSIGNMENT_DATA = [
-                {month: 'Feb', assigned: 4, pending: 2 },
-                {month: 'Mar', assigned: 6, pending: 3 },
-                {month: 'Apr', assigned: 5, pending: 1 },
-                {month: 'May', assigned: 8, pending: 4 },
-                {month: 'Jun', assigned: 7, pending: 2 },
-                {month: 'Jul', assigned: 9, pending: 3 },
-                ];
-                const COORD_MONTHLY_DATA = [
-                {month: 'Feb', new: 3 }, {month: 'Mar', new: 5 }, {month: 'Apr', new: 4 },
-                {month: 'May', new: 7 }, {month: 'Jun', new: 6 }, {month: 'Jul', new: 8 },
-                ];
-                const COORD_BARANGAY_DATA = [
-                {name: 'Burol', count: 2 }, {name: 'Paliparan III', count: 2 },
-                {name: 'Sampaloc I', count: 1 }, {name: 'Salitran III', count: 1 },
-                {name: 'Emmanuel Bergado I', count: 1 }, {name: 'Fatima I', count: 1 },
-                ];
-                const COORD_MENTOR_DATA = [
-                {name: 'Juan', assigned: 2, capacity: 7 }, {name: 'Pedro', assigned: 2, capacity: 7 },
-                {name: 'Maria', assigned: 1, capacity: 4 }, {name: 'Lena', assigned: 0, capacity: 0 },
-                ];
-
-                type CoordReportChartTab = 'assignment' | 'monthly' | 'barangay' | 'mentor';
-
-                function CoordReportsCharts() {
-    const [tab, setTab] = useState<CoordReportChartTab>('assignment');
-                    const tabs: {key: CoordReportChartTab; label: string }[] = [
-                    {key: 'assignment', label: 'Assignment Reports' },
-                    {key: 'monthly', label: 'Monthly Potential' },
-                    {key: 'barangay', label: 'Per Barangay' },
-                    {key: 'mentor', label: 'Per Mentor' },
-                    ];
-                    return (
-                    <div>
-                        <div className="flex items-center gap-2 mb-5 flex-wrap">
-                            {tabs.map(t => (
-                                <button key={t.key} onClick={() => setTab(t.key)}
-                                    className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${tab === t.key ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                            {tab === 'assignment' && (
-                                <>
-                                    <p className="text-sm font-semibold text-gray-800 mb-4">Assignment Reports â€” Assigned vs Pending</p>
-                                    <ResponsiveContainer width="100%" height={220}>
-                                        <BarChart data={COORD_ASSIGNMENT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <Tooltip contentStyle={COORD_TS} />
-                                            <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                            <Bar dataKey="assigned" name="Assigned" fill="#0284C7" radius={[3, 3, 0, 0]} barSize={22} />
-                                            <Bar dataKey="pending" name="Pending" fill="#e67700" fillOpacity={0.8} radius={[3, 3, 0, 0]} barSize={22} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </>
-                            )}
-                            {tab === 'monthly' && (
-                                <>
-                                    <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Potential Mentees Submitted</p>
-                                    <ResponsiveContainer width="100%" height={220}>
-                                        <AreaChart data={COORD_MONTHLY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="coordFill" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.2} />
-                                                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'New Potential Mentees']} />
-                                            <Area type="monotone" dataKey="new" stroke="#0284C7" strokeWidth={2} fill="url(#coordFill)" dot={false} activeDot={{ r: 5 }} />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </>
-                            )}
-                            {tab === 'barangay' && (
-                                <>
-                                    <p className="text-sm font-semibold text-gray-800 mb-4">Potential Mentees per Barangay</p>
-                                    <ResponsiveContainer width="100%" height={220}>
-                                        <BarChart data={COORD_BARANGAY_DATA} layout="vertical" margin={{ top: 5, right: 20, left: 60, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                                            <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={55} />
-                                            <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'Mentees']} />
-                                            <Bar dataKey="count" name="Mentees" fill="#0284C7" radius={[0, 3, 3, 0]} barSize={16} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </>
-                            )}
-                            {tab === 'mentor' && (
-                                <>
-                                    <p className="text-sm font-semibold text-gray-800 mb-4">Mentee Assignments per Mentor</p>
-                                    <ResponsiveContainer width="100%" height={220}>
-                                        <BarChart data={COORD_MENTOR_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                            <Tooltip contentStyle={COORD_TS} />
-                                            <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                                            <Bar dataKey="assigned" name="Assigned Mentees" fill="#0284C7" radius={[3, 3, 0, 0]} barSize={22} />
-                                            <Bar dataKey="capacity" name="Available Slots" fill="#0284C7" fillOpacity={0.3} radius={[3, 3, 0, 0]} barSize={22} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </>
+function CHReportsCharts({ tab = 'mentor' }: { tab?: 'mentor' | 'coordinator' | 'barangay' | 'growth' }) {
+    return (
+        <div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                {tab === 'mentor' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Mentor Performance</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={CH_MENTOR_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={CH_TS} formatter={(v: any, n: string) => [v, n === 'attendance' ? 'Attendance %' : 'Completion %']} />
+                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                <Bar dataKey="attendance" name="Attendance %" fill="#0E5B52" radius={[3, 3, 0, 0]} barSize={22} />
+                                <Bar dataKey="completion" name="Completion %" fill="#181F26" fillOpacity={0.75} radius={[3, 3, 0, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </>
                 )}
-                    </div>
-                </div>
-                );
+                {tab === 'coordinator' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Coordinator Activity</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={CH_COORD_REPORT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={CH_TS} />
+                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                <Bar dataKey="assigned" name="Assigned Potential" fill="#0E5B52" radius={[3, 3, 0, 0]} barSize={22} />
+                                <Bar dataKey="pending" name="Pending" fill="#181F26" fillOpacity={0.75} radius={[3, 3, 0, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+                {tab === 'barangay' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Groups per Barangay</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={CH_BARANGAY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={CH_TS} />
+                                <Bar dataKey="members" name="Members" fill="#0E5B52" radius={[3, 3, 0, 0]} barSize={28} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+                {tab === 'growth' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Growth</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <LineChart data={CH_GROWTH_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={CH_TS} />
+                                <Legend iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#0E5B52" strokeWidth={2.2} dot={{ r: 4, fill: '#0E5B52', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                                <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#181F26" strokeWidth={2} dot={{ r: 4, fill: '#181F26', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+            </div>
+        </div>
+    );
 }
 
-                // ── ROOT ──
+// ── COORDINATOR REPORTS CHARTS ── rendered here so recharts resolves correctly
 
 
-                export default function DashboardPage() {
-    const {user, logout} = useAuth();
-                const router = useRouter();
+
+const COORD_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
+
+const COORD_ASSIGNMENT_DATA = [
+    { month: 'Feb', assigned: 4, pending: 2 },
+    { month: 'Mar', assigned: 6, pending: 3 },
+    { month: 'Apr', assigned: 5, pending: 1 },
+    { month: 'May', assigned: 8, pending: 4 },
+    { month: 'Jun', assigned: 7, pending: 2 },
+    { month: 'Jul', assigned: 9, pending: 3 },
+];
+const COORD_MONTHLY_DATA = [
+    { month: 'Feb', new: 3 }, { month: 'Mar', new: 5 }, { month: 'Apr', new: 4 },
+    { month: 'May', new: 7 }, { month: 'Jun', new: 6 }, { month: 'Jul', new: 8 },
+];
+const COORD_BARANGAY_DATA = [
+    { name: 'Burol', count: 2 }, { name: 'Paliparan III', count: 2 },
+    { name: 'Sampaloc I', count: 1 }, { name: 'Salitran III', count: 1 },
+    { name: 'Emmanuel Bergado I', count: 1 }, { name: 'Fatima I', count: 1 },
+];
+const COORD_MENTOR_DATA = [
+    { name: 'Juan', assigned: 2, capacity: 7 }, { name: 'Pedro', assigned: 2, capacity: 7 },
+    { name: 'Maria', assigned: 1, capacity: 4 }, { name: 'Lena', assigned: 0, capacity: 0 },
+];
+
+function CoordReportsCharts({ tab = 'assignment' }: { tab?: 'assignment' | 'monthly' | 'barangay' | 'mentor' }) {
+    return (
+        <div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                {tab === 'assignment' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Assignment Reports — Assigned vs Pending</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={COORD_ASSIGNMENT_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={COORD_TS} />
+                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                <Bar dataKey="assigned" name="Assigned" fill="#0E5B52" radius={[3, 3, 0, 0]} barSize={22} />
+                                <Bar dataKey="pending" name="Pending" fill="#181F26" fillOpacity={0.75} radius={[3, 3, 0, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+                {tab === 'monthly' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Monthly Potential Mentees Submitted</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <AreaChart data={COORD_MONTHLY_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="coordFill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#0E5B52" stopOpacity={0.18} />
+                                        <stop offset="95%" stopColor="#0E5B52" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'New Potential Mentees']} />
+                                <Area type="monotone" dataKey="new" stroke="#0E5B52" strokeWidth={2.2} fill="url(#coordFill)" dot={false} activeDot={{ r: 5 }} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+                {tab === 'barangay' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Potential Mentees per Barangay</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={COORD_BARANGAY_DATA} layout="vertical" margin={{ top: 5, right: 20, left: 60, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                                <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={55} />
+                                <Tooltip contentStyle={COORD_TS} formatter={(v: any) => [v, 'Mentees']} />
+                                <Bar dataKey="count" name="Mentees" fill="#0E5B52" radius={[0, 3, 3, 0]} barSize={16} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+                {tab === 'mentor' && (
+                    <>
+                        <p className="text-sm font-semibold text-gray-800 mb-4">Mentee Assignments per Mentor</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={COORD_MENTOR_DATA} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={COORD_TS} />
+                                <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                                <Bar dataKey="assigned" name="Assigned Mentees" fill="#0E5B52" radius={[3, 3, 0, 0]} barSize={22} />
+                                <Bar dataKey="capacity" name="Available Slots" fill="#181F26" fillOpacity={0.35} radius={[3, 3, 0, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── ROOT ──
+
+
+export default function DashboardPage() {
+    const { user, logout } = useAuth();
+    const router = useRouter();
 
     useEffect(() => {
         const stored = typeof window !== 'undefined' ? localStorage.getItem('c2s_user') : null;
-                if (!stored) router.replace('/login');
+        if (!stored) router.replace('/login');
     }, []); // eslint-disable-line
 
-                if (!user) return null;
+    if (!user) return null;
 
-                function handleLogout() {
-                    logout();
-                router.push('/login');
+    function handleLogout() {
+        logout();
+        router.push('/login');
     }
 
-                if (user.role === 'admin') {
+    if (user.role === 'admin') {
         return <AdminDashboard />;
     }
 
-                if (user.role === 'ministry_head') {
+    if (user.role === 'ministry_head') {
         return <DepartmentHeadDashboard />;
     }
 
-                if (user.role === 'cluster_head') {
-        return <ClusterHeadDashboard onLogout={handleLogout} reportsContent={<CHReportsCharts />} />;
+    if (user.role === 'cluster_head') {
+        return <ClusterHeadDashboard onLogout={handleLogout} renderReportsContent={(tab) => <CHReportsCharts tab={tab} />} />;
     }
 
-                if (user.role === 'c2s_coordinator') {
-        return <CoordinatorDashboard onLogout={handleLogout} reportsContent={<CoordReportsCharts />} />;
+    if (user.role === 'c2s_coordinator') {
+        return <CoordinatorDashboard onLogout={handleLogout} renderReportsContent={(tab) => <CoordReportsCharts tab={tab} />} />;
     }
 
-                return (
-                <div className="overflow-x-hidden">
-                    <MentorDashboard />
-                </div>
-                );
+    return (
+        <div className="overflow-x-hidden">
+            <MentorDashboard />
+        </div>
+    );
 }
 

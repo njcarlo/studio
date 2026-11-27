@@ -61,42 +61,44 @@ export default function ViewMembersModal({ group, onClose }: Props) {
                     </div>
                 </div>
 
-                {/* Group info grid */}
-                <div className="mx-6 mt-5 rounded-xl border border-gray-100 grid grid-cols-2 divide-x divide-y divide-gray-100" style={{ background: 'var(--bg-subtle)' }}>
-                    {[
-                        { label: 'GROUP NAME',      value: group.name },
-                        { label: 'GROUP TYPE',       value: group.tags.map(t => t.label).join(', ') },
-                        { label: 'MEETING SCHEDULE', value: group.schedule },
-                        { label: 'TOTAL MEMBERS',    value: String(allMembers.length) },
-                        { label: 'BARANGAY',         value: group.barangay },
-                        { label: 'SUBDIVISION',      value: group.location },
-                    ].map((item) => (
-                        <div key={item.label} className="px-4 py-3">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{item.label}</p>
-                            <p className="text-sm font-semibold text-gray-800">{item.value}</p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Active Members header + search */}
-                <div className="flex items-center justify-between px-6 mt-5 mb-3">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Active Members</p>
-                    <div className="relative">
-                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                            <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/>
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Search members..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] w-44"
-                        />
+                {/* Scrollable body (Group info grid + Active members list) */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-5 flex flex-col gap-4">
+                    {/* Group info grid */}
+                    <div className="rounded-xl border border-gray-100 grid grid-cols-2 divide-x divide-y divide-gray-100 shrink-0" style={{ background: 'var(--bg-subtle)' }}>
+                        {[
+                            { label: 'GROUP NAME',      value: group.name },
+                            { label: 'GROUP TYPE',       value: group.tags.map(t => t.label).join(', ') },
+                            { label: 'MEETING SCHEDULE', value: group.schedule },
+                            { label: 'TOTAL MEMBERS',    value: String(allMembers.length) },
+                            { label: 'BARANGAY',         value: group.barangay },
+                            { label: 'SUBDIVISION',      value: group.location },
+                        ].map((item) => (
+                            <div key={item.label} className="px-4 py-3">
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{item.label}</p>
+                                <p className="text-sm font-semibold text-gray-800">{item.value}</p>
+                            </div>
+                        ))}
                     </div>
-                </div>
 
-                {/* Members list */}
-                <div className="flex-1 overflow-y-auto px-6 pb-6 flex flex-col gap-3">
+                    {/* Active Members header + search */}
+                    <div className="flex items-center justify-between gap-2 pt-1 shrink-0">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Active Members</p>
+                        <div className="relative">
+                            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/>
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Search members..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#0E5B52] w-44"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Members list */}
+                    <div className="flex flex-col gap-3">
                     {members.length === 0 && (
                         <p className="text-sm text-gray-400 text-center py-10">No members found.</p>
                     )}
@@ -136,14 +138,14 @@ export default function ViewMembersModal({ group, onClose }: Props) {
                                     View Profile
                                 </button>
                                 <button
-                                    className="flex-1 py-2 text-xs font-bold text-white rounded-lg transition-colors"
-                                    style={{ background: '#D97706' }}
+                                    className="flex-1 py-2 text-xs font-bold text-white rounded-lg bg-[#0E5B52] hover:bg-[#0A463F] transition-colors"
                                 >
                                     Update Progress
                                 </button>
                             </div>
                         </div>
                     ))}
+                    </div>
                 </div>
             </div>
         </>

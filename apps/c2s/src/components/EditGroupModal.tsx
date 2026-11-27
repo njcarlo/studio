@@ -116,17 +116,17 @@ export default function EditGroupModal({ group, onClose, onSave, onDelete }: Pro
             <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
             <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-gray-100">
+                    <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-gray-100">
                         <h2 className="text-xl font-black text-gray-900">Edit Group</h2>
                         <p className="text-xs text-gray-400 mt-0.5">Changes sync automatically to the C2S Group Finder.</p>
                     </div>
 
                     {/* Body */}
-                    <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 flex flex-col gap-7">
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 flex flex-col gap-5">
 
                         {/* ── Basic Information ── */}
                         <section>
@@ -286,13 +286,12 @@ export default function EditGroupModal({ group, onClose, onSave, onDelete }: Pro
                             )}
                         </div>
                         <div className="flex items-center gap-3 ml-auto">
-                            <button onClick={onClose}
-                                className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
+                            <button type="button" onClick={onClose}
+                                className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
                                 Cancel
                             </button>
-                            <button onClick={handleSave}
-                                className="px-6 py-2 text-sm font-bold text-white rounded-lg transition-colors"
-                                style={{ background: '#D97706' }}>
+                            <button type="button" onClick={handleSave}
+                                className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer">
                                 Save Changes
                             </button>
                         </div>

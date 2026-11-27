@@ -1,6 +1,7 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import ConfirmModal from '@/components/ConfirmModal';
 import { useState } from 'react';
 import { DEPARTMENTS, MINISTRY_DEPARTMENTS } from '@/lib/admin-data';
 
@@ -43,35 +44,32 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
 
     const canNext = dept !== '' && ministry !== '' && cluster !== '' && mentor !== '';
 
+    if (step === 1) {
+        return (
+            <ConfirmModal
+                open
+                variant="default"
+                icon="check"
+                title="Transfer Mentee?"
+                description={
+                    <>
+                        Transfer <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{menteeName}</strong> to another ministry?
+                        Their current mentoring record will be closed.
+                    </>
+                }
+                cancelLabel="Cancel"
+                confirmLabel="Next"
+                onCancel={onClose}
+                onConfirm={() => setStep(2)}
+            />
+        );
+    }
+
     return (
         <>
             <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
             <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" onClick={e => e.stopPropagation()}>
-
-                    {/* ── Step 1: Confirm ── */}
-                    {step === 1 && (
-                        <div className="p-8 flex flex-col gap-6">
-                            <h2 className="text-2xl font-semibold text-gray-900">Transfer Mentee</h2>
-                            <hr className="border-gray-100" />
-                            <p className="text-sm text-gray-600 leading-relaxed">
-                                Transfer <span className="font-bold text-gray-900">{menteeName}</span> to another ministry?
-                                Their current mentoring record will be closed.
-                            </p>
-                            <hr className="border-gray-100" />
-                            <div className="flex items-center justify-between">
-                                <button onClick={onClose}
-                                    className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                                    Cancel
-                                </button>
-                                <button onClick={() => setStep(2)}
-                                    className="px-6 py-2 text-sm font-semibold text-white rounded-lg"
-                                    style={{ background: '#D97706' }}>
-                                    Next
-                                </button>
-                            </div>
-                        </div>
-                    )}
 
                     {/* ── Step 2: Transfer Details ── */}
                     {step === 2 && (
@@ -167,15 +165,15 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                             )}
 
                             <div className="flex items-center justify-between pt-1">
-                                <button onClick={() => setStep(1)}
-                                    className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <button type="button" onClick={() => setStep(1)}
+                                    className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer">
                                     Back
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => { if (canNext) { onConfirm(); onClose(); } }}
                                     disabled={!canNext}
-                                    className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                    style={{ background: '#D97706' }}>
+                                    className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all cursor-pointer disabled:bg-[#0E5B52] disabled:opacity-45 disabled:cursor-not-allowed">
                                     {canNext ? 'Submit' : 'Next'}
                                 </button>
                             </div>

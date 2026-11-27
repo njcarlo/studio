@@ -112,6 +112,17 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     activeRef.current = active;
 
     useEffect(() => {
+        if (active) {
+            document.documentElement.dataset.confirmOpen = 'true';
+        } else {
+            delete document.documentElement.dataset.confirmOpen;
+        }
+        return () => {
+            delete document.documentElement.dataset.confirmOpen;
+        };
+    }, [active]);
+
+    useEffect(() => {
         function handleCaptureSubmit(event: SubmitEvent) {
             const target = event.target;
             if (!(target instanceof HTMLFormElement)) return;
@@ -165,7 +176,15 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                             !(submitter as HTMLButtonElement).disabled
                                 ? submitter
                                 : undefined;
-                        target.requestSubmit(validSubmitter);
+                        try {
+                            target.requestSubmit(validSubmitter);
+                        } catch {
+                            try {
+                                target.requestSubmit();
+                            } catch {
+                                target.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                            }
+                        }
                     } else {
                         confirmedFormsRef.current.delete(target);
                     }

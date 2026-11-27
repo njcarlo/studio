@@ -1,7 +1,11 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
-import { useState } from 'react';
+import DashboardWelcomeBanner from '@/components/DashboardWelcomeBanner';
+import ActionMenu, { ActionIcons } from '@/components/ActionMenu';
+import { WorkerSinceValue } from '@/components/WorkerIdentityBits';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useEffect, useState } from 'react';
 import { useConfirm } from '@/lib/confirm-context';
 import TransferDepartmentModal, { type TransferDepartmentResult } from '@/components/TransferDepartmentModal';
 import AddMenteeModal from '@/components/AddMenteeModal';
@@ -43,7 +47,7 @@ function MinistryDeptSelect({
     return (
         <CustomSelect value={value} onChange={e => onChange(e.target.value)}
             className={className ?? 'text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-700'}>
-            <option value="All">All Departments</option>
+            <option value="All">All Ministries</option>
             {DEPARTMENTS.map(dept => (
                 <optgroup key={dept} label={dept.toUpperCase()}>
                     {MINISTRY_DEPARTMENTS[dept].map(m => (
@@ -89,7 +93,9 @@ type AdminNav =
     | 'potential_mentees'
     | 'active_mentees'
     | 'c2s_home'
-    | 'reports'
+    | 'reports_growth'
+    | 'reports_ministry'
+    | 'reports_map'
     | 'notifications'
     | 'audit'
     | 'settings'
@@ -99,6 +105,7 @@ interface NavItem {
     key: AdminNav;
     label: string;
     icon: string;
+    iconKind?: 'fill' | 'stroke';
     badge?: number;
     section?: string;
 }
@@ -111,23 +118,27 @@ const ADMIN_NAV: NavItem[] = [
     { key: 'potential_mentees', label: 'Potential Mentees', section: 'C2S', icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
     { key: 'active_mentees', label: 'Active Mentees', section: 'C2S', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
     { key: 'c2s_home', label: 'C2S Home Groups', section: 'C2S', icon: 'M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z' },
-    { key: 'reports', label: 'Reports & Analytics', section: 'ANALYTICS', icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
+    { key: 'reports_growth', label: 'Growth Analytics', section: 'ANALYTICS', iconKind: 'stroke', icon: 'M3 17l6-6 4 4 8-8 M17 7h4v4' },
+    { key: 'reports_ministry', label: 'Ministry Reports', section: 'ANALYTICS', iconKind: 'stroke', icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 17v-3 M12 17v-5 M16 17v-1' },
+    { key: 'reports_map', label: 'Interactive Map', section: 'ANALYTICS', iconKind: 'stroke', icon: 'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z M9 3v15 M15 6v15' },
     { key: 'notifications', label: 'Notifications', section: 'SYSTEM', icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
     { key: 'audit', label: 'Audit Logs', section: 'SYSTEM', icon: 'M9 5H7c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-2c0-1.1-.9-2-2-2s-2 .9-2 2zm2 0h2v1h-2V5zm1 12l-3-3 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z' },
 ];
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, color, icon }: { label: string; value: string | number; sub: string; color: string; icon: string }) {
+function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub: string; color?: string; icon: string }) {
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            <div className="flex items-start justify-between mb-3">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{label}</p>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '18' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={color}><path d={icon} /></svg>
+        <div className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+            <div className="c2s-kpi-card-top">
+                <p className="c2s-kpi-label">{label}</p>
+                <div className="kpi-icon-badge c2s-kpi-badge">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={icon} /></svg>
                 </div>
             </div>
-            <p className="text-3xl font-black leading-none mb-1" style={{ color }}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
-            <p className="text-xs text-gray-400">{sub}</p>
+            <div className="c2s-kpi-bottom">
+                <p className="kpi-value c2s-kpi-number">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+                <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5">{sub}</p>
+            </div>
         </div>
     );
 }
@@ -135,9 +146,9 @@ function StatCard({ label, value, sub, color, icon }: { label: string; value: st
 // ─── Section Header ───────────────────────────────────────────────────────────
 function SectionHeader({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
     return (
-        <div className="flex items-start justify-between mb-6">
-            <div>
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">{title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+            <div className="min-w-0">
+                <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">{title}</h1>
                 {sub && <p className="text-sm text-gray-400 mt-1">{sub}</p>}
             </div>
             {action}
@@ -305,11 +316,18 @@ function WorkerDetailPanel({
                             <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                                 <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Details</p>
                                 <div className="divide-y divide-gray-100">
+                                    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                        <span className="text-xs text-gray-500">Worker ID</span>
+                                        <span className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{worker.workerId}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                        <span className="text-xs text-gray-500">Worker Since (ID Issued)</span>
+                                        <WorkerSinceValue createdAt={worker.workerIdCreatedAt} className="text-xs justify-end" />
+                                    </div>
                                     {[
                                         { label: 'Phone', value: worker.phone },
                                         { label: 'Department', value: getDepartmentOfWorker(worker) },
                                         { label: 'Cluster/Unit', value: worker.cluster ?? worker.ministry ?? '—' },
-                                        { label: 'Date Added', value: worker.dateAdded },
                                     ].map(r => (
                                         <div key={r.label} className="flex items-center justify-between px-4 py-2.5">
                                             <span className="text-xs text-gray-500">{r.label}</span>
@@ -330,7 +348,7 @@ function WorkerDetailPanel({
                                         <button
                                             type="button"
                                             onClick={() => onOpenTransfer(worker)}
-                                            className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[#D97706] text-white hover:bg-[#B45309] transition-all flex items-center gap-1.5 shadow-2xs"
+                                            className="text-[11px] font-bold px-3.5 py-1.5 rounded-xl bg-[#0E5B52] text-white hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
                                         >
                                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z" />
@@ -687,58 +705,57 @@ function DashboardTab({
     return (
         <div className="flex flex-col gap-4">
 
+            {/* ── Welcome Banner ─────────────────────────────────────────── */}
+            <DashboardWelcomeBanner fallbackRole="admin" className="!mb-0" />
+
             {/* ── SECTION 1 · Summary Cards ──────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {([
-                    {
-                        label: 'Total Active Mentees', value: totalActive,
-                        sub: 'Church-wide C2S mentees',
-                        color: '#D97706', bg: '#FEF3C7',
-                        icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
-                    },
-                    {
-                        label: 'Total C2S Groups', value: totalGroups,
-                        sub: 'Church & community based',
-                        color: '#e67700', bg: '#fff3e0',
-                        icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z',
-                    },
-                    {
-                        label: 'C2S Home Groups', value: totalHomeGroups,
-                        sub: `${approvedCount} approved · ${recommendedCount} recommended`,
-                        color: '#0284C7', bg: '#FEF3C7',
-                        icon: 'M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z',
-                    },
-                    {
-                        label: 'Pending Applications', value: pendingCount,
-                        sub: 'C2S Home awaiting review',
-                        color: pendingCount > 0 ? '#D97706' : '#0284C7',
-                        bg: pendingCount > 0 ? '#FEF3C7' : '#FEF3C7',
-                        icon: pendingCount > 0
-                            ? 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'
-                            : 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
-                    },
-                ] as const).map(k => (
-                    <div key={k.label}
-                        className="bg-white border border-gray-100 rounded-xl p-4 min-w-0"
-                        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                        <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide leading-tight pr-1 truncate">
-                                {k.label}
-                            </p>
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                                style={{ background: k.color + '18' }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill={k.color}>
-                                    <path d={k.icon} />
-                                </svg>
+            <div className="c2s-kpi-shell">
+                <div className="c2s-kpi-grid">
+                    {([
+                        {
+                            label: 'Total Active Mentees', value: totalActive,
+                            sub: 'Church-wide C2S mentees',
+                            color: '#D97706', bg: '#FEF3C7',
+                            icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+                        },
+                        {
+                            label: 'Total C2S Groups', value: totalGroups,
+                            sub: 'Church & community based',
+                            color: '#e67700', bg: '#fff3e0',
+                            icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z',
+                        },
+                        {
+                            label: 'C2S Home Groups', value: totalHomeGroups,
+                            sub: `${approvedCount} approved · ${recommendedCount} recommended`,
+                            color: '#0284C7', bg: '#FEF3C7',
+                            icon: 'M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z',
+                        },
+                        {
+                            label: 'Pending Applications', value: pendingCount,
+                            sub: 'C2S Home awaiting review',
+                            color: pendingCount > 0 ? '#D97706' : '#0284C7',
+                            bg: '#FEF3C7',
+                            icon: pendingCount > 0
+                                ? 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'
+                                : 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+                        },
+                    ] as const).map(k => (
+                        <div key={k.label} className="kpi-card c2s-kpi-card bg-white border border-[#E2E8E5] rounded-2xl">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{k.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d={k.icon} />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{k.value.toLocaleString()}</p>
+                                <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5 leading-snug break-words">{k.sub}</p>
                             </div>
                         </div>
-                        <p className="text-[1.8rem] sm:text-[2rem] font-black leading-none mb-1.5 break-words"
-                            style={{ color: k.color }}>
-                            {k.value.toLocaleString()}
-                        </p>
-                        <p className="text-[11px] text-gray-400 leading-snug break-words">{k.sub}</p>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             {/* ── SECTION 2 · C2S Overview ───────────────────────────────── */}
@@ -785,37 +802,44 @@ function DashboardTab({
 
                     {/* ── Table 1: Department breakdown ── */}
                     <div className="overflow-x-auto mb-6">
-                        <table className="w-full text-xs min-w-[480px]">
+                        <table className="w-full table-auto text-xs">
+                            <colgroup>
+                                <col className="w-[28%]" />
+                                <col className="w-[18%]" />
+                                <col className="w-[18%]" />
+                                <col className="w-[18%]" />
+                                <col className="w-[18%]" />
+                            </colgroup>
                             <thead>
-                                <tr style={{ background: 'var(--bg-subtle)' }}>
+                                <tr className="table-header-row">
                                     {['Department', 'Workers', 'Mentors', 'C2S Coordinators', 'Total'].map(h => (
-                                        <th key={h} className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                                        <th key={h} className="text-left text-[12px] font-bold uppercase tracking-wider px-6 py-4">
                                             {h}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody>
                                 {donutData.map((d, i) => {
                                     const coordinators = ORG_MINISTRIES[i]?.clusters.length ?? 0;
                                     return (
-                                        <tr key={d.name} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-5 py-3 font-semibold text-gray-800">{d.name}</td>
-                                            <td className="px-5 py-3 text-gray-600">{d.workers.toLocaleString()}</td>
-                                            <td className="px-5 py-3 text-gray-600">{d.mentors.toLocaleString()}</td>
-                                            <td className="px-5 py-3 text-gray-600">{coordinators}</td>
-                                            <td className="px-5 py-3 text-gray-600">{(d.workers + d.mentors + coordinators).toLocaleString()}</td>
+                                        <tr key={d.name} className="transition-colors">
+                                            <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{d.name}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{d.workers.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{d.mentors.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{coordinators}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{(d.workers + d.mentors + coordinators).toLocaleString()}</td>
                                         </tr>
                                     );
                                 })}
-                                <tr className="border-t-2 border-gray-200 bg-gray-50">
-                                    <td className="px-5 py-3 font-bold text-gray-900">Total</td>
-                                    <td className="px-5 py-3 font-bold text-gray-900">{totalWorkers.toLocaleString()}</td>
-                                    <td className="px-5 py-3 font-bold text-gray-900">{totalMentors.toLocaleString()}</td>
-                                    <td className="px-5 py-3 font-bold text-gray-900">
+                                <tr className="table-total-row">
+                                    <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                                    <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{totalWorkers.toLocaleString()}</td>
+                                    <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{totalMentors.toLocaleString()}</td>
+                                    <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">
                                         {ORG_MINISTRIES.reduce((s, m) => s + m.clusters.length, 0)}
                                     </td>
-                                    <td className="px-5 py-3 font-bold text-gray-900">
+                                    <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">
                                         {(totalWorkers + totalMentors + ORG_MINISTRIES.reduce((s, m) => s + m.clusters.length, 0)).toLocaleString()}
                                     </td>
                                 </tr>
@@ -866,34 +890,40 @@ function DashboardTab({
 
                         {/* Department × Group-type table */}
                         <div className="overflow-x-auto mb-6">
-                            <table className="w-full text-xs min-w-[420px]">
+                            <table className="w-full table-auto text-xs">
+                                <colgroup>
+                                    <col className="w-[31%]" />
+                                    <col className="w-[23%]" />
+                                    <col className="w-[23%]" />
+                                    <col className="w-[23%]" />
+                                </colgroup>
                                 <thead>
-                                    <tr style={{ background: 'var(--bg-subtle)' }}>
+                                    <tr className="table-header-row">
                                         {['Department', 'Church-Based', 'Community-Based', 'Total'].map(h => (
-                                            <th key={h} className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                                            <th key={h} className="text-left text-[12px] font-bold uppercase tracking-wider px-6 py-4">
                                                 {h}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody>
                                     {donutData.map(d => {
                                         const cb = Math.round(d.value * (churchBased / Math.max(totalGroups, 1)));
                                         const cm = d.value - cb;
                                         return (
-                                            <tr key={d.name} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-5 py-3 font-semibold text-gray-800">{d.name}</td>
-                                                <td className="px-5 py-3 text-gray-600">{cb}</td>
-                                                <td className="px-5 py-3 text-gray-600">{cm}</td>
-                                                <td className="px-5 py-3 text-gray-600">{d.value}</td>
+                                            <tr key={d.name} className="transition-colors">
+                                                <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{d.name}</td>
+                                                <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{cb}</td>
+                                                <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{cm}</td>
+                                                <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{d.value}</td>
                                             </tr>
                                         );
                                     })}
-                                    <tr className="border-t-2 border-gray-200 bg-gray-50">
-                                        <td className="px-5 py-3 font-bold text-gray-900">Total</td>
-                                        <td className="px-5 py-3 font-bold text-gray-900">{churchBased}</td>
-                                        <td className="px-5 py-3 font-bold text-gray-900">{communityBased}</td>
-                                        <td className="px-5 py-3 font-bold text-gray-900">{totalGroups}</td>
+                                    <tr className="table-total-row">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{churchBased}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{communityBased}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{totalGroups}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -939,34 +969,40 @@ function DashboardTab({
 
                         {/* Department × Meeting-mode table */}
                         <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
+                            <table className="w-full table-auto text-xs">
+                                <colgroup>
+                                    <col className="w-[31%]" />
+                                    <col className="w-[23%]" />
+                                    <col className="w-[23%]" />
+                                    <col className="w-[23%]" />
+                                </colgroup>
                                 <thead>
-                                    <tr style={{ background: 'var(--bg-subtle)' }}>
+                                    <tr className="table-header-row">
                                         {['Department', 'Face-to-Face', 'Online', 'Total'].map(h => (
-                                            <th key={h} className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">
+                                            <th key={h} className="text-left text-[12px] font-bold uppercase tracking-wider px-6 py-4">
                                                 {h}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody>
                                     {donutData.map(d => {
                                         const online = Math.round(d.value * (onlineGroups / Math.max(totalGroups, 1)));
                                         const f2f = d.value - online;
                                         return (
-                                            <tr key={d.name} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-5 py-3 font-semibold text-gray-800">{d.name}</td>
-                                                <td className="px-5 py-3 text-gray-600">{f2f}</td>
-                                                <td className="px-5 py-3 text-gray-600">{online}</td>
-                                                <td className="px-5 py-3 text-gray-600">{d.value}</td>
+                                            <tr key={d.name} className="transition-colors">
+                                                <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{d.name}</td>
+                                                <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{f2f}</td>
+                                                <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{online}</td>
+                                                <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{d.value}</td>
                                             </tr>
                                         );
                                     })}
-                                    <tr className="border-t-2 border-gray-200 bg-gray-50">
-                                        <td className="px-5 py-3 font-bold text-gray-900">Total</td>
-                                        <td className="px-5 py-3 font-bold text-gray-900">{faceToFace}</td>
-                                        <td className="px-5 py-3 font-bold text-gray-900">{onlineGroups}</td>
-                                        <td className="px-5 py-3 font-bold text-gray-900">{totalGroups}</td>
+                                    <tr className="table-total-row">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{faceToFace}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{onlineGroups}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{totalGroups}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1012,37 +1048,44 @@ function DashboardTab({
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
+                        <table className="w-full table-auto text-xs">
+                            <colgroup>
+                                <col className="w-[22%]" />
+                                <col className="w-[16%]" />
+                                <col className="w-[20%]" />
+                                <col className="w-[16%]" />
+                                <col className="w-[14%]" />
+                                <col className="w-[12%]" />
+                            </colgroup>
                             <thead>
-                                <tr className="bg-gray-50 border-b border-gray-100">
-                                    {['Home Group', 'Barangay', 'Coordinator', 'Date Submitted', 'Status', 'Action'].map(h => (
+                                <tr className="table-header-row">
+                                    {['Home Group', 'Barangay', 'Coordinator', 'Date Submitted', 'Status', 'Action'].map((h, idx, arr) => (
                                         <th key={h}
-                                            className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-2.5">
+                                            className={`text-[12px] font-bold uppercase tracking-widest px-6 py-4 ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>
                                             {h}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody>
                                 {pendingApps.map(app => (
-                                    <tr key={app.id} className="hover:bg-gray-50/60 transition-colors">
-                                        <td className="px-4 py-3 font-medium text-gray-900">{app.name}</td>
-                                        <td className="px-4 py-3 text-gray-500">{app.barangay}</td>
-                                        <td className="px-4 py-3 text-gray-500">{app.coordinator}</td>
-                                        <td className="px-4 py-3 text-gray-400">{app.submitted}</td>
-                                        <td className="px-4 py-3">
-                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#fef9c3] text-[#92400e]">
+                                    <tr key={app.id} className="transition-colors">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{app.name}</td>
+                                        <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{app.barangay}</td>
+                                        <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{app.coordinator}</td>
+                                        <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{app.submitted}</td>
+                                        <td className="px-6 py-4 text-left">
+                                            <span className="inline-flex items-center justify-center text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#fef9c3] text-[#92400e]">
                                                 Pending
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setReviewingApp(app)}
-                                                className="text-[11px] font-semibold text-[#D97706] border border-[#FDE68A] hover:bg-[#FEF3C7] px-3 py-1 rounded-md transition-colors cursor-pointer"
-                                            >
-                                                Review
-                                            </button>
+                                        <td className="px-6 py-4 table-col-center text-center">
+                                            <ActionMenu
+                                                ariaLabel={`${app.name} actions`}
+                                                items={[
+                                                    { label: 'Review', icon: ActionIcons.clipboard, tone: 'positive', onClick: () => setReviewingApp(app) },
+                                                ]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -1064,8 +1107,8 @@ function DashboardTab({
                     >
                         <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#D97706]">C2S Home Application</p>
-                                <h3 className="text-base font-bold text-gray-900 mt-0.5">{reviewingApp.name}</h3>
+                                <h3 className="text-base font-bold text-gray-900">{reviewingApp.name}</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">C2S Home Application</p>
                             </div>
                             <button
                                 type="button"
@@ -1113,6 +1156,7 @@ function DashboardTab({
                                         type="button"
                                         onClick={() => {
                                             const target = reviewingApp;
+                                            setReviewingApp(null);
                                             confirmAction({
                                                 variant: 'danger',
                                                 title: 'Reject Home Group Application?',
@@ -1120,7 +1164,6 @@ function DashboardTab({
                                                 confirmLabel: 'Reject',
                                                 onConfirm: () => {
                                                     onUpdateHomeGroupStatus(target.id, 'Rejected');
-                                                    setReviewingApp(null);
                                                 },
                                             });
                                         }}
@@ -1132,17 +1175,17 @@ function DashboardTab({
                                         type="button"
                                         onClick={() => {
                                             const target = reviewingApp;
+                                            setReviewingApp(null);
                                             confirmAction({
                                                 title: 'Approve Home Group Application?',
                                                 description: `Approve "${target.name}" (${target.barangay}) and list it as an active C2S Home group?`,
                                                 confirmLabel: 'Approve',
                                                 onConfirm: () => {
                                                     onUpdateHomeGroupStatus(target.id, 'Approved');
-                                                    setReviewingApp(null);
                                                 },
                                             });
                                         }}
-                                        className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#D97706] hover:bg-[#B45309] transition-colors"
+                                        className="px-[1.375rem] py-[0.625rem] rounded-xl text-xs font-bold text-white bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                                     >
                                         Approve
                                     </button>
@@ -1259,7 +1302,6 @@ function OrgStructureTab({
     const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(() => new Set());
     const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
     const [modalState, setModalState] = useState<DeptClusterModalState | null>(null);
     const [drawerCluster, setDrawerCluster] = useState<{
         ministryName: string;
@@ -1286,7 +1328,6 @@ function OrgStructureTab({
     }
 
     function openDeptHeadModal(ministry: OrgMinistry, deptName: string) {
-        setOpenMenuKey(null);
         setDraftPerson(ministry.head);
         setModalState({
             kind: 'dept-head',
@@ -1297,7 +1338,6 @@ function OrgStructureTab({
     }
 
     function openAddClusterModal(ministry: OrgMinistry, deptName: string) {
-        setOpenMenuKey(null);
         setNewClusterName('');
         setNewClusterHead('');
         setNewClusterCoord('');
@@ -1314,7 +1354,6 @@ function OrgStructureTab({
         cluster: OrgCluster,
         roleLabel: string
     ) {
-        setOpenMenuKey(null);
         setDraftPerson(kind === 'cluster-head' ? cluster.clusterHead : cluster.coordinator);
         setModalState(
             kind === 'cluster-head'
@@ -1324,7 +1363,6 @@ function OrgStructureTab({
     }
 
     function handleExportMinistry(ministry: OrgMinistry, deptName: string) {
-        setOpenMenuKey(null);
         exportToCsv(
             `c2s-${deptName.toLowerCase()}-roster.csv`,
             ['Department', 'Department Head', 'Cluster / Ministry', 'Head', 'C2S Coordinator', 'Mentors', 'Mentees', 'Groups'],
@@ -1413,13 +1451,13 @@ function OrgStructureTab({
                 prev.map((m) =>
                     m.id === modalState.ministryId
                         ? {
-                              ...m,
-                              clusters: m.clusters.map((c) =>
-                                  c.id === modalState.clusterId
-                                      ? { ...c, clusterHead: clean, clusterHeadInitials: makeInitials(clean) }
-                                      : c
-                              ),
-                          }
+                            ...m,
+                            clusters: m.clusters.map((c) =>
+                                c.id === modalState.clusterId
+                                    ? { ...c, clusterHead: clean, clusterHeadInitials: makeInitials(clean) }
+                                    : c
+                            ),
+                        }
                         : m
                 )
             );
@@ -1436,13 +1474,13 @@ function OrgStructureTab({
                 prev.map((m) =>
                     m.id === modalState.ministryId
                         ? {
-                              ...m,
-                              clusters: m.clusters.map((c) =>
-                                  c.id === modalState.clusterId
-                                      ? { ...c, coordinator: clean, coordinatorInitials: makeInitials(clean) }
-                                      : c
-                              ),
-                          }
+                            ...m,
+                            clusters: m.clusters.map((c) =>
+                                c.id === modalState.clusterId
+                                    ? { ...c, coordinator: clean, coordinatorInitials: makeInitials(clean) }
+                                    : c
+                            ),
+                        }
                         : m
                 )
             );
@@ -1507,7 +1545,7 @@ function OrgStructureTab({
         .filter((entry) => entry.matchingClusters.length > 0);
 
     return (
-        <div onClick={() => openMenuKey && setOpenMenuKey(null)}>
+        <div>
             {/* Inline Quick Action Modal */}
             {modalState && (
                 <>
@@ -1609,17 +1647,17 @@ function OrgStructureTab({
                                 </div>
                             )}
 
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E7E5E4]">
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E8E5] dark:border-[#2A323D]">
                                 <button
                                     type="button"
                                     onClick={() => setModalState(null)}
-                                    className="px-4 py-2 rounded-xl border border-[#E7E5E4] text-xs font-semibold text-[#292524] hover:bg-[#F5F2EC]"
+                                    className="px-[1.375rem] py-[0.625rem] rounded-xl border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-semibold shadow-sm"
+                                    className="px-[1.375rem] py-[0.625rem] rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
                                 >
                                     Save Assignment
                                 </button>
@@ -1716,11 +1754,10 @@ function OrgStructureTab({
                                                             </div>
                                                             <span
                                                                 data-pill="true"
-                                                                className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${
-                                                                    g.status === 'Open'
-                                                                        ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
-                                                                        : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
-                                                                }`}
+                                                                className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${g.status === 'Open'
+                                                                    ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
+                                                                    : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
+                                                                    }`}
                                                             >
                                                                 {g.status}
                                                             </span>
@@ -1764,20 +1801,23 @@ function OrgStructureTab({
                                                         </div>
                                                         <div className="min-w-0">
                                                             <p className="text-xs font-bold text-[#292524] truncate">{m.name}</p>
-                                                            <p className="text-[11px] text-[#6B665F] truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'}</p>
+                                                            <p className="text-[11px] text-[#6B665F] truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'} · <span className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{m.workerId}</span></p>
                                                         </div>
                                                     </div>
                                                     {onTransferWorker && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setDrawerCluster(null);
-                                                                onTransferWorker(m);
-                                                            }}
-                                                            className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] hover:bg-[#FDE68A]"
-                                                        >
-                                                            ⇄ Transfer
-                                                        </button>
+                                                        <ActionMenu
+                                                            ariaLabel={`${m.name} actions`}
+                                                            items={[
+                                                                {
+                                                                    label: 'Transfer',
+                                                                    icon: ActionIcons.transfer,
+                                                                    onClick: () => {
+                                                                        setDrawerCluster(null);
+                                                                        onTransferWorker(m);
+                                                                    },
+                                                                },
+                                                            ]}
+                                                        />
                                                     )}
                                                 </div>
                                             ))}
@@ -1842,122 +1882,90 @@ function OrgStructureTab({
                         const deptMenuKey = `dept:${ministry.id}`;
 
                         return (
-                            <div key={ministry.id} className="bg-white rounded-2xl border border-[#E7E5E4] shadow-sm overflow-visible">
+                            <div key={ministry.id} className="c2s-accordion-card overflow-visible">
                                 {/* Ministry header */}
-                                <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 hover:bg-[#FAF8F5] transition-colors rounded-t-2xl">
+                                <div className={`c2s-accordion-header ${isMinistryOpen ? 'is-open' : ''}`}>
                                     <button
                                         type="button"
-                                        className="flex-1 flex items-center justify-between gap-4 text-left min-w-0 cursor-pointer"
+                                        className="c2s-accordion-title-btn flex-1 flex items-center gap-3.5 min-w-0 text-left cursor-pointer"
                                         onClick={() => toggleMinistry(ministry.id)}
                                     >
-                                        <div className="flex items-center gap-3.5 min-w-0">
-                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: deptColor }}>
-                                                {ministryDeptName[0]}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="font-bold text-[#292524] text-base truncate">{ministryDeptName}</p>
-                                                <p className="text-xs text-[#6B665F] mt-0.5 truncate">Head: {ministry.head}</p>
-                                            </div>
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: deptColor }}>
+                                            {ministryDeptName[0]}
                                         </div>
-
-                                        <div className="hidden sm:grid grid-cols-4 gap-4 text-center shrink-0">
-                                            <div>
-                                                <p className="text-lg font-black leading-none" style={{ color: '#D97706' }}>{ministry.totalWorkers}</p>
-                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Workers</p>
-                                            </div>
-                                            <div>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (onNavigate) onNavigate('workers');
-                                                        else toggleMinistry(ministry.id);
-                                                    }}
-                                                    title="View C2S Workers / Mentors"
-                                                    className="text-lg font-black leading-none text-[#0284C7] hover:underline cursor-pointer"
-                                                >
-                                                    {ministry.totalMentors}
-                                                </button>
-                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Mentors</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-lg font-black leading-none" style={{ color: '#D97706' }}>{ministry.totalMentees}</p>
-                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Mentees</p>
-                                            </div>
-                                            <div>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (onNavigate) onNavigate('groups');
-                                                        else toggleMinistry(ministry.id);
-                                                    }}
-                                                    title="View C2S Groups"
-                                                    className="text-lg font-black leading-none text-[#1971c2] hover:underline cursor-pointer"
-                                                >
-                                                    {ministry.totalGroups}
-                                                </button>
-                                                <p className="text-[10px] text-[#6B665F] mt-0.5">Groups</p>
-                                            </div>
+                                        <div className="min-w-0 flex flex-col items-start text-left">
+                                            <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-base truncate w-full text-left">{ministryDeptName}</p>
+                                            <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-0.5 truncate w-full text-left">Head: {ministry.head}</p>
                                         </div>
                                     </button>
 
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                        {/* Department Quick Actions (⋮) */}
-                                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                    <div className="c2s-accordion-metrics-grid">
+                                        <div className="c2s-accordion-metric">
+                                            <span className="c2s-accordion-metric-value">{ministry.totalWorkers}</span>
+                                            <span className="c2s-accordion-metric-label">Workers</span>
+                                        </div>
+                                        <div className="c2s-accordion-metric">
                                             <button
                                                 type="button"
-                                                aria-label={`${ministryDeptName} actions`}
-                                                onClick={() => setOpenMenuKey((prev) => (prev === deptMenuKey ? null : deptMenuKey))}
-                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B665F] hover:text-[#292524] hover:bg-[#F5F2EC] transition-colors cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (onNavigate) onNavigate('workers');
+                                                    else toggleMinistry(ministry.id);
+                                                }}
+                                                title="View C2S Workers / Mentors"
+                                                className="c2s-accordion-metric-value hover:underline cursor-pointer"
                                             >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                                    <circle cx="12" cy="5" r="2" />
-                                                    <circle cx="12" cy="12" r="2" />
-                                                    <circle cx="12" cy="19" r="2" />
-                                                </svg>
+                                                {ministry.totalMentors}
                                             </button>
-                                            {openMenuKey === deptMenuKey && (
-                                                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E7E5E4] dark:border-[#334155] p-1.5 shadow-lg shadow-stone-900/5 z-30">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openDeptHeadModal(ministry, ministryDeptName)}
-                                                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
-                                                    >
-                                                        Change Department Head
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openAddClusterModal(ministry, ministryDeptName)}
-                                                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
-                                                    >
-                                                        Add Cluster / Ministry
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleExportMinistry(ministry, ministryDeptName)}
-                                                        className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#D97706] hover:bg-[#FEF3C7]/60 transition-colors cursor-pointer"
-                                                    >
-                                                        Export Roster (CSV)
-                                                    </button>
-                                                </div>
-                                            )}
+                                            <span className="c2s-accordion-metric-label">Mentors</span>
+                                        </div>
+                                        <div className="c2s-accordion-metric">
+                                            <span className="c2s-accordion-metric-value">{ministry.totalMentees}</span>
+                                            <span className="c2s-accordion-metric-label">Mentees</span>
+                                        </div>
+                                        <div className="c2s-accordion-metric">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (onNavigate) onNavigate('groups');
+                                                    else toggleMinistry(ministry.id);
+                                                }}
+                                                title="View C2S Groups"
+                                                className="c2s-accordion-metric-value hover:underline cursor-pointer"
+                                            >
+                                                {ministry.totalGroups}
+                                            </button>
+                                            <span className="c2s-accordion-metric-label">Groups</span>
+                                        </div>
+
+                                        {/* Department Quick Actions */}
+                                        <div onClick={(e) => e.stopPropagation()} className="c2s-accordion-action flex items-center justify-center w-8 h-8">
+                                            <ActionMenu
+                                                ariaLabel={`${ministryDeptName} actions`}
+                                                items={[
+                                                    { label: 'Change Department Head', icon: ActionIcons.edit, onClick: () => openDeptHeadModal(ministry, ministryDeptName) },
+                                                    { label: 'Add Cluster / Ministry', icon: ActionIcons.plus, onClick: () => openAddClusterModal(ministry, ministryDeptName) },
+                                                    { label: 'Export Roster (CSV)', icon: ActionIcons.download, tone: 'positive', onClick: () => handleExportMinistry(ministry, ministryDeptName) },
+                                                ]}
+                                            />
                                         </div>
 
                                         <button
                                             type="button"
                                             onClick={() => toggleMinistry(ministry.id)}
                                             aria-label={`Toggle ${ministryDeptName}`}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-[#292524] hover:bg-[#F5F2EC] cursor-pointer"
+                                            aria-expanded={isMinistryOpen}
+                                            className="c2s-accordion-chevron"
                                         >
-                                            <svg className={`w-5 h-5 transition-transform ${isMinistryOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                                            <svg className={`w-4 h-4 transition-transform duration-150 ${isMinistryOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
                                         </button>
                                     </div>
                                 </div>
 
                                 {/* Clusters */}
                                 {isMinistryOpen && (
-                                    <div className="border-t border-[#E7E5E4]">
+                                    <div className="border-t border-[#E2E8E5] dark:border-[#2A323D]">
                                         {matchingClusters.map((cluster, ci) => {
                                             const clusterMentors = workers.filter(
                                                 (w) =>
@@ -1979,128 +1987,98 @@ function OrgStructureTab({
                                             return (
                                                 <div
                                                     key={cluster.id}
-                                                    className={`${ci > 0 ? 'border-t border-[#EFECE6]' : ''} ${clusterMatchesQuery ? 'bg-[#FFFBEB]' : ''}`}
+                                                    className={`${ci > 0 ? 'border-t border-[#E2E8E5] dark:border-[#2A323D]' : ''} ${clusterMatchesQuery ? 'bg-[#FFFBEB] dark:bg-[rgba(217,119,6,0.08)]' : ''}`}
                                                 >
-                                                    <div className="flex items-center gap-3 px-5 sm:px-6 py-3.5">
-                                                        {/* Consistent Department Signature Vertical Accent Bar */}
-                                                        <div className="w-1.5 h-9 rounded-full shrink-0" style={{ background: deptColor }} />
+                                                    <div className="c2s-cluster-accordion-header flex items-center justify-between gap-4 px-6 py-[1.125rem] hover:bg-[#F8FAFC] dark:hover:bg-[#222933] transition-colors">
+                                                        <div className="c2s-accordion-title-btn flex-1 flex items-center gap-3.5 min-w-0">
+                                                            {/* Far-Left 3px Vertical Accent Bar */}
+                                                            <div className="w-[3px] self-stretch min-h-[2.75rem] rounded-full shrink-0" style={{ background: deptColor }} />
 
-                                                        <button
-                                                            type="button"
-                                                            className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left items-center min-w-0 cursor-pointer"
-                                                            onClick={() => setExpandedCluster((prev) => (prev === cluster.id ? null : cluster.id))}
-                                                        >
-                                                            <div className="min-w-0">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-sm font-bold text-[#292524] truncate">{cluster.name}</p>
-                                                                    {clusterMatchesQuery && (
-                                                                        <span data-pill="true" className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]">
-                                                                            Match
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-1 min-w-0">
-                                                                    <div className="w-6 h-6 rounded-full bg-[#1B2432] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                            <button
+                                                                type="button"
+                                                                className="flex-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(200px,0.9fr)] items-start md:items-center gap-3 md:gap-5 text-left min-w-0 cursor-pointer"
+                                                                onClick={() => setExpandedCluster((prev) => (prev === cluster.id ? null : cluster.id))}
+                                                            >
+                                                                {/* Left: 40x40 Avatar directly beside stacked left-aligned text block */}
+                                                                <div className="flex items-center gap-3.5 min-w-0 text-left">
+                                                                    <div className="w-10 h-10 rounded-full bg-[#181F26] text-white flex items-center justify-center text-xs font-bold shrink-0">
                                                                         {cluster.clusterHeadInitials}
                                                                     </div>
-                                                                    <span className="text-xs text-[#6B665F] truncate">
-                                                                        {cluster.clusterHead} <span className="text-gray-300">·</span> {unitHeadLabel}
+                                                                    <div className="min-w-0 flex flex-col items-start text-left">
+                                                                        <div className="flex items-center gap-2 min-w-0">
+                                                                            <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] truncate text-left">{cluster.name}</p>
+                                                                            {clusterMatchesQuery && (
+                                                                                <span data-pill="true" className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]">
+                                                                                    Match
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-0.5 truncate text-left">
+                                                                            {cluster.clusterHead} <span className="text-gray-300 dark:text-slate-600">·</span> {unitHeadLabel}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Middle: Aligned Coordinator column */}
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <div className="w-7 h-7 rounded-full bg-[#0E5B52] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                                        {cluster.coordinatorInitials}
+                                                                    </div>
+                                                                    <span className="text-xs text-[#64748B] dark:text-[#9BA7B4] truncate">
+                                                                        <span className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{cluster.coordinator}</span> <span className="text-gray-300 dark:text-slate-600">·</span> C2S Coordinator
                                                                     </span>
                                                                 </div>
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Right: Shared fixed CSS Grid locking columns cleanly under Department row */}
+                                                        <div className="c2s-accordion-metrics-grid c2s-cluster-metrics-grid">
+                                                            <span className="c2s-cluster-spacer" aria-hidden="true" />
+                                                            <div className="c2s-accordion-metric">
+                                                                <span className="c2s-accordion-metric-value">{clusterMentors.length || cluster.mentorCount}</span>
+                                                                <span className="c2s-accordion-metric-label">Mentors</span>
+                                                            </div>
+                                                            <div className="c2s-accordion-metric">
+                                                                <span className="c2s-accordion-metric-value">{cluster.menteeCount}</span>
+                                                                <span className="c2s-accordion-metric-label">Mentees</span>
+                                                            </div>
+                                                            <div className="c2s-accordion-metric">
+                                                                <span className="c2s-accordion-metric-value">{cluster.groupCount}</span>
+                                                                <span className="c2s-accordion-metric-label">Groups</span>
                                                             </div>
 
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <div className="w-6 h-6 rounded-full bg-[#D97706] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                                                                    {cluster.coordinatorInitials}
-                                                                </div>
-                                                                <span className="text-xs text-[#6B665F] truncate">
-                                                                    {cluster.coordinator} <span className="text-gray-300">·</span> C2S Coordinator
-                                                                </span>
-                                                            </div>
-
-                                                            <div className="flex flex-wrap items-center gap-3 text-xs">
-                                                                <span className="text-[#0284C7] font-semibold">{clusterMentors.length || cluster.mentorCount} mentors</span>
-                                                                <span className="text-[#D97706] font-semibold">{cluster.menteeCount} mentees</span>
-                                                                <span className="text-[#1971c2] font-semibold">{cluster.groupCount} groups</span>
-                                                            </div>
-                                                        </button>
-
-                                                        <div className="flex items-center gap-1 shrink-0">
-                                                            {/* Cluster Quick Actions (⋮) */}
-                                                            <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                                                <button
-                                                                    type="button"
-                                                                    aria-label={`${cluster.name} quick actions`}
-                                                                    onClick={() => setOpenMenuKey((prev) => (prev === clusterMenuKey ? null : clusterMenuKey))}
-                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B665F] hover:text-[#292524] hover:bg-[#F5F2EC] transition-colors cursor-pointer"
-                                                                >
-                                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                                                        <circle cx="12" cy="5" r="2" />
-                                                                        <circle cx="12" cy="12" r="2" />
-                                                                        <circle cx="12" cy="19" r="2" />
-                                                                    </svg>
-                                                                </button>
-                                                                {openMenuKey === clusterMenuKey && (
-                                                                    <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E7E5E4] dark:border-[#334155] p-1.5 shadow-lg shadow-stone-900/5 z-30">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => openClusterLeaderModal('cluster-head', ministry.id, cluster, unitHeadLabel)}
-                                                                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
-                                                                        >
-                                                                            Change {unitHeadLabel}
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => openClusterLeaderModal('cluster-coord', ministry.id, cluster, 'C2S Coordinator')}
-                                                                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#292524] dark:text-slate-100 hover:bg-[#F5F2EC] dark:hover:bg-[#334155] transition-colors cursor-pointer"
-                                                                        >
-                                                                            Assign C2S Coordinator
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                setOpenMenuKey(null);
-                                                                                setDrawerCluster({ ministryName: ministryDeptName, deptColor, unitHeadLabel, cluster });
-                                                                            }}
-                                                                            className="w-full text-left rounded-lg px-3 py-2 text-xs font-medium text-[#D97706] hover:bg-[#FEF3C7]/60 transition-colors cursor-pointer"
-                                                                        >
-                                                                            Manage Groups & Mentors
-                                                                        </button>
-                                                                    </div>
-                                                                )}
+                                                            {/* Cluster Quick Actions */}
+                                                            <div onClick={(e) => e.stopPropagation()} className="c2s-accordion-action flex items-center justify-center w-8 h-8">
+                                                                <ActionMenu
+                                                                    ariaLabel={`${cluster.name} quick actions`}
+                                                                    items={[
+                                                                        { label: `Change ${unitHeadLabel}`, icon: ActionIcons.edit, onClick: () => openClusterLeaderModal('cluster-head', ministry.id, cluster, unitHeadLabel) },
+                                                                        { label: 'Assign C2S Coordinator', icon: ActionIcons.userPlus, onClick: () => openClusterLeaderModal('cluster-coord', ministry.id, cluster, 'C2S Coordinator') },
+                                                                        { label: 'Manage Groups & Mentors', icon: ActionIcons.users, tone: 'positive', onClick: () => setDrawerCluster({ ministryName: ministryDeptName, deptColor, unitHeadLabel, cluster }) },
+                                                                    ]}
+                                                                />
                                                             </div>
 
                                                             <button
                                                                 type="button"
                                                                 aria-label={`Expand ${cluster.name}`}
+                                                                aria-expanded={isClusterOpen}
                                                                 onClick={() => setExpandedCluster((prev) => (prev === cluster.id ? null : cluster.id))}
-                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-[#292524] hover:bg-[#F5F2EC] cursor-pointer"
+                                                                className="c2s-accordion-chevron"
                                                             >
-                                                                <svg className={`w-4 h-4 transition-transform ${isClusterOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                                                                <svg className={`w-4 h-4 transition-transform duration-150 ${isClusterOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
                                                             </button>
                                                         </div>
                                                     </div>
 
-                                                    {/* 3rd-Level Drill-Down: Mentors & C2S Groups */}
+                                                    {/* 3rd-Level Details: Mentors & C2S Groups */}
                                                     {isClusterOpen && (
-                                                        <div className="px-4 sm:px-14 pb-5 pt-1 flex flex-col gap-4">
-                                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                <p className="text-xs font-semibold text-[#6B665F]">
-                                                                    Drill-down for <span className="font-bold text-[#292524]">{cluster.name}</span>
-                                                                </p>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setDrawerCluster({ ministryName: ministryDeptName, deptColor, unitHeadLabel, cluster })}
-                                                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#D97706] hover:text-[#B45309] cursor-pointer"
-                                                                >
-                                                                    Open Slide-Over View →
-                                                                </button>
-                                                            </div>
+                                                        <div className="px-4 sm:px-6 pb-6 pt-2 flex flex-col gap-4">
 
                                                             {/* C2S Groups under this Cluster */}
-                                                            <div className="rounded-xl border border-[#E7E5E4] p-4 bg-[#F5F2EC] space-y-3">
+                                                            <div className="cluster-groups-surface space-y-4">
                                                                 <div className="flex items-center justify-between">
-                                                                    <p className="text-xs font-bold text-[#292524] uppercase tracking-wider">
+                                                                    <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] uppercase tracking-wider">
                                                                         C2S Groups ({clusterGroups.length})
                                                                     </p>
                                                                     {cluster.groupCount === 0 && (
@@ -2111,38 +2089,37 @@ function OrgStructureTab({
                                                                 </div>
 
                                                                 {clusterGroups.length > 0 ? (
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                         {clusterGroups.map((grp) => {
                                                                             const fillPct = Math.min(100, Math.round((grp.members / grp.capacity) * 100));
                                                                             return (
-                                                                                <div key={grp.id} className="bg-white rounded-xl p-3.5 border border-[#E7E5E4] space-y-2">
+                                                                                <div key={grp.id} className="cluster-group-card flex flex-col justify-between gap-3">
                                                                                     <div className="flex items-start justify-between gap-2">
                                                                                         <div className="min-w-0">
-                                                                                            <p className="text-xs font-bold text-[#292524] truncate">{grp.name}</p>
-                                                                                            <p className="text-[11px] text-[#6B665F] truncate">Mentor: {grp.mentorName}</p>
+                                                                                            <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] truncate">{grp.name}</p>
+                                                                                            <p className="text-xs text-gray-500 dark:text-[#9BA7B4] mt-0.5 truncate">Mentor: {grp.mentorName}</p>
                                                                                         </div>
                                                                                         <span
                                                                                             data-pill="true"
-                                                                                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${
-                                                                                                grp.status === 'Open'
-                                                                                                    ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
-                                                                                                    : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
-                                                                                            }`}
+                                                                                            className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 ${grp.status === 'Open'
+                                                                                                ? 'bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]'
+                                                                                                : 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]'
+                                                                                                }`}
                                                                                         >
                                                                                             {grp.status}
                                                                                         </span>
                                                                                     </div>
-                                                                                    <div className="text-[11px] text-[#6B665F] space-y-0.5">
-                                                                                        <p>Location: <span className="font-medium text-[#292524]">{grp.location}</span></p>
-                                                                                        <p>Schedule: <span className="font-medium text-[#292524]">{grp.schedule}</span></p>
+                                                                                    <div className="text-xs text-gray-500 dark:text-[#9BA7B4] space-y-1">
+                                                                                        <p>Location: <span className="font-medium text-[#181F26] dark:text-[#E6EDF3]">{grp.location}</span></p>
+                                                                                        <p>Schedule: <span className="font-medium text-[#181F26] dark:text-[#E6EDF3]">{grp.schedule}</span></p>
                                                                                     </div>
-                                                                                    <div>
-                                                                                        <div className="flex items-center justify-between text-[11px] font-semibold text-[#6B665F] mb-1">
+                                                                                    <div className="pt-1">
+                                                                                        <div className="flex items-center justify-between text-xs font-semibold text-gray-500 dark:text-[#9BA7B4] mb-1.5">
                                                                                             <span>Mentees</span>
-                                                                                            <span className="text-[#292524]">{grp.members} / {grp.capacity}</span>
+                                                                                            <span className="text-[#181F26] dark:text-[#E6EDF3]">{grp.members} / {grp.capacity}</span>
                                                                                         </div>
-                                                                                        <div className="w-full h-1.5 rounded-full bg-[#E7E5E4] overflow-hidden">
-                                                                                            <div className="h-full rounded-full bg-[#D97706]" style={{ width: `${fillPct}%` }} />
+                                                                                        <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-[#2A323D] overflow-hidden">
+                                                                                            <div className="h-full rounded-full bg-[#181F26] dark:bg-[#0E5B52] transition-all duration-300" style={{ width: `${fillPct}%` }} />
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -2150,55 +2127,53 @@ function OrgStructureTab({
                                                                         })}
                                                                     </div>
                                                                 ) : (
-                                                                    <p className="text-xs text-[#6B665F] italic">
+                                                                    <p className="text-xs text-gray-500 dark:text-[#9BA7B4] italic">
                                                                         No C2S groups launched in {cluster.name} yet.
                                                                     </p>
                                                                 )}
                                                             </div>
 
                                                             {/* Assigned Mentors / Workers */}
-                                                            <div className="rounded-xl border border-[#E7E5E4] p-3.5 bg-white">
-                                                                <p className="text-xs font-bold text-[#292524] uppercase tracking-wider mb-2.5">
-                                                                    Assigned C2S Mentors & Workers ({clusterMentors.length})
+                                                            <div className="cluster-groups-surface space-y-3">
+                                                                <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] uppercase tracking-wider">
+                                                                    Assigned C2S Mentors &amp; Workers ({clusterMentors.length})
                                                                 </p>
 
                                                                 {clusterMentors.length > 0 ? (
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                                         {clusterMentors.map((m) => {
                                                                             const mentorMatched = Boolean(q) && m.name.toLowerCase().includes(q);
                                                                             return (
                                                                                 <div
                                                                                     key={m.id}
-                                                                                    className={`rounded-xl p-2.5 border flex items-center justify-between gap-2 transition-colors ${
-                                                                                        mentorMatched
-                                                                                            ? 'bg-[#FFFBEB] border-[#FDE68A]'
-                                                                                            : 'bg-[#F5F2EC] border-[#E7E5E4]'
-                                                                                    }`}
+                                                                                    className={`cluster-group-card flex items-center justify-between gap-2 transition-colors ${mentorMatched
+                                                                                        ? '!border-[#FDE68A]'
+                                                                                        : ''
+                                                                                        }`}
                                                                                 >
-                                                                                    <div className="flex items-center gap-2 min-w-0">
-                                                                                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: m.color }}>
+                                                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>
                                                                                             {m.initials}
                                                                                         </div>
                                                                                         <div className="min-w-0">
-                                                                                            <p className="text-xs font-bold text-[#292524] truncate">{m.name}</p>
-                                                                                            <p className="text-[10px] text-[#6B665F] truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'}</p>
+                                                                                            <p className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] truncate">{m.name}</p>
+                                                                                            <p className="text-[11px] text-gray-500 dark:text-[#9BA7B4] truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'} · <span className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{m.workerId}</span></p>
                                                                                         </div>
                                                                                     </div>
                                                                                     {onTransferWorker && (
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => onTransferWorker(m)}
-                                                                                            className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg text-[#B45309] bg-[#FEF3C7] hover:bg-[#FDE68A] border border-[#FDE68A] transition-colors flex items-center gap-1 cursor-pointer"
-                                                                                        >
-                                                                                            <span>⇄</span> Transfer
-                                                                                        </button>
+                                                                                        <ActionMenu
+                                                                                            ariaLabel={`${m.name} actions`}
+                                                                                            items={[
+                                                                                                { label: 'Transfer', icon: ActionIcons.transfer, onClick: () => onTransferWorker(m) },
+                                                                                            ]}
+                                                                                        />
                                                                                     )}
                                                                                 </div>
                                                                             );
                                                                         })}
                                                                     </div>
                                                                 ) : (
-                                                                    <p className="text-xs text-[#6B665F] italic py-1">No mentors currently assigned to this unit.</p>
+                                                                    <p className="text-xs text-gray-500 dark:text-[#9BA7B4] italic py-1">No mentors currently assigned to this unit.</p>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -2245,6 +2220,7 @@ function WorkersTab({
         const deptMatch = deptFilter === 'All' || getDepartmentOfWorker(w) === deptFilter;
         const roleMatch = roleFilter === 'All' || w.c2sRole === roleMap[roleFilter];
         const textMatch = w.name.toLowerCase().includes(ms) ||
+            w.workerId.toLowerCase().includes(ms) ||
             w.email.toLowerCase().includes(ms) ||
             (w.cluster ?? '').toLowerCase().includes(ms) ||
             getDepartmentOfWorker(w).toLowerCase().includes(ms);
@@ -2275,10 +2251,12 @@ function WorkersTab({
             <SectionHeader title="Workers" sub="All workers with C2S access across ministries and departments." />
 
             {/* Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <StatCard label="Total Workers" value={workers.length} sub="All C2S workers" color="#D97706" icon="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-                <StatCard label="Active" value={activeCount} sub="Currently active" color="#0284C7" icon="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                <StatCard label="Pending ID" value={pendingId} sub="Worker ID requests" color="#e67700" icon="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    <StatCard label="Total Workers" value={workers.length} sub="All C2S workers" color="#D97706" icon="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                    <StatCard label="Active" value={activeCount} sub="Currently active" color="#0284C7" icon="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    <StatCard label="Pending ID" value={pendingId} sub="Worker ID requests" color="#e67700" icon="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+                </div>
             </div>
 
             {/* Filters */}
@@ -2324,23 +2302,23 @@ function WorkersTab({
                             <span>·</span>
                             <span>{w.cluster || w.ministry}</span>
                         </div>
+                        <div className="pt-1 inline-flex items-center gap-2">
+                            <span className="font-bold text-[#181F26] dark:text-[#E6EDF3] text-xs tabular-nums">{w.workerId}</span>
+                            <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>
+                                {w.workerIdStatus}
+                            </span>
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 pt-1">
                             {w.c2sRole && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#D97706' }}>{ROLE_LABEL[w.c2sRole]}</span>}
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{w.workerIdStatus}</span>
-                            <div className="ml-auto flex items-center gap-2">
-                                <button
-                                    onClick={() => onTransferWorker(w)}
-                                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#FEF3C7] text-[#D97706] hover:bg-[#FDE68A] transition-colors"
-                                >
-                                    ⇄ Transfer
-                                </button>
-                                <button
-                                    onClick={() => setViewingWorker(w)}
-                                    className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 underline"
-                                >
-                                    Manage
-                                </button>
+                            <div className="ml-auto">
+                                <ActionMenu
+                                    ariaLabel={`${w.name} actions`}
+                                    items={[
+                                        { label: 'Transfer', icon: ActionIcons.transfer, onClick: () => onTransferWorker(w) },
+                                        { label: 'Manage', icon: ActionIcons.edit, onClick: () => setViewingWorker(w) },
+                                    ]}
+                                />
                             </div>
                         </div>
                     </div>
@@ -2350,57 +2328,63 @@ function WorkersTab({
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Worker', 'Department', 'Ministry / Cluster', 'C2S Role', 'Status', 'Worker ID', 'Actions'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[24%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[10%]" />
+                            <col className="w-[20%]" />
+                            <col className="w-[8%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Worker', 'Department', 'Ministry / Cluster', 'C2S Role', 'Status', 'Worker ID', 'Actions'].map((h, idx, arr) => (
+                                <th key={h} className={`text-[12px] font-bold uppercase tracking-widest px-6 py-4 ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
                             ))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map(w => (
-                                <tr key={w.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5">
-                                        <div className="flex items-center gap-2.5">
+                                <tr key={w.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="flex items-center justify-start gap-2.5">
                                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: w.color }}>{w.initials}</div>
-                                            <div>
-                                                <p className="font-semibold text-gray-900">{w.name}</p>
-                                                <p className="text-[10px] text-gray-400">{w.email}</p>
+                                            <div className="text-left min-w-0">
+                                                <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] truncate">{w.name}</p>
+                                                <p className="text-[11px] text-[#64748B] dark:text-[#9BA7B4] truncate">{w.email}</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                                        <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px]">
+                                    <td className="px-6 py-4 font-semibold text-[#181F26] dark:text-[#E6EDF3] text-left">
+                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px]">
                                             {getDepartmentOfWorker(w)}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{w.cluster ?? w.ministry ?? '—'}</td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{w.cluster ?? w.ministry ?? '—'}</td>
+                                    <td className="px-6 py-4 text-left">
                                         {w.c2sRole ? (
-                                            <span className="inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#D97706' }}>{ROLE_LABEL[w.c2sRole]}</span>
-                                        ) : <span className="text-gray-300">—</span>}
+                                            <span className="inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#D97706' }}>{ROLE_LABEL[w.c2sRole]}</span>
+                                        ) : <span className="text-[#64748B]">—</span>}
                                     </td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
+                                    <td className="px-6 py-4 text-left">
+                                        <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
                                     </td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{w.workerIdStatus}</span>
-                                    </td>
-                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => onTransferWorker(w)}
-                                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#FEF3C7] text-[#D97706] hover:bg-[#FDE68A] transition-colors flex items-center gap-1"
-                                                title="Transfer mentor/worker to another department"
-                                            >
-                                                <span>⇄</span> Transfer
-                                            </button>
-                                            <button
-                                                onClick={() => setViewingWorker(w)}
-                                                className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 underline"
-                                            >
-                                                Manage
-                                            </button>
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="inline-flex items-center gap-2">
+                                            <span className="font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{w.workerId}</span>
+                                            <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>
+                                                {w.workerIdStatus}
+                                            </span>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4 table-col-center text-center">
+                                        <ActionMenu
+                                            ariaLabel={`${w.name} actions`}
+                                            items={[
+                                                { label: 'Transfer', icon: ActionIcons.transfer, onClick: () => onTransferWorker(w) },
+                                                { label: 'Manage', icon: ActionIcons.edit, onClick: () => setViewingWorker(w) },
+                                            ]}
+                                        />
                                     </td>
                                 </tr>
                             ))}
@@ -2433,33 +2417,37 @@ function RBACTab() {
 
             {view === 'templates' && (
                 <div className="flex flex-col gap-4">
-                    {ROLE_TEMPLATES.map(rt => (
-                        <div key={rt.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <button className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+                    {ROLE_TEMPLATES.map(rt => {
+                        const isTemplateOpen = expandedTemplate === rt.id;
+                        return (
+                        <div key={rt.id} className="c2s-accordion-card overflow-hidden">
+                            <button className={`c2s-accordion-header w-full text-left cursor-pointer ${isTemplateOpen ? 'is-open' : ''}`}
                                 onClick={() => setExpandedTemplate(prev => prev === rt.id ? null : rt.id)}>
-                                <div className="flex items-center gap-4">
+                                <div className="c2s-accordion-title-btn flex items-center gap-4 min-w-0">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: rt.color + '18' }}>
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill={rt.color}><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-gray-900">{rt.name}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{rt.description}</p>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-[#181F26] dark:text-[#E6EDF3] truncate">{rt.name}</p>
+                                        <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-0.5 truncate">{rt.description}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <div className="text-right">
-                                        <p className="text-sm font-black" style={{ color: rt.color }}>{rt.permissions.length}</p>
-                                        <p className="text-[10px] text-gray-400">permissions</p>
+                                <div className="c2s-accordion-metrics-grid-2">
+                                    <div className="c2s-accordion-metric">
+                                        <span className="c2s-accordion-metric-value" style={{ color: rt.color }}>{rt.permissions.length}</span>
+                                        <span className="c2s-accordion-metric-label">Permissions</span>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-gray-700">{rt.workerCount}</p>
-                                        <p className="text-[10px] text-gray-400">workers</p>
+                                    <div className="c2s-accordion-metric">
+                                        <span className="c2s-accordion-metric-value">{rt.workerCount}</span>
+                                        <span className="c2s-accordion-metric-label">Workers</span>
                                     </div>
-                                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedTemplate === rt.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                                    <span className="c2s-accordion-chevron" aria-hidden="true">
+                                        <svg className={`w-4 h-4 transition-transform duration-150 ${isTemplateOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                                    </span>
                                 </div>
                             </button>
-                            {expandedTemplate === rt.id && (
-                                <div className="border-t border-gray-100 px-6 py-5">
+                            {isTemplateOpen && (
+                                <div className="border-t border-[#E2E8E5] dark:border-[#2A323D] px-6 py-5">
                                     <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Permissions in this template</p>
                                     <div className="flex flex-wrap gap-2">
                                         {rt.permissions.map(pk => {
@@ -2475,7 +2463,8 @@ function RBACTab() {
                                 </div>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -2536,26 +2525,35 @@ function GroupsTab() {
     return (
         <div>
             <SectionHeader title="C2S Groups" sub="All groups across the ministry — availability, capacity, and type." />
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-                {[
-                    { label: 'Total Groups', value: COORD_GROUPS.length, color: '#D97706' },
-                    { label: 'Open', value: openCount, color: '#0284C7' },
-                    { label: 'Full', value: fullCount, color: '#e67700' },
-                    { label: 'Closed', value: closedCount, color: '#9ca3af' },
-                    { label: 'Community-based', value: communityCount, color: '#1971c2' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-2xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-[10px] text-gray-400 font-semibold">{s.label}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { label: 'Total Groups', value: COORD_GROUPS.length, icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z' },
+                        { label: 'Open', value: openCount, icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+                        { label: 'Full', value: fullCount, icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                        { label: 'Closed', value: closedCount, icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
+                        { label: 'Community-based', value: communityCount, icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="relative">
+                <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search group, barangay, or satellite..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-56 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0E5B52] w-full bg-white" />
                 </div>
                 <CustomSelect value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)}
                     className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-700">
@@ -2610,58 +2608,69 @@ function GroupsTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>
-                                {['Group', 'Mentor'].map((h, idx) => (
-                                    <th key={h} className={`text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest py-3.5 ${idx === 0 ? 'pl-5 pr-2.5' : 'px-2.5'}`}>{h}</th>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[13%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[13%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">
+                                {['Group', 'Mentor'].map((h) => (
+                                    <th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>
                                 ))}
                                 {typeFilter === 'All' && (
-                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 py-3.5">Barangay / Satellite</th>
+                                    <th className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">Barangay / Satellite</th>
                                 )}
                                 {typeFilter === 'Community-based' && (
-                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 py-3.5">Barangay</th>
+                                    <th className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">Barangay</th>
                                 )}
                                 {typeFilter === 'Church-based' && (
-                                    <th className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 py-3.5">Satellite</th>
+                                    <th className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">Satellite</th>
                                 )}
                                 {['Type', 'Members', 'Capacity', 'Available', 'Status', 'Schedule'].map(h => (
-                                    <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 last:pr-5 py-3.5">{h}</th>
+                                    <th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map(g => {
                                 const pct = Math.round((g.members / g.capacity) * 100);
                                 return (
-                                    <tr key={g.id} className="hover:bg-[#fafbff] transition-colors">
-                                        <td className="pl-6 pr-4 py-3.5 font-bold text-gray-900">{g.name}</td>
-                                        <td className="px-4 py-3.5">
-                                            <div className="flex items-center gap-2">
+                                    <tr key={g.id} className="transition-colors">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{g.name}</td>
+                                        <td className="px-6 py-4 text-left">
+                                            <div className="flex items-center justify-start gap-2">
                                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
-                                                <span className="text-gray-700">{g.mentor}</span>
+                                                <span className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{g.mentor}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3.5 text-gray-600">
+                                        <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">
                                             {g.type === 'Church-based' ? (g.satellite ?? '—') : g.barangay}
                                         </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#0284C7] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                                        <td className="px-6 py-4 text-left">
+                                            <span className={`inline-flex items-center justify-center text-[10px] font-semibold px-2.5 py-1 rounded-full leading-none ${g.type === 'Community-based' ? 'bg-[#0284C7] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                         </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <td className="px-6 py-4 text-left">
+                                            <div className="flex items-center justify-start gap-2">
+                                                <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
                                                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? '#e67700' : '#0284C7' }} />
                                                 </div>
-                                                <span className="font-semibold text-gray-700">{g.members}</span>
+                                                <span className="font-semibold text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{g.members}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3.5 text-center text-gray-600 whitespace-nowrap">{g.capacity}</td>
-                                        <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap" style={{ color: g.availableSlots > 0 ? '#0284C7' : '#e67700' }}>{g.availableSlots}</td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-1 rounded-full leading-none text-white ${g.status === 'Open' ? 'bg-[#16a34a]' : g.status === 'Full' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{g.status}</span>
+                                        <td className="px-6 py-4 text-left text-[#64748B] dark:text-[#9BA7B4] tabular-nums">{g.capacity}</td>
+                                        <td className="px-6 py-4 text-left font-bold tabular-nums" style={{ color: g.availableSlots > 0 ? '#0284C7' : '#e67700' }}>{g.availableSlots}</td>
+                                        <td className="px-6 py-4 text-left">
+                                            <span className={`inline-flex items-center justify-center text-[10px] font-bold px-2.5 py-1 rounded-full leading-none text-white ${g.status === 'Open' ? 'bg-[#16a34a]' : g.status === 'Full' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{g.status}</span>
                                         </td>
-                                        <td className="pl-4 pr-6 py-3.5 text-gray-500 whitespace-nowrap">{g.schedule}</td>
+                                        <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{g.schedule}</td>
                                     </tr>
                                 );
                             })}
@@ -2700,24 +2709,33 @@ function PotentialMenteesTab() {
     return (
         <div>
             <SectionHeader title="Potential Mentees" sub="All incoming potential mentees across every department." />
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {[
-                    { label: 'Total', value: MH_POTENTIAL_MENTEES.length, color: '#D97706' },
-                    { label: 'New', value: MH_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, color: '#1d4ed8' },
-                    { label: 'Accepted', value: MH_POTENTIAL_MENTEES.filter(m => m.status === 'Accepted').length, color: '#166534' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { label: 'Total', value: MH_POTENTIAL_MENTEES.length, icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                        { label: 'New', value: MH_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+                        { label: 'Accepted', value: MH_POTENTIAL_MENTEES.filter(m => m.status === 'Accepted').length, icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="relative">
+                <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-56 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0E5B52] w-full bg-white" />
                 </div>
                 <MinistryDeptSelect value={deptFilter} onChange={setDeptFilter} />
                 <CustomSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
@@ -2757,36 +2775,48 @@ function PotentialMenteesTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Name', 'Age', 'Gender', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Source', 'Status', 'Submitted'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[15%]" />
+                            <col className="w-[5%]" />
+                            <col className="w-[7%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[10%]" />
+                            <col className="w-[10%]" />
+                            <col className="w-[14%]" />
+                            <col className="w-[9%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Name', 'Age', 'Gender', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Source', 'Status', 'Submitted'].map(h => (
+                                <th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>
                             ))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map(m => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5">
-                                        <div className="flex items-center gap-2">
+                                <tr key={m.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="flex items-center justify-start gap-2">
                                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
-                                            <span className="font-semibold text-gray-900">{m.name}</span>
+                                            <span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">{m.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.age}</td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.gender}</td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.cluster}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.mentor}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.barangay}</td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#E0F2FE] text-[#0369A1]' : 'bg-[#FEF3C7] text-[#D97706]'}`}>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.age}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.gender}</td>
+                                    <td className="px-6 py-4 text-[#181F26] dark:text-[#E6EDF3] font-semibold text-left">{m.cluster}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.coordinator}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.mentor}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.barangay}</td>
+                                    <td className="px-6 py-4 text-left">
+                                        <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#E0F2FE] text-[#0369A1]' : 'bg-[#FEF3C7] text-[#D97706]'}`}>
                                             {m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span>
+                                    <td className="px-6 py-4 text-left">
+                                        <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span>
                                     </td>
-                                    <td className="pl-4 pr-6 py-3.5 text-gray-400 whitespace-nowrap">{m.dateSubmitted}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{m.dateSubmitted}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -2868,12 +2898,13 @@ function ActiveMenteesTab() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentees</h1>
+                    <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Mentees</h1>
                     <p className="text-sm text-gray-400 mt-1">All active mentees across every department and ministry.</p>
                 </div>
                 <button
+                    type="button"
                     onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 bg-[#1d6fd8] hover:bg-[#1558b0] active:bg-[#1046a0] text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95"
+                    className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 text-white font-semibold rounded-[0.625rem] text-[0.8125rem] leading-none transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95 cursor-pointer"
                 >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -2883,25 +2914,34 @@ function ActiveMenteesTab() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[
-                    { label: 'Total Active', value: localMentees.length, color: '#D97706' },
-                    { label: 'Departments', value: MH_CLUSTERS.length, color: '#0284C7' },
-                    { label: 'Mentors', value: MH_ALL_MENTORS.filter(m => m.status === 'Active').length, color: '#D97706' },
-                    { label: 'Avg Progress', value: Math.round(localMentees.reduce((s, m) => s + (m.progress ?? 0), 0) / (localMentees.length || 1)) + '%', color: '#e67700' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { label: 'Total Active', value: localMentees.length, icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                        { label: 'Departments', value: MH_CLUSTERS.length, icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z' },
+                        { label: 'Mentors', value: MH_ALL_MENTORS.filter(m => m.status === 'Active').length, icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                        { label: 'Avg Progress', value: Math.round(localMentees.reduce((s, m) => s + (m.progress ?? 0), 0) / (localMentees.length || 1)) + '%', icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="relative">
+                <div className="relative w-full sm:w-64">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] w-56 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0E5B52] w-full bg-white" />
                 </div>
                 <MinistryDeptSelect value={clusterFilter} onChange={setClusterFilter} />
                 <span className="ml-auto text-xs text-gray-400">{filtered.length} mentees</span>
@@ -2935,32 +2975,41 @@ function ActiveMenteesTab() {
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Name', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Module', 'Progress'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[19%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[16%]" />
+                            <col className="w-[15%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[14%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Name', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Module', 'Progress'].map(h => (
+                                <th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>
                             ))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map(m => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5">
-                                        <div className="flex items-center gap-2">
+                                <tr key={m.id} className="transition-colors">
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="flex items-center justify-start gap-2">
                                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
-                                            <span className="font-semibold text-gray-900">{m.name}</span>
+                                            <span className="font-bold text-[#181F26] dark:text-[#E6EDF3]">{m.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{m.cluster ?? '—'}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.coordinator ?? '—'}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.mentor ?? '—'}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.barangay ?? '—'}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.module ?? '—'}</td>
-                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <td className="px-6 py-4 text-[#181F26] dark:text-[#E6EDF3] font-semibold text-left">{m.cluster ?? '—'}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.coordinator ?? '—'}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.mentor ?? '—'}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.barangay ?? '—'}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{m.module ?? '—'}</td>
+                                    <td className="px-6 py-4 text-left">
+                                        <div className="flex items-center justify-start gap-2">
+                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[56px]">
                                                 <div className="h-full rounded-full" style={{ width: `${m.progress ?? 0}%`, background: '#D97706' }} />
                                             </div>
-                                            <span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress ?? 0}%</span>
+                                            <span className="text-[11px] font-semibold text-[#64748B] dark:text-[#9BA7B4] shrink-0 tabular-nums">{m.progress ?? 0}%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -3000,67 +3049,57 @@ function C2SHomeTab({
     return (
         <div>
             {/* Confirmation dialog */}
-            {confirmAction && (
-                <>
-                    <div className="fixed inset-0 z-[9999] bg-black/50" />
-                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${confirmAction.action === 'approve' ? 'bg-green-100' : 'bg-red-100'}`}>
-                                    <svg className={`w-5 h-5 ${confirmAction.action === 'approve' ? 'text-green-600' : 'text-red-600'}`} viewBox="0 0 24 24" fill="currentColor">
-                                        {confirmAction.action === 'approve'
-                                            ? <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                            : <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
-                                        }
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-900">
-                                        {confirmAction.action === 'approve' ? 'Approve Home Group?' : 'Reject Home Group?'}
-                                    </h3>
-                                    <p className="text-xs text-gray-400 mt-0.5">{confirmAction.name}</p>
-                                </div>
-                            </div>
-                            <p className="text-xs text-gray-600 mb-5 leading-relaxed">
-                                {confirmAction.action === 'approve'
-                                    ? 'This will approve the home group application and notify the coordinator. The group will be listed as active.'
-                                    : 'This will reject the home group application. The coordinator will be notified. This action is significant and should be done carefully.'}
-                            </p>
-                            <div className="flex gap-3">
-                                <button onClick={() => setConfirmAction(null)}
-                                    className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        onUpdateHomeGroupStatus(
-                                            confirmAction.id,
-                                            confirmAction.action === 'approve' ? 'Approved' : 'Rejected'
-                                        );
-                                        setConfirmAction(null);
-                                    }}
-                                    className={`flex-1 text-sm font-semibold text-white py-2.5 rounded-xl transition-colors ${confirmAction.action === 'approve' ? 'bg-[#0284C7] hover:bg-[#0369A1]' : 'bg-red-600 hover:bg-red-700'}`}>
-                                    {confirmAction.action === 'approve' ? 'Yes, Approve' : 'Yes, Reject'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
+            <ConfirmModal
+                open={Boolean(confirmAction)}
+                variant={confirmAction?.action === 'reject' ? 'danger' : 'default'}
+                icon={confirmAction?.action === 'reject' ? 'warning' : 'check'}
+                title={confirmAction?.action === 'approve' ? 'Approve Home Group?' : 'Reject Home Group?'}
+                description={
+                    confirmAction?.action === 'approve' ? (
+                        <>
+                            Approve <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{confirmAction?.name}</strong> and list it as an active C2S Home group? The coordinator will be notified.
+                        </>
+                    ) : (
+                        <>
+                            Reject <strong className="font-semibold text-[#181F26] dark:text-[#E6EDF3]">{confirmAction?.name}</strong>? The coordinator will be notified of this decision.
+                        </>
+                    )
+                }
+                cancelLabel="Cancel"
+                confirmLabel={confirmAction?.action === 'approve' ? 'Yes, Approve' : 'Yes, Reject'}
+                onCancel={() => setConfirmAction(null)}
+                onConfirm={() => {
+                    if (!confirmAction) return;
+                    onUpdateHomeGroupStatus(
+                        confirmAction.id,
+                        confirmAction.action === 'approve' ? 'Approved' : 'Rejected'
+                    );
+                    setConfirmAction(null);
+                }}
+            />
 
             <SectionHeader title="C2S Home Groups" sub="Home group applications, approvals, and active C2S Home groups." />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[
-                    { label: 'Total', value: homeGroups.length, color: '#D97706' },
-                    { label: 'Approved', value: homeGroups.filter(h => h.status === 'Approved').length, color: '#0284C7' },
-                    { label: 'Pending', value: homeGroups.filter(h => h.status === 'Pending').length, color: '#e67700' },
-                    { label: 'Recommended', value: homeGroups.filter(h => h.status === 'Recommended').length, color: '#D97706' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-xs text-gray-400 font-semibold">{s.label}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { label: 'Total', value: homeGroups.length, icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+                        { label: 'Approved', value: homeGroups.filter(h => h.status === 'Approved').length, icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+                        { label: 'Pending', value: homeGroups.filter(h => h.status === 'Pending').length, icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
+                        { label: 'Recommended', value: homeGroups.filter(h => h.status === 'Recommended').length, icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-5">
@@ -3097,11 +3136,14 @@ function C2SHomeTab({
                             <span>{h.coordinator}</span>
                             <span>{h.submitted}</span>
                         </div>
-                        <div className="flex gap-2 pt-1">
-                            <button onClick={() => setConfirmAction({ id: h.id, action: 'approve', name: h.name })}
-                                className="flex-1 text-xs font-semibold text-[#0284C7] border border-[#0284C7] py-1.5 rounded-lg hover:bg-[#FEF3C7] transition-colors">Approve</button>
-                            <button onClick={() => setConfirmAction({ id: h.id, action: 'reject', name: h.name })}
-                                className="flex-1 text-xs font-semibold text-[#D97706] border border-[#D97706] py-1.5 rounded-lg hover:bg-[#FEF3C7] transition-colors">Reject</button>
+                        <div className="flex items-center justify-end pt-1">
+                            <ActionMenu
+                                ariaLabel={`${h.name} actions`}
+                                items={[
+                                    { label: 'Approve', icon: ActionIcons.approve, tone: 'positive', onClick: () => setConfirmAction({ id: h.id, action: 'approve', name: h.name }) },
+                                    { label: 'Reject', icon: ActionIcons.reject, tone: 'destructive', onClick: () => setConfirmAction({ id: h.id, action: 'reject', name: h.name }) },
+                                ]}
+                            />
                         </div>
                     </div>
                 ))}
@@ -3109,32 +3151,42 @@ function C2SHomeTab({
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc] border-b border-gray-100">
-                            <tr>{['Home Group', 'Barangay', 'Schedule', 'Potential', 'Coordinator', 'Submitted', 'Status', 'Actions'].map(h => (
-                                <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
+                    <table className="w-full table-auto text-xs">
+                        <colgroup>
+                            <col className="w-[16%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[18%]" />
+                            <col className="w-[9%]" />
+                            <col className="w-[15%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[11%]" />
+                            <col className="w-[8%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">{['Home Group', 'Barangay', 'Schedule', 'Potential', 'Coordinator', 'Submitted', 'Status', 'Actions'].map((h, idx, arr) => (
+                                <th key={h} className={`text-[12px] font-bold uppercase tracking-widest px-6 py-4 ${idx === arr.length - 1 ? 'table-col-center text-center' : 'text-left'}`}>{h}</th>
                             ))}</tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filtered.map(h => (
-                                <tr key={h.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="pl-6 pr-4 py-3.5 font-bold text-gray-900">{h.name}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{h.barangay}</td>
-                                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">{h.schedule}</td>
-                                    <td className="px-4 py-3.5 text-center font-semibold text-[#D97706] whitespace-nowrap">{h.potential}</td>
-                                    <td className="px-4 py-3.5 text-gray-600">{h.coordinator}</td>
-                                    <td className="px-4 py-3.5 text-gray-400 whitespace-nowrap">{h.submitted}</td>
-                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                        <span className={`inline-flex items-center whitespace-nowrap leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[h.status]}`}>{h.status}</span>
+                                <tr key={h.id} className="transition-colors">
+                                    <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{h.name}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{h.barangay}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{h.schedule}</td>
+                                    <td className="px-6 py-4 text-left font-semibold text-[#D97706] tabular-nums">{h.potential}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left">{h.coordinator}</td>
+                                    <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{h.submitted}</td>
+                                    <td className="px-6 py-4 text-left">
+                                        <span className={`inline-flex items-center justify-center leading-none text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLE[h.status]}`}>{h.status}</span>
                                     </td>
-                                    <td className="pl-4 pr-6 py-3.5 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => setConfirmAction({ id: h.id, action: 'approve', name: h.name })}
-                                                className="text-[11px] font-semibold text-[#0284C7] hover:underline">Approve</button>
-                                            <span className="text-gray-200">|</span>
-                                            <button onClick={() => setConfirmAction({ id: h.id, action: 'reject', name: h.name })}
-                                                className="text-[11px] font-semibold text-[#D97706] hover:underline">Reject</button>
-                                        </div>
+                                    <td className="px-6 py-4 table-col-center text-center">
+                                        <ActionMenu
+                                            ariaLabel={`${h.name} actions`}
+                                            items={[
+                                                { label: 'Approve', icon: ActionIcons.approve, tone: 'positive', onClick: () => setConfirmAction({ id: h.id, action: 'approve', name: h.name }) },
+                                                { label: 'Reject', icon: ActionIcons.reject, tone: 'destructive', onClick: () => setConfirmAction({ id: h.id, action: 'reject', name: h.name }) },
+                                            ]}
+                                        />
                                     </td>
                                 </tr>
                             ))}
@@ -3148,8 +3200,7 @@ function C2SHomeTab({
 }
 
 // ─── Reports Tab ──────────────────────────────────────────────────────────────
-function ReportsTab() {
-    const [reportType, setReportType] = useState<'growth' | 'ministry' | 'map'>('growth');
+function ReportsTab({ reportType }: { reportType: 'growth' | 'ministry' | 'map' }) {
     const [mapFilter, setMapFilter] = useState<'All' | 'Open' | 'Full'>('All');
 
     const allMapGroups: ClusterMapGroup[] = COORD_GROUPS
@@ -3201,41 +3252,38 @@ function ReportsTab() {
                         <button
                             type="button"
                             onClick={handleExportCsv}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors"
+                            className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 text-[0.8125rem] font-semibold text-[#181F26] dark:text-[#E6EDF3] border border-[#E2E8E5] dark:border-[#2A323D] rounded-[0.625rem] bg-white dark:bg-[#1A2026] hover:bg-[#F8FAFC] dark:hover:bg-[#222933] transition-colors leading-none cursor-pointer"
                         >
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
                             Export CSV / Excel
                         </button>
                     </div>
                 }
             />
 
-            <div className="flex flex-wrap gap-2 mb-6">
-                {([
-                    { key: 'growth', label: 'Growth Analytics' },
-                    { key: 'ministry', label: 'Ministry Reports' },
-                    { key: 'map', label: 'Interactive Map' },
-                ] as const).map(r => (
-                    <button key={r.key} onClick={() => setReportType(r.key)}
-                        className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${reportType === r.key ? 'bg-[#D97706] text-white border-[#D97706]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                        {r.label}
-                    </button>
-                ))}
-            </div>
-
             {/* KPI summary */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[
-                    { label: 'Active Mentees', value: MH_ACTIVE_MENTEES_LIST.length, color: '#D97706' },
-                    { label: 'Active Mentors', value: MH_ALL_MENTORS.filter(m => m.status === 'Active').length, color: '#0284C7' },
-                    { label: 'Clusters', value: MH_CLUSTERS.length, color: '#D97706' },
-                    { label: 'Potential Mentees', value: MH_POTENTIAL_MENTEES.length, color: '#e67700' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-sm font-semibold text-gray-800">{s.label}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { label: 'Active Mentees', value: MH_ACTIVE_MENTEES_LIST.length, sub: 'In discipleship', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                        { label: 'Active Mentors', value: MH_ALL_MENTORS.filter(m => m.status === 'Active').length, sub: 'Across ministries', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                        { label: 'Clusters', value: MH_CLUSTERS.length, sub: 'Active clusters', icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z' },
+                        { label: 'Potential Mentees', value: MH_POTENTIAL_MENTEES.length, sub: 'Awaiting process', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                                <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] mt-1.5">{s.sub}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {reportType === 'growth' && (
@@ -3305,30 +3353,38 @@ function ReportsTab() {
                             <p className="text-sm font-bold text-gray-800">Ministry Performance Report</p>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[540px] text-xs">
-                                <thead className="bg-[#f8f9fc]">
-                                    <tr>{['Ministry', 'Mentors', 'Groups', 'Mentees (F2F)', 'Mentees (Online)', 'Total Mentees'].map(h => (
-                                        <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2.5 first:pl-5 last:pr-5 py-3.5">{h}</th>
+                            <table className="w-full table-auto text-xs">
+                                <colgroup>
+                                    <col className="w-[25%]" />
+                                    <col className="w-[13%]" />
+                                    <col className="w-[13%]" />
+                                    <col className="w-[16%]" />
+                                    <col className="w-[17%]" />
+                                    <col className="w-[16%]" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="table-header-row">{['Ministry', 'Mentors', 'Groups', 'Mentees (F2F)', 'Mentees (Online)', 'Total Mentees'].map(h => (
+                                        <th key={h} className="text-left text-[12px] font-bold uppercase tracking-widest px-6 py-4">{h}</th>
                                     ))}</tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody>
                                     {ADMIN_MINISTRY_PERF.map(r => (
-                                        <tr key={r.name} className="hover:bg-[#fafbff]">
-                                            <td className="px-3 py-3.5 font-semibold text-gray-900">{r.name}</td>
-                                            <td className="px-3 py-3.5 font-semibold text-[#0284C7]">{r.mentors}</td>
-                                            <td className="px-3 py-3.5 font-semibold text-[#D97706]">{r.groups}</td>
-                                            <td className="px-3 py-3.5 text-gray-600">{Math.round(r.mentees * 0.65)}</td>
-                                            <td className="px-3 py-3.5 text-gray-600">{Math.round(r.mentees * 0.35)}</td>
-                                            <td className="px-3 py-3.5 font-bold text-gray-900">{r.mentees}</td>
+                                        <tr key={r.name} className="transition-colors">
+                                            <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">{r.name}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] font-semibold text-left tabular-nums">{r.mentors}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] font-semibold text-left tabular-nums">{r.groups}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{Math.round(r.mentees * 0.65)}</td>
+                                            <td className="px-6 py-4 text-[#64748B] dark:text-[#9BA7B4] text-left tabular-nums">{Math.round(r.mentees * 0.35)}</td>
+                                            <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{r.mentees}</td>
                                         </tr>
                                     ))}
-                                    <tr className="border-t-2 border-gray-200" style={{ background: 'var(--bg-subtle)' }}>
-                                        <td className="px-3 py-3.5 font-black text-gray-800">Total</td>
-                                        <td className="px-3 py-3.5 font-bold text-[#0284C7]">{ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentors, 0)}</td>
-                                        <td className="px-3 py-3.5 font-bold text-[#D97706]">{ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.groups, 0)}</td>
-                                        <td className="px-3 py-3.5 font-bold text-gray-700">{Math.round(ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentees, 0) * 0.65)}</td>
-                                        <td className="px-3 py-3.5 font-bold text-gray-700">{Math.round(ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentees, 0) * 0.35)}</td>
-                                        <td className="px-3 py-3.5 font-black text-gray-900">{ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentees, 0)}</td>
+                                    <tr className="table-total-row">
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left">Total</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentors, 0)}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.groups, 0)}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{Math.round(ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentees, 0) * 0.65)}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{Math.round(ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentees, 0) * 0.35)}</td>
+                                        <td className="px-6 py-4 font-bold text-[#181F26] dark:text-[#E6EDF3] text-left tabular-nums">{ADMIN_MINISTRY_PERF.reduce((s, r) => s + r.mentees, 0)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3410,7 +3466,7 @@ function NotificationsTab({
         <div>
             <div className="flex items-start justify-between mb-6">
                 <div>
-                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Notifications</h1>
+                    <h1 className="text-[1.75rem] font-extrabold tracking-[0.02em] uppercase text-gray-900 leading-tight">Notifications</h1>
                     <p className="text-sm text-gray-400 mt-1">{unread > 0 ? `${unread} unread` : 'All caught up'}</p>
                 </div>
                 {unread > 0 && (
@@ -3501,19 +3557,28 @@ function AuditLogsTab({
             <SectionHeader title="Audit Logs" sub="Track all user activity, RBAC changes, assignment history, and system events." />
 
             {/* Summary pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-                {[
-                    { label: 'Total Events', value: logs.length, color: '#D97706' },
-                    { label: 'Church-ins', value: logs.filter(l => l.type === 'church_in').length, color: '#15803d' },
-                    { label: 'Critical', value: logs.filter(l => l.severity === 'critical').length, color: '#D97706' },
-                    { label: 'Warnings', value: logs.filter(l => l.severity === 'warning').length, color: '#e67700' },
-                    { label: 'RBAC Changes', value: logs.filter(l => l.type === 'rbac_change').length, color: '#D97706' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-2xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-[10px] text-gray-400 font-semibold">{s.label}</p>
-                    </div>
-                ))}
+            <div className="c2s-kpi-shell mb-6">
+                <div className="c2s-kpi-grid">
+                    {[
+                        { label: 'Total Events', value: logs.length, icon: 'M9 5H7c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-2c0-1.1-.9-2-2-2s-2 .9-2 2zm2 0h2v1h-2V5z' },
+                        { label: 'Church-ins', value: logs.filter(l => l.type === 'church_in').length, icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+                        { label: 'Critical', value: logs.filter(l => l.severity === 'critical').length, icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
+                        { label: 'Warnings', value: logs.filter(l => l.severity === 'warning').length, icon: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z' },
+                        { label: 'RBAC Changes', value: logs.filter(l => l.type === 'rbac_change').length, icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                    ].map(s => (
+                        <div key={s.label} className="kpi-card c2s-kpi-card bg-white rounded-2xl border border-[#E2E8E5]">
+                            <div className="c2s-kpi-card-top">
+                                <p className="c2s-kpi-label">{s.label}</p>
+                                <div className="kpi-icon-badge c2s-kpi-badge">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
+                                </div>
+                            </div>
+                            <div className="c2s-kpi-bottom">
+                                <p className="kpi-value c2s-kpi-number">{s.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Filters */}
@@ -3536,7 +3601,7 @@ function AuditLogsTab({
                 </CustomSelect>
                 <CustomSelect value={severityFilter} onChange={e => setSeverityFilter(e.target.value as any)}
                     className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#D97706] text-gray-700">
-                    <option value="All">All Severities</option>
+                    <option value="All">All Statuses</option>
                     <option value="info">Info</option>
                     <option value="warning">Warning</option>
                     <option value="critical">Critical</option>
@@ -3585,30 +3650,36 @@ function AuditLogsTab({
 function RoleTemplateRow({ rt }: { rt: typeof ROLE_TEMPLATES[0] }) {
     const [expanded, setExpanded] = useState(false);
     return (
-        <div className="rounded-xl border border-gray-100 overflow-hidden">
+        <div className="c2s-accordion-card overflow-hidden">
             <button
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-100 transition-colors text-left"
-                style={{ background: 'var(--bg-subtle)' }}
+                type="button"
+                className={`c2s-accordion-header w-full text-left cursor-pointer ${expanded ? 'is-open' : ''}`}
                 onClick={() => setExpanded(p => !p)}>
-                <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: rt.color + '18' }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill={rt.color}><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
+                <div className="c2s-accordion-title-btn flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: rt.color + '18' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill={rt.color}><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-900">{rt.name}</p>
-                        <p className="text-[10px] text-gray-400">{rt.description}</p>
+                    <div className="min-w-0">
+                        <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] truncate">{rt.name}</p>
+                        <p className="text-xs text-[#64748B] dark:text-[#9BA7B4] truncate">{rt.description}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: rt.color + '18', color: rt.color }}>
-                        {rt.permissions.length} perms
+                <div className="c2s-accordion-metrics-grid-2">
+                    <div className="c2s-accordion-metric">
+                        <span className="c2s-accordion-metric-value" style={{ color: rt.color }}>{rt.permissions.length}</span>
+                        <span className="c2s-accordion-metric-label">Permissions</span>
+                    </div>
+                    <div className="c2s-accordion-metric">
+                        <span className="c2s-accordion-metric-value">{rt.workerCount}</span>
+                        <span className="c2s-accordion-metric-label">Workers</span>
+                    </div>
+                    <span className="c2s-accordion-chevron" aria-hidden="true">
+                        <svg className={`w-4 h-4 transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
                     </span>
-                    <span className="text-[10px] font-semibold text-gray-400">{rt.workerCount} workers</span>
-                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
                 </div>
             </button>
             {expanded && (
-                <div className="p-3 border-t border-gray-100">
+                <div className="px-6 py-4 border-t border-[#E2E8E5] dark:border-[#2A323D]">
                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Permissions</p>
                     <div className="flex flex-wrap gap-1.5">
                         {rt.permissions.map(pk => {
@@ -3689,7 +3760,6 @@ function SavedBadge() {
 function ConfirmDialog({
     title, message, warning,
     confirmLabel = 'Yes, Remove',
-    confirmColor = '#ef4444',
     onConfirm, onCancel,
 }: {
     title: string;
@@ -3701,36 +3771,22 @@ function ConfirmDialog({
     onCancel: () => void;
 }) {
     return (
-        <>
-            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onCancel} />
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onCancel}>
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ background: confirmColor + '15' }}>
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill={confirmColor}>
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                        </svg>
-                    </div>
-                    <div className="text-center">
-                        <h3 className="text-base font-bold text-gray-900">{title}</h3>
-                        <div className="text-sm text-gray-500 mt-1.5">{message}</div>
-                        {warning && (
-                            <p className="text-xs font-medium mt-2" style={{ color: confirmColor }}>{warning}</p>
-                        )}
-                    </div>
-                    <div className="flex gap-3 mt-1">
-                        <button onClick={onCancel}
-                            className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                            Cancel
-                        </button>
-                        <button onClick={onConfirm}
-                            className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl transition-colors"
-                            style={{ background: confirmColor }}>
-                            {confirmLabel}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </>
+        <ConfirmModal
+            open
+            variant="danger"
+            icon="trash"
+            title={title}
+            description={message}
+            extra={
+                warning ? (
+                    <p className="text-xs font-medium text-[#E11D48] text-center">{warning}</p>
+                ) : undefined
+            }
+            cancelLabel="Cancel"
+            confirmLabel={confirmLabel}
+            onConfirm={onConfirm}
+            onCancel={onCancel}
+        />
     );
 }
 
@@ -3867,9 +3923,6 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
-                        LOCATIONS
-                    </span>
                     <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Subdivisions</h2>
                     <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">Manage subdivisions used for C2S group location mapping. {totalSubs} total entries.</p>
                 </div>
@@ -3897,7 +3950,7 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
                                     </optgroup>
                                 ))}
                             </CustomSelect>
-                            <button type="submit" className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] transition-colors shrink-0 shadow-sm">Add</button>
+                            <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shrink-0 shadow-sm cursor-pointer">Add</button>
                         </div>
                     </div>
                     {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
@@ -3934,13 +3987,12 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
                             {subsDropdown && (
                                 <div className="flex items-center justify-between px-4 py-3 bg-[#FEF3C7]">
                                     <span className="text-sm font-semibold text-gray-800">{subsDropdown}</span>
-                                    <button
-                                        onClick={() => setConfirmRemove({ sub: subsDropdown, barangay: selectedGroup.barangay })}
-                                        className="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors flex items-center gap-1"
-                                    >
-                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
-                                        Remove
-                                    </button>
+                                    <ActionMenu
+                                        ariaLabel={`${subsDropdown} actions`}
+                                        items={[
+                                            { label: 'Remove', icon: ActionIcons.trash, tone: 'destructive', onClick: () => setConfirmRemove({ sub: subsDropdown, barangay: selectedGroup.barangay }) },
+                                        ]}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -4004,9 +4056,6 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
-                        TERRITORIES
-                    </span>
                     <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Barangays</h2>
                     <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">
                         {cities.map(c => `${c} (${mergedData[c].length})`).join(' · ')}
@@ -4031,7 +4080,7 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
                             <option value="">Select City / Municipality</option>
                             {cities.map(c => <option key={c} value={c}>{c}</option>)}
                         </CustomSelect>
-                        <button type="submit" className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] transition-colors shrink-0 shadow-sm">Add</button>
+                        <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shrink-0 shadow-sm cursor-pointer">Add</button>
                     </div>
                     {addError ? <FieldError msg={addError} /> : saved && <SavedBadge />}
                 </form>
@@ -4068,13 +4117,12 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
                                 {isThisSelected && selectedBarangay && (
                                     <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
                                         <span className="text-sm font-semibold text-gray-800">{selectedBarangay}</span>
-                                        <button
-                                            onClick={() => setConfirmRemove({ barangay: selectedBarangay, city })}
-                                            className="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors flex items-center gap-1"
-                                        >
-                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
-                                            Remove
-                                        </button>
+                                        <ActionMenu
+                                            ariaLabel={`${selectedBarangay} actions`}
+                                            items={[
+                                                { label: 'Remove', icon: ActionIcons.trash, tone: 'destructive', onClick: () => setConfirmRemove({ barangay: selectedBarangay, city }) },
+                                            ]}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -4314,14 +4362,13 @@ function SatellitesSection({ onSave, saved }: { onSave: () => void; saved: boole
                                 <button
                                     type="button"
                                     onClick={() => { if (!editingSat) setShowAddModal(false); else setEditingSat(null); }}
-                                    className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                                    className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-[#181F26] dark:text-[#E6EDF3] bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] rounded-xl hover:bg-gray-50 dark:hover:bg-[#222933] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-6 py-2.5 text-sm font-bold text-white rounded-xl transition-colors"
-                                    style={{ background: '#D97706' }}
+                                    className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors cursor-pointer"
                                 >
                                     {editingSat ? 'Save Changes' : 'Add Satellite'}
                                 </button>
@@ -4335,19 +4382,17 @@ function SatellitesSection({ onSave, saved }: { onSave: () => void; saved: boole
                 {/* Section Header */}
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                     <div>
-                        <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
-                            SATELLITES
-                        </span>
                         <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Satellite Churches</h2>
                         <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">
                             Total ({satellites.length}) · Active ({activeSatellites.length}) · Inactive ({satellites.length - activeSatellites.length})
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={openAdd}
-                        className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] shadow-sm transition-colors self-start sm:self-auto"
+                        className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-[1.125rem] py-2 text-[0.8125rem] font-semibold text-white rounded-[0.625rem] bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 shadow-sm leading-none transition-colors self-start sm:self-auto cursor-pointer"
                     >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                         </svg>
                         Add Satellite
@@ -4412,15 +4457,14 @@ function SatellitesSection({ onSave, saved }: { onSave: () => void; saved: boole
                                             </div>
                                         </div>
 
-                                        {/* Actions — Only Edit Button */}
+                                        {/* Actions */}
                                         <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => openEdit(sat)}
-                                                className="text-xs font-semibold text-[#D97706] hover:bg-[#FEF3C7] border border-transparent hover:border-[#FDE68A] px-3.5 py-1.5 rounded-lg transition-colors"
-                                            >
-                                                Edit
-                                            </button>
+                                            <ActionMenu
+                                                ariaLabel={`${sat.name} actions`}
+                                                items={[
+                                                    { label: 'Edit', icon: ActionIcons.edit, onClick: () => openEdit(sat) },
+                                                ]}
+                                            />
                                         </div>
                                     </div>
                                 );
@@ -4493,9 +4537,6 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
             )}
             <div className="flex flex-col gap-6">
                 <div>
-                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
-                        STRUCTURE
-                    </span>
                     <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Ministries</h2>
                     <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">
                         Add or remove ministries per department. Total: {Object.values(ministries).reduce((s, a) => s + a.length, 0)} ministries
@@ -4540,8 +4581,7 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
                                 }`}
                         />
                         <button type="submit"
-                            className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0"
-                            style={{ background: '#D97706' }}>
+                            className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shrink-0 cursor-pointer">
                             Add
                         </button>
                     </div>
@@ -4574,15 +4614,12 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
                                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: c.dot }} />
                                         <span className="text-sm font-semibold text-gray-800">{ministry}</span>
                                     </div>
-                                    <button
-                                        onClick={() => setConfirmRemove({ name: ministry, dept: activeDept })}
-                                        className="text-xs text-red-400 hover:text-red-600 font-semibold transition-colors flex items-center gap-1"
-                                    >
-                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                                        </svg>
-                                        Remove
-                                    </button>
+                                    <ActionMenu
+                                        ariaLabel={`${ministry} actions`}
+                                        items={[
+                                            { label: 'Remove', icon: ActionIcons.trash, tone: 'destructive', onClick: () => setConfirmRemove({ name: ministry, dept: activeDept }) },
+                                        ]}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -4594,16 +4631,110 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
 }
 
 // ─── Roles Section ────────────────────────────────────────────────────────────
-const INITIAL_ROLES = [
-    { name: 'Coor', color: '#D97706', perms: 5, workers: 6 },
-    { name: 'Worker', color: '#0284C7', perms: 2, workers: 9 },
+interface CustomAdminRole {
+    name: string;
+    color: string;
+    perms: number;
+    workers: number;
+    permissions: string[];
+}
+
+const ROLES_STORAGE_KEY = 'c2s_admin_roles_v1';
+
+const INITIAL_ROLES: CustomAdminRole[] = [
+    {
+        name: 'Coor',
+        color: '#D97706',
+        perms: 5,
+        workers: 6,
+        permissions: [
+            'c2s:dashboard',
+            'c2s:coord_view',
+            'c2s:assign_mentees',
+            'c2s:manage_potential',
+            'c2s:reports',
+        ],
+    },
+    {
+        name: 'Worker',
+        color: '#0284C7',
+        perms: 2,
+        workers: 9,
+        permissions: [
+            'c2s:mentor_view',
+            'c2s:manage_mentees',
+        ],
+    },
 ];
 
 function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean }) {
-    const [roles, setRoles] = useState(INITIAL_ROLES);
+    const [roles, setRoles] = useState<CustomAdminRole[]>(INITIAL_ROLES);
     const [newRoleName, setNewRoleName] = useState('');
     const [addError, setAddError] = useState('');
     const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+    const [editingRole, setEditingRole] = useState<CustomAdminRole | null>(null);
+    const [draftPerms, setDraftPerms] = useState<string[]>([]);
+
+    useEffect(() => {
+        try {
+            const raw = window.localStorage.getItem(ROLES_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as CustomAdminRole[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setRoles(parsed.map((r) => ({
+                    ...r,
+                    permissions: Array.isArray(r.permissions) ? r.permissions : [],
+                    perms: Array.isArray(r.permissions) ? r.permissions.length : (r.perms ?? 0),
+                })));
+            }
+        } catch {
+            // ignore storage parse failures
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!editingRole) return;
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.key === 'Escape') {
+                setEditingRole(null);
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [editingRole]);
+
+    function persistRoles(next: CustomAdminRole[]) {
+        setRoles(next);
+        try {
+            window.localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+            // ignore storage write failures
+        }
+    }
+
+    function openEditPermissions(role: CustomAdminRole) {
+        setEditingRole(role);
+        setDraftPerms([...role.permissions]);
+    }
+
+    function togglePermission(permKey: string) {
+        setDraftPerms((prev) =>
+            prev.includes(permKey) ? prev.filter((k) => k !== permKey) : [...prev, permKey]
+        );
+    }
+
+    function saveRolePermissions() {
+        if (!editingRole) return;
+        const uniquePerms = Array.from(new Set(draftPerms));
+        const next = roles.map((r) =>
+            r.name === editingRole.name
+                ? { ...r, permissions: uniquePerms, perms: uniquePerms.length }
+                : r
+        );
+        persistRoles(next);
+        setEditingRole(null);
+        onSave();
+    }
 
     function handleAdd() {
         const trimmed = newRoleName.trim();
@@ -4612,8 +4743,12 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
             setAddError(`"${trimmed}" already exists.`); return;
         }
         const colors = ['#0284C7', '#D97706', '#e67700', '#1971c2', '#D97706'];
-        setRoles(prev => [...prev, {
-            name: trimmed, color: colors[prev.length % colors.length], perms: 0, workers: 0,
+        persistRoles([...roles, {
+            name: trimmed,
+            color: colors[roles.length % colors.length],
+            perms: 0,
+            workers: 0,
+            permissions: [],
         }]);
         setNewRoleName(''); setAddError('');
         onSave();
@@ -4621,10 +4756,12 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
 
     function confirmDeleteRole() {
         if (!confirmRemove) return;
-        setRoles(prev => prev.filter(r => r.name !== confirmRemove));
+        persistRoles(roles.filter(r => r.name !== confirmRemove));
         setConfirmRemove(null);
         onSave();
     }
+
+    const permissionGroups = [...new Set(C2S_PERMISSIONS.map((p) => p.group))];
 
     return (
         <>
@@ -4637,11 +4774,152 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
                     onCancel={() => setConfirmRemove(null)}
                 />
             )}
+
+            {editingRole && (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="c2s-edit-role-perms-title"
+                    className="fixed inset-0 z-[12000] flex items-center justify-center p-4"
+                    style={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                        backdropFilter: 'blur(4px)',
+                        WebkitBackdropFilter: 'blur(4px)',
+                    }}
+                    onClick={() => setEditingRole(null)}
+                >
+                    <div
+                        className="relative w-full max-w-2xl bg-white dark:bg-[#1A2026] border border-[#E2E8E5] dark:border-[#2A323D] shadow-2xl flex flex-col overflow-hidden"
+                        style={{ borderRadius: '1.5rem' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="px-6 sm:px-8 pt-6 pb-4 border-b border-[#E2E8E5] dark:border-[#2A323D] flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                                <h3
+                                    id="c2s-edit-role-perms-title"
+                                    className="text-lg sm:text-xl font-bold text-[#181F26] dark:text-[#E6EDF3] leading-snug"
+                                >
+                                    Edit Permissions — {editingRole.name}
+                                </h3>
+                                <p className="text-sm text-[#475569] dark:text-[#9BA7B4] mt-1">
+                                    {draftPerms.length} of {C2S_PERMISSIONS.length} permissions enabled across system modules
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                data-confirm-modal-btn="true"
+                                aria-label="Close"
+                                onClick={() => setEditingRole(null)}
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-[#64748B] hover:bg-slate-100 dark:hover:bg-[#222933] transition-colors shrink-0 cursor-pointer"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Quick Utility Strip */}
+                        <div className="px-6 sm:px-8 py-3 bg-[#F8FAFC] dark:bg-[#161B22] border-b border-[#E2E8E5] dark:border-[#2A323D] flex items-center justify-between gap-3">
+                            <span className="text-xs font-semibold text-[#475569] dark:text-[#9BA7B4]">
+                                Select modules and capabilities for <strong className="text-[#181F26] dark:text-[#E6EDF3]">{editingRole.name}</strong>
+                            </span>
+                            <div className="flex items-center gap-3 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setDraftPerms(C2S_PERMISSIONS.map((p) => p.key))}
+                                    className="text-xs font-semibold text-[#0E5B52] dark:text-[#5EEAD4] hover:underline cursor-pointer"
+                                >
+                                    Select All
+                                </button>
+                                <span className="text-[#E2E8E5] dark:text-[#2A323D]">|</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setDraftPerms([])}
+                                    className="text-xs font-semibold text-[#64748B] dark:text-[#9BA7B4] hover:underline cursor-pointer"
+                                >
+                                    Clear All
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grouped Permissions Checklist */}
+                        <div className="px-6 sm:px-8 py-5 max-h-[56vh] overflow-y-auto space-y-5">
+                            {permissionGroups.map((group) => {
+                                const groupPerms = C2S_PERMISSIONS.filter((p) => p.group === group);
+                                const enabledInGroup = groupPerms.filter((p) => draftPerms.includes(p.key)).length;
+                                return (
+                                    <div key={group}>
+                                        <div className="flex items-center justify-between mb-2 px-1">
+                                            <p className="text-xs font-bold uppercase tracking-wider text-[#0E5B52] dark:text-[#2A9D8F]">
+                                                {group}
+                                            </p>
+                                            <span className="text-[11px] font-semibold text-[#64748B] dark:text-[#9BA7B4]">
+                                                {enabledInGroup}/{groupPerms.length}
+                                            </span>
+                                        </div>
+                                        <div className="rounded-2xl border border-[#E2E8E5] dark:border-[#2A323D] divide-y divide-[#E2E8E5] dark:divide-[#2A323D] overflow-hidden">
+                                            {groupPerms.map((p) => {
+                                                const checked = draftPerms.includes(p.key);
+                                                return (
+                                                    <label
+                                                        key={p.key}
+                                                        className={`flex items-center justify-between gap-4 px-4 py-3 cursor-pointer transition-colors ${checked
+                                                            ? 'bg-[rgba(14,91,82,0.06)] dark:bg-[rgba(42,157,143,0.12)]'
+                                                            : 'bg-white dark:bg-[#1A2026] hover:bg-[#F8FAFC] dark:hover:bg-[#222933]'
+                                                            }`}
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-mono font-semibold text-[#181F26] dark:text-[#E6EDF3]">
+                                                                {p.label}
+                                                            </p>
+                                                            <p className="text-xs text-[#475569] dark:text-[#9BA7B4] mt-0.5">
+                                                                {p.description}
+                                                            </p>
+                                                        </div>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => togglePermission(p.key)}
+                                                            className="w-4 h-4 rounded accent-[#0E5B52] cursor-pointer shrink-0"
+                                                        />
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 sm:px-8 py-4 border-t border-[#E2E8E5] dark:border-[#2A323D] bg-[#F8FAFC] dark:bg-[#161B22] flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                data-confirm-modal-btn="true"
+                                onClick={() => setEditingRole(null)}
+                                className="px-5 py-2 rounded-[0.625rem] border border-[#E2E8E5] dark:border-[#2A323D] bg-white dark:bg-[#1A2026] text-[#181F26] dark:text-[#E6EDF3] text-[0.8125rem] font-semibold leading-none hover:bg-[#F8FAFC] dark:hover:bg-[#222933] transition-colors cursor-pointer inline-flex items-center justify-center"
+                                style={{ height: '2.375rem' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                data-confirm-modal-btn="true"
+                                onClick={saveRolePermissions}
+                                className="px-5 py-2 rounded-[0.625rem] bg-[#0E5B52] hover:bg-[#09423B] text-white text-[0.8125rem] font-semibold leading-none transition-colors cursor-pointer inline-flex items-center justify-center"
+                                style={{ height: '2.375rem' }}
+                            >
+                                Save Permissions
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col gap-6">
                 <div>
-                    <span data-pill="true" className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3">
-                        AUTHORIZATION
-                    </span>
                     <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">Roles</h2>
                     <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1">Add and manage custom roles. New roles appear in Permissions for configuration.</p>
                 </div>
@@ -4655,7 +4933,7 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
                             placeholder="New role name (e.g. Zone Leader)..."
                             className={`flex-1 bg-transparent border rounded-xl px-4 py-2.5 text-sm text-[#0F4C45] dark:text-slate-100 focus:outline-none focus:ring-2 ${addError ? 'border-red-400 focus:ring-red-300' : 'border-[#E2E8F0] dark:border-[#334155] focus:border-[#0D9488] focus:ring-[#0D9488]/20'}`}
                         />
-                        <button type="submit" className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#0D9488] hover:bg-[#0F4C45] transition-colors shrink-0 shadow-sm">
+                        <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shrink-0 shadow-sm cursor-pointer">
                             Add Role
                         </button>
                     </div>
@@ -4666,26 +4944,28 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
 
                 <div className="flex flex-col gap-3">
                     {roles.map(role => (
-                        <div key={role.name} className="flex items-center justify-between p-4 rounded-xl border border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
+                        <div
+                            key={role.name}
+                            className="flex items-center justify-between p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#222933] border border-[#E2E8E5] dark:border-[#2A323D]"
+                        >
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: role.color + '20' }}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill={role.color}><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-gray-900">{role.name}</p>
-                                    <p className="text-xs text-gray-400">{role.perms} permissions · {role.workers} worker{role.workers !== 1 ? 's' : ''}</p>
+                                    <p className="text-sm font-bold text-[#181F26] dark:text-[#E6EDF3]">{role.name}</p>
+                                    <p className="text-xs text-[#64748B] dark:text-[#9BA7B4]">{role.perms} permissions · {role.workers} worker{role.workers !== 1 ? 's' : ''}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: role.color + '20', color: role.color }}>Active</span>
-                                <button className="text-xs text-[#D97706] hover:underline font-semibold">Edit Permissions</button>
-                                <button
-                                    onClick={() => setConfirmRemove(role.name)}
-                                    className="text-xs text-red-400 hover:text-red-600 font-semibold transition-colors flex items-center gap-1"
-                                >
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
-                                    Remove
-                                </button>
+                                <ActionMenu
+                                    ariaLabel={`${role.name} actions`}
+                                    items={[
+                                        { label: 'Edit Permissions', icon: ActionIcons.shield, onClick: () => openEditPermissions(role) },
+                                        { label: 'Remove', icon: ActionIcons.trash, tone: 'destructive', onClick: () => setConfirmRemove(role.name) },
+                                    ]}
+                                />
                             </div>
                         </div>
                     ))}
@@ -4732,17 +5012,11 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
         { key: 'ministries', label: 'Ministries' },
     ] as const;
 
-    function renderSysHeading(badge: string, title: string, desc: string) {
+    function renderSysHeading(_badge: string, title: string, desc: string) {
         return (
-            <div>
-                <span
-                    data-pill="true"
-                    className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]/80 dark:bg-[#14B8A6]/15 dark:text-[#2DD4BF] dark:border-[#14B8A6]/30 mb-3"
-                >
-                    {badge}
-                </span>
-                <h2 className="text-lg font-bold text-[#0F4C45] dark:text-slate-100 leading-snug">{title}</h2>
-                <p className="text-sm text-[#6B665F] dark:text-slate-400 mt-1 leading-relaxed">{desc}</p>
+            <div className="mb-6">
+                <h2 className="text-[1.25rem] sm:text-[1.375rem] font-bold tracking-[-0.015em] text-[#0F4C45] dark:text-slate-100 leading-snug mb-[0.375rem]">{title}</h2>
+                <p className="text-[0.9375rem] text-[#6B665F] dark:text-slate-400 leading-[1.5] max-w-[65ch]">{desc}</p>
             </div>
         );
     }
@@ -4758,11 +5032,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                             key={s.key}
                             type="button"
                             onClick={() => setActiveSection(s.key)}
-                            className={`text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                                activeSection === s.key
-                                    ? 'bg-[#0D9488] text-white shadow-sm'
-                                    : 'text-gray-500 hover:bg-white/70 dark:hover:bg-white/5 hover:text-[#0F4C45] dark:hover:text-slate-200'
-                            }`}
+                            className={`text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${activeSection === s.key
+                                ? 'bg-[#0D9488] text-white shadow-sm'
+                                : 'text-gray-500 hover:bg-white/70 dark:hover:bg-white/5 hover:text-[#0F4C45] dark:hover:text-slate-200'
+                                }`}
                         >
                             {s.label}
                         </button>
@@ -4771,7 +5044,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
 
                 {/* Full-Width Elevated Main Card */}
                 <div
-                    className="flex-1 w-full bg-white dark:bg-[#1E293B] rounded-[20px] border border-[#E2E8F0] dark:border-[#334155] p-6 sm:p-8"
+                    className="flex-1 w-full bg-white dark:bg-[#1E293B] rounded-[20px] border border-[#E2E8F0] dark:border-[#334155] p-8"
                     style={{ boxShadow: '0 10px 28px -6px rgba(15, 76, 69, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.04)' }}
                 >
 
@@ -4830,11 +5103,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                             key={opt.key}
                                             type="button"
                                             onClick={() => setDefaultGroupType(opt.key)}
-                                            className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${
-                                                selected
-                                                    ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
-                                                    : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
-                                            }`}
+                                            className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${selected
+                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                                }`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="flex items-center gap-3 min-w-0">
@@ -4850,9 +5122,8 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                                 </div>
                                                 <span
                                                     data-pill="true"
-                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                                        selected ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
-                                                    }`}
+                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${selected ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                        }`}
                                                 >
                                                     ✓
                                                 </span>
@@ -4869,7 +5140,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                             <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
 
                             <div className="flex justify-end">
-                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shadow-sm cursor-pointer">
                                     {saved ? '✓ Saved!' : 'Save Configuration'}
                                 </button>
                             </div>
@@ -4903,11 +5174,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                         key={mode.title}
                                         type="button"
                                         onClick={mode.onClick}
-                                        className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${
-                                            mode.active
-                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
-                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
-                                        }`}
+                                        className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${mode.active
+                                            ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                            : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                            }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-3 min-w-0">
@@ -4923,9 +5193,8 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                             </div>
                                             <span
                                                 data-pill="true"
-                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                                    mode.active ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
-                                                }`}
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${mode.active ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                    }`}
                                             >
                                                 ✓
                                             </span>
@@ -4967,11 +5236,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                                 type="button"
                                                 key={n}
                                                 onClick={() => setOtpLength(n)}
-                                                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                                                    otpLength === n
-                                                        ? 'bg-[#0D9488] text-white border-[#0D9488]'
-                                                        : 'bg-white dark:bg-[#0F172A] text-[#0F4C45] dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]'
-                                                }`}
+                                                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${otpLength === n
+                                                    ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                                                    : 'bg-white dark:bg-[#0F172A] text-[#0F4C45] dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]'
+                                                    }`}
                                             >
                                                 {n} digits
                                             </button>
@@ -4986,11 +5254,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                                 type="button"
                                                 key={m}
                                                 onClick={() => setOtpDelivery(m)}
-                                                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                                                    otpDelivery === m
-                                                        ? 'bg-[#0D9488] text-white border-[#0D9488]'
-                                                        : 'bg-white dark:bg-[#0F172A] text-[#0F4C45] dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]'
-                                                }`}
+                                                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${otpDelivery === m
+                                                    ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                                                    : 'bg-white dark:bg-[#0F172A] text-[#0F4C45] dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]'
+                                                    }`}
                                             >
                                                 {m}
                                             </button>
@@ -5002,7 +5269,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                             <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
 
                             <div className="flex justify-end">
-                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shadow-sm cursor-pointer">
                                     {saved ? '✓ Saved!' : 'Save OTP Settings'}
                                 </button>
                             </div>
@@ -5036,11 +5303,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                         key={c.label}
                                         type="button"
                                         onClick={() => c.setter(!c.value)}
-                                        className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${
-                                            c.value
-                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
-                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
-                                        }`}
+                                        className={`relative text-left rounded-2xl p-5 transition-all flex flex-col gap-4 cursor-pointer ${c.value
+                                            ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                            : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                            }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
@@ -5049,9 +5315,8 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                             </div>
                                             <span
                                                 data-pill="true"
-                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                                    c.value ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
-                                                }`}
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${c.value ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                    }`}
                                             >
                                                 ✓
                                             </span>
@@ -5082,11 +5347,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                         key={e.label}
                                         type="button"
                                         onClick={() => e.setter(!e.value)}
-                                        className={`relative text-left rounded-2xl p-5 transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                                            e.value
-                                                ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
-                                                : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
-                                        }`}
+                                        className={`relative text-left rounded-2xl p-5 transition-all flex items-start justify-between gap-3 cursor-pointer ${e.value
+                                            ? 'border-2 border-[#0D9488] ring-4 ring-[#0D9488]/15 bg-[#F0FDFA]/50 dark:bg-[#14B8A6]/10'
+                                            : 'border border-[#E2E8F0] dark:border-[#334155] bg-white dark:bg-[#0F172A]/40 hover:border-[#0D9488]/50'
+                                            }`}
                                     >
                                         <div className="min-w-0">
                                             <p className="text-sm font-bold text-[#0F4C45] dark:text-slate-100">{e.label}</p>
@@ -5094,9 +5358,8 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                                         </div>
                                         <span
                                             data-pill="true"
-                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                                                e.value ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
-                                            }`}
+                                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${e.value ? 'bg-[#0D9488] text-white' : 'border border-[#CBD5E1] dark:border-[#475569] text-transparent'
+                                                }`}
                                         >
                                             ✓
                                         </span>
@@ -5107,7 +5370,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                             <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
 
                             <div className="flex justify-end">
-                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shadow-sm cursor-pointer">
                                     {saved ? '✓ Saved!' : 'Save Notification Settings'}
                                 </button>
                             </div>
@@ -5151,7 +5414,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                             <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
 
                             <div className="flex justify-end">
-                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shadow-sm cursor-pointer">
                                     {saved ? '✓ Saved!' : 'Save Capacity Settings'}
                                 </button>
                             </div>
@@ -5209,7 +5472,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                             <hr className="my-8 border-[#E2E8F0] dark:border-[#334155]" />
 
                             <div className="flex justify-end">
-                                <button type="submit" className="px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm" style={{ background: saved ? '#0F766E' : '#0D9488' }}>
+                                <button type="submit" className="px-[1.375rem] py-[0.625rem] text-sm font-bold text-white rounded-xl bg-[#0E5B52] hover:bg-[#09423B] focus:outline-none focus:ring-4 focus:ring-[#0E5B52]/25 transition-colors shadow-sm cursor-pointer">
                                     {saved ? '✓ Saved!' : 'Save Label Settings'}
                                 </button>
                             </div>
@@ -5348,7 +5611,7 @@ export default function AdminDashboard() {
 
     const navItem = (key: AdminNav) => {
         const found = ADMIN_NAV.find(n => n.key === key)!;
-        return { key: found.key, label: found.label, icon: found.icon, badge: getBadge(key) };
+        return { key: found.key, label: found.label, icon: found.icon, iconKind: found.iconKind, badge: getBadge(key) };
     };
 
     const adminNavEntries: SidebarNavEntry[] = [
@@ -5364,7 +5627,15 @@ export default function AdminDashboard() {
                 items: [navItem('groups'), navItem('potential_mentees'), navItem('active_mentees'), navItem('c2s_home')],
             },
         },
-        { kind: 'item', item: navItem('reports') },
+        {
+            kind: 'group',
+            group: {
+                id: 'reports',
+                label: 'Reports & Analytics',
+                icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z',
+                items: [navItem('reports_growth'), navItem('reports_ministry'), navItem('reports_map')],
+            },
+        },
         {
             kind: 'group',
             group: {
@@ -5499,8 +5770,9 @@ export default function AdminDashboard() {
             <div className={`${sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-72'} pb-16 min-w-0 transition-[margin] duration-200`}>
 
                 <DashboardTopHeader
-                    pageTitle={settingsSection ? 'Settings' : (activeNav === 'settings' || activeNav === 'rbac') ? 'System Settings' : ADMIN_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                    pageTitle={settingsSection === 'profile' ? 'My Profile' : settingsSection ? 'Settings' : (activeNav === 'settings' || activeNav === 'rbac') ? 'System Settings' : ADMIN_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
                     onOpenMenu={() => setSidebarOpen(true)}
+                    onOpenProfile={() => { setSettingsSection('profile'); setSidebarOpen(false); }}
                 />
 
                 <div className="pt-4 md:pt-5 px-4 sm:px-6">
@@ -5553,7 +5825,17 @@ export default function AdminDashboard() {
                                     onUpdateHomeGroupStatus={handleHomeGroupStatusUpdate}
                                 />
                             )}
-                            {activeNav === 'reports' && <ReportsTab />}
+                            {(activeNav === 'reports_growth' || activeNav === 'reports_ministry' || activeNav === 'reports_map') && (
+                                <ReportsTab
+                                    reportType={
+                                        activeNav === 'reports_ministry'
+                                            ? 'ministry'
+                                            : activeNav === 'reports_map'
+                                                ? 'map'
+                                                : 'growth'
+                                    }
+                                />
+                            )}
                             {activeNav === 'notifications' && <NotificationsTab notifs={notifications} setNotifs={setNotifications} />}
                             {activeNav === 'audit' && <AuditLogsTab logs={auditLogs} />}
                             {(activeNav === 'settings' || activeNav === 'rbac') && <SettingsTab initialSection={activeNav === 'rbac' ? 'rbac' : undefined} />}

@@ -1,9 +1,10 @@
 'use client';
 
 import type { Mentee } from '@/lib/data';
+import { WorkerSinceValue } from '@/components/WorkerIdentityBits';
 
 interface Props {
-    mentee: Mentee;
+    mentee: Mentee & { workerId?: string; workerIdCreatedAt?: string; endorsedSince?: string };
     onClose: () => void;
 }
 
@@ -53,6 +54,18 @@ export default function MenteeProfileModal({ mentee, onClose }: Props) {
                     <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
+                            {mentee.workerId && (
+                                <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                    <span className="text-xs text-gray-500">Worker ID</span>
+                                    <span className="text-xs font-bold text-[#181F26] dark:text-[#E6EDF3] tabular-nums">{mentee.workerId}</span>
+                                </div>
+                            )}
+                            {mentee.workerIdCreatedAt && (
+                                <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                    <span className="text-xs text-gray-500">Worker Since (ID Issued)</span>
+                                    <WorkerSinceValue createdAt={mentee.workerIdCreatedAt} className="text-xs justify-end" />
+                                </div>
+                            )}
                             {[
                                 { label: 'Email Address',              value: mentee.email },
                                 { label: 'Phone Number',               value: mentee.phone },
